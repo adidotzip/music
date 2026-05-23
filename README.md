@@ -1,4 +1,5 @@
 # Adi Music
+beta 1
 fork of **[snae player](https://snaeplayer.com)**
 
 🎵 **[Adi Music](https://music.imreallyadi.space)** is a modern local music player that runs entirely in your browser.
