@@ -42,7 +42,9 @@ const config = {
 					'blob:',
 					'data:',
 
-					env.PUBLIC_GOAT_COUNTER_URL ? `${env.PUBLIC_GOAT_COUNTER_URL}/count` : '',
+					env.PUBLIC_GOAT_COUNTER_URL
+						? `${env.PUBLIC_GOAT_COUNTER_URL}/count`
+						: '',
 
 					// JioSaavn
 					'https://*.jiosaavncdn.com',
@@ -88,6 +90,8 @@ const config = {
 					env.PUBLIC_GOAT_COUNTER_URL ?? '',
 
 					// Lyrics
+					'https://lyrics.imreallyadi.space',
+					'https://lyrics-api.boidu.dev',
 					'https://lrclib.net',
 					'https://lyricsplus.prjktla.workers.dev',
 					'https://unison.boidu.dev',
