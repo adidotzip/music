@@ -49,6 +49,7 @@
 
 	let { track, currentTimeMs, class: className }: Props = $props()
 	const player = usePlayer()
+	const mainStore = useMainStore()
 
 	let result: SyncedLyricsResult | undefined = $state()
 	let loading = $state(false)
@@ -285,7 +286,9 @@
 <section
 	class={[
 		'lyrics-shell relative h-full w-full overflow-hidden',
-		!(player.animatedArtworkSrc && player.animatedArtworkLoaded) && 'bg-black dark',
+		(player.animatedArtworkSrc && player.animatedArtworkLoaded)
+			? 'dark'
+			: (mainStore.isThemeDark ? 'bg-black dark' : ''),
 		className,
 	]}
 	aria-live="polite"
