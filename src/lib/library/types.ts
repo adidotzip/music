@@ -55,6 +55,7 @@ export interface UnknownTrack extends ParsedTrackData {
 	scannedAt: number
 	fileName?: string
 	directory?: number
+	url?: string
 }
 
 export interface Track extends BaseMusicItem, UnknownTrack {}

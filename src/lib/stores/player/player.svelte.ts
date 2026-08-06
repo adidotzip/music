@@ -54,6 +54,10 @@ export class PlayerStore {
 		return this.#queue.isQueueEmpty
 	}
 
+	get audioElement(): HTMLAudioElement {
+		return this.#audio
+	}
+
 	loading: boolean = $derived(this.#audioLoader.loading)
 
 	currentTime: number = $state(0)
