@@ -15,6 +15,7 @@
 				isSecondaryLine: boolean
 				isOpposite: boolean
 				translation?: string
+				translations?: Record<string, string>
 				romanization?: string
 				isInstrumental?: boolean
 		  }
@@ -31,6 +32,50 @@
 			}
 		}
 		return index
+	}
+
+	// Type for translation language
+	type TranslationLanguage = 'off' | 'en' | 'zh' | 'ja' | 'ko' | string
+
+	// Improved helper with language fallbacks, prefix matching, and English fallback
+	const getDisplayedTranslation = (
+		line: Extract<LyricItem, { type: 'line' }>,
+		language: TranslationLanguage,
+	): string | undefined => {
+		if (language === 'off') return undefined
+
+		if (!line.translations) return line.translation
+
+		const normalized = language.toLowerCase()
+
+		// 1. Exact match
+		if (line.translations[language]) {
+			return line.translations[language]
+		}
+
+		// 2. Case-insensitive exact match
+		const caseInsensitiveMatch = Object.entries(line.translations).find(
+			([key]) => key.toLowerCase() === normalized
+		)
+		if (caseInsensitiveMatch) return caseInsensitiveMatch[1]
+
+		// 3. Prefix matching with language boundaries
+		const prefixMatch = Object.entries(line.translations).find(([key]) => {
+			const lower = key.toLowerCase()
+			return (
+				lower.startsWith(`${normalized}-`) ||
+				lower.startsWith(`${normalized}_`)
+			)
+		})
+		if (prefixMatch) return prefixMatch[1]
+
+		// 4. English fallback
+		if (line.translations.en) return line.translations.en
+		if (line.translations['en-US']) return line.translations['en-US']
+		if (line.translations['en-GB']) return line.translations['en-GB']
+
+		// 5. Legacy translation fallback
+		return line.translation
 	}
 </script>
 
@@ -49,6 +94,12 @@
 
 	let { track, currentTimeMs, class: className }: Props = $props()
 	const player = usePlayer()
+	const settings = useSettings()
+
+	// Get translation language from settings store
+	const translationLanguage = $derived<TranslationLanguage>(
+		settings.lyrics.translationLanguage ?? 'off'
+	)
 
 	let result: SyncedLyricsResult | undefined = $state()
 	let loading = $state(false)
@@ -58,18 +109,17 @@
 	let isUserScrolling = $state(false)
 	let userScrollTimeout: ReturnType<typeof setTimeout>
 
-	// ─── Motion & Physics (Softer, ultra-premium physics) ─────────────────
+	// ─── Motion & Physics ─────────────────────────────────────────────
 	const scrollOffset = spring(0, {
 		stiffness: 0.05,
 		damping: 0.85,
 	})
 
-	// ─── RAF-driven smooth time (snappy seeks and paused logic) ────────────
+	// ─── RAF-driven smooth time ─────────────────────────────────────────
 	let smoothTimeMs = $state(0)
 	let lastPropTime = $state(0)
 
 	$effect(() => {
-		// When the authoritative prop changes, we snap if not playing or if there's a discontinuity
 		const isDiscontinuity =
 			Math.abs(currentTimeMs - lastPropTime) > 300 || Math.abs(currentTimeMs - smoothTimeMs) > 1000
 		if (!player.playing || isDiscontinuity) {
@@ -88,11 +138,9 @@
 			lastTime = now
 
 			if (player.playing) {
-				// Always move forward, matching play rate
 				const rate = player.playbackRate ?? 1
 				smoothTimeMs += elapsed * rate
 
-				// Soft drift correction if we drift too much
 				const drift = lastPropTime - smoothTimeMs
 				if (drift > 200) {
 					smoothTimeMs += drift * 0.15
@@ -110,11 +158,10 @@
 
 	const foundResult = $derived(result?.status === 'found' ? result : undefined)
 	const lines = $derived(foundResult?.lines ?? [])
-
 	const syncType = $derived(foundResult?.syncType ?? 'line')
 	const isLineLevel = $derived(syncType === 'line')
 
-	// ─── Process Lyrics & Inject Breaks ─────────────────────────────────────
+	// ─── Process Lyrics & Inject Breaks ─────────────────────────────────
 	const processedItems = $derived.by(() => {
 		const items: LyricItem[] = []
 
@@ -151,10 +198,7 @@
 				return { ...word, isSecondary: isWordSecondary }
 			})
 
-			const lineText = words
-				.map((w) => w.string)
-				.join('')
-				.trim()
+			const lineText = words.map((w) => w.string).join('').trim()
 			const isSecondaryLine = lineText.startsWith('(') && lineText.endsWith(')')
 
 			const cleanedWords: ProcessedWord[] = words.map((word, idx) => ({
@@ -170,8 +214,9 @@
 				endTime: line.endTime,
 				words: cleanedWords,
 				isSecondaryLine,
-				isOpposite: (line as any).isOpposite ?? false,
+				isOpposite: line.isOpposite ?? false,
 				translation: line.translation,
+				translations: line.translations,
 				romanization: line.romanization,
 				isInstrumental: line.isInstrumental,
 			})
@@ -181,7 +226,7 @@
 
 	const activeLineIndex = $derived(getActiveLineIndex(processedItems, smoothTimeMs))
 
-	const getActiveWordIndex = (line: any, timeMs: number): number => {
+	const getActiveWordIndex = (line: Extract<LyricItem, { type: 'line' }>, timeMs: number): number => {
 		for (let i = line.words.length - 1; i >= 0; i -= 1) {
 			if (timeMs >= line.words[i].time) return i
 		}
@@ -219,9 +264,7 @@
 
 	const updateScrollPosition = (immediate = false) => {
 		if (!(containerElement && contentElement) || activeLineIndex < 0) return
-		const activeEl = contentElement.querySelector<HTMLElement>(
-			`[data-line-index="${activeLineIndex}"]`,
-		)
+		const activeEl = contentElement.querySelector<HTMLElement>(`[data-line-index="${activeLineIndex}"]`)
 		if (!activeEl) return
 
 		const containerHeight = containerElement.offsetHeight
@@ -271,9 +314,7 @@
 </script>
 
 {#snippet emptyState(icon: 'musicNote' | 'alertCircle', title: string, description: string)}
-	<div
-		class="empty-state z-10 m-auto flex h-full max-w-80 flex-col items-center justify-center text-center opacity-50 transition-opacity duration-500"
-	>
+	<div class="empty-state z-10 m-auto flex h-full max-w-80 flex-col items-center justify-center text-center opacity-50 transition-opacity duration-500">
 		<div class="mb-4 text-[var(--lyric-inactive)]">
 			<Icon type={icon} class="h-12 w-12" />
 		</div>
@@ -291,11 +332,7 @@
 	aria-live="polite"
 >
 	{#if !track}
-		{@render emptyState(
-			'musicNote',
-			'No Track Playing',
-			'Play a track to follow along with the lyrics.',
-		)}
+		{@render emptyState('musicNote', 'No Track Playing', 'Play a track to follow along with the lyrics.')}
 	{:else if loading}
 		<div class="flex h-full w-full items-center justify-center">
 			<div class="text-[var(--lyric-inactive)]">
@@ -315,11 +352,7 @@
 			ontouchstart={handleTouchStart}
 			ontouchmove={handleTouchMove}
 		>
-			<div
-				class="lyrics-content mx-auto w-full max-w-2xl"
-				bind:this={contentElement}
-				style="transform: translateY({$scrollOffset}px)"
-			>
+			<div class="lyrics-content mx-auto w-full max-w-2xl" bind:this={contentElement} style="transform: translateY({$scrollOffset}px)">
 				{#each processedItems as item, itemIndex (item.type === 'break' ? item.id : itemIndex)}
 					{@const isActiveLine = itemIndex === activeLineIndex}
 					{@const isLinePast = itemIndex < activeLineIndex}
@@ -347,6 +380,7 @@
 						{@const activeWordIdx = isActiveLine ? getActiveWordIndex(item, smoothTimeMs) : -1}
 						{@const primaryWords = item.words.filter((w) => !w.isSecondary)}
 						{@const secondaryWords = item.words.filter((w) => w.isSecondary)}
+						{@const displayedTranslation = getDisplayedTranslation(item, translationLanguage)}
 
 						<button
 							type="button"
@@ -371,8 +405,9 @@
 											class:is-sung={isActiveLine || isLinePast}
 											class:is-current={isActiveLine}
 											style="--word-progress: {isActiveLine || isLinePast ? 100 : 0}%"
-											>{primaryWords.map((w) => w.string).join('')}</span
 										>
+											{primaryWords.map((w) => w.string).join('')}
+										</span>
 									</div>
 								{/if}
 								{#if secondaryWords.length > 0}
@@ -382,60 +417,65 @@
 											class:is-sung={isActiveLine || isLinePast}
 											class:is-current={isActiveLine}
 											style="--word-progress: {isActiveLine || isLinePast ? 100 : 0}%"
-											>{secondaryWords.map((w) => w.string).join('')}</span
 										>
+											{secondaryWords.map((w) => w.string).join('')}
+										</span>
 									</div>
 								{/if}
 							{:else}
 								{#if primaryWords.length > 0}
 									<div class="primary-lyrics-block">
-										{#each primaryWords as word}{#if word.string.length > 0}{@const isPastWord =
-													isLinePast ||
-													(isActiveLine &&
-														word.originalIndex < activeWordIdx)}{@const isCurrentWord =
-													isActiveLine && word.originalIndex === activeWordIdx}{@const nextTime =
-													item.words[word.originalIndex + 1]?.time ??
-													item.endTime}{@const duration = Math.max(
-													nextTime - word.time,
-													1,
-												)}{@const wordProgress = isLinePast
+										{#each primaryWords as word}
+											{#if word.string.length > 0}
+												{@const isPastWord = isLinePast || (isActiveLine && word.originalIndex < activeWordIdx)}
+												{@const isCurrentWord = isActiveLine && word.originalIndex === activeWordIdx}
+												{@const nextTime = item.words[word.originalIndex + 1]?.time ?? item.endTime}
+												{@const duration = Math.max(nextTime - word.time, 1)}
+												{@const wordProgress = isLinePast
 													? 100
 													: isCurrentWord
 														? Math.min(Math.max((smoothTimeMs - word.time) / duration, 0), 1) * 100
 														: isPastWord
 															? 100
-															: 0}<span
+															: 0}
+												<span
 													class="lyric-word"
 													class:is-sung={isPastWord || isCurrentWord}
 													class:is-current={isCurrentWord}
-													style="--word-progress: {wordProgress}%">{word.string}</span
-												>{/if}{/each}
+													style="--word-progress: {wordProgress}%"
+												>
+													{word.string}
+												</span>
+											{/if}
+										{/each}
 									</div>
 								{/if}
 
 								{#if secondaryWords.length > 0}
 									<div class="secondary-lyrics-block">
-										{#each secondaryWords as word}{#if word.string.length > 0}{@const isPastWord =
-													isLinePast ||
-													(isActiveLine &&
-														word.originalIndex < activeWordIdx)}{@const isCurrentWord =
-													isActiveLine && word.originalIndex === activeWordIdx}{@const nextTime =
-													item.words[word.originalIndex + 1]?.time ??
-													item.endTime}{@const duration = Math.max(
-													nextTime - word.time,
-													1,
-												)}{@const wordProgress = isLinePast
+										{#each secondaryWords as word}
+											{#if word.string.length > 0}
+												{@const isPastWord = isLinePast || (isActiveLine && word.originalIndex < activeWordIdx)}
+												{@const isCurrentWord = isActiveLine && word.originalIndex === activeWordIdx}
+												{@const nextTime = item.words[word.originalIndex + 1]?.time ?? item.endTime}
+												{@const duration = Math.max(nextTime - word.time, 1)}
+												{@const wordProgress = isLinePast
 													? 100
 													: isCurrentWord
 														? Math.min(Math.max((smoothTimeMs - word.time) / duration, 0), 1) * 100
 														: isPastWord
 															? 100
-															: 0}<span
+															: 0}
+												<span
 													class="lyric-word secondary-word"
 													class:is-sung={isPastWord || isCurrentWord}
 													class:is-current={isCurrentWord}
-													style="--word-progress: {wordProgress}%">{word.string}</span
-												>{/if}{/each}
+													style="--word-progress: {wordProgress}%"
+												>
+													{word.string}
+												</span>
+											{/if}
+										{/each}
 									</div>
 								{/if}
 							{/if}
@@ -446,9 +486,9 @@
 								</div>
 							{/if}
 
-							{#if item.translation}
+							{#if displayedTranslation}
 								<div class="translation-block">
-									{item.translation}
+									{displayedTranslation}
 								</div>
 							{/if}
 						</button>
@@ -457,20 +497,15 @@
 			</div>
 		</div>
 	{:else}
-		{@render emptyState(
-			'alertCircle',
-			'Lyrics Unavailable',
-			"We couldn't find synced lyrics for this track.",
-		)}
+		{@render emptyState('alertCircle', 'Lyrics Unavailable', "We couldn't find synced lyrics for this track.")}
 	{/if}
 </section>
 
 <style lang="postcss">
 	@reference "../../../app.css";
 
-	/* ─── Robust Light/Dark Mode Mapping ────────────────────────────── */
+	/* ─── Light/Dark Mode Mapping ───────────────────────────────────── */
 	.lyrics-shell {
-		/* Defaults for a light environment */
 		--lyric-inactive: rgba(0, 0, 0, 0.4);
 		--lyric-active-fill: #140c0b;
 		--lyric-active-unfill: rgba(0, 0, 0, 0.12);
@@ -488,7 +523,6 @@
 		}
 	}
 
-	/* Overrides: if the container gets 'bg-black' or 'dark' forcefully */
 	.lyrics-shell.bg-black,
 	:global(.dark) .lyrics-shell,
 	.lyrics-shell.dark {
@@ -501,13 +535,7 @@
 
 	.lyrics-container {
 		mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 80%, transparent 100%);
-		-webkit-mask-image: linear-gradient(
-			to bottom,
-			transparent 0%,
-			black 15%,
-			black 80%,
-			transparent 100%
-		);
+		-webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 80%, transparent 100%);
 	}
 
 	.lyrics-content {
@@ -547,7 +575,6 @@
 			filter 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 
-	/* Handling multiple singers */
 	.lyric-item.opposite {
 		text-align: right;
 		transform-origin: right center;
