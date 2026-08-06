@@ -10,7 +10,7 @@ const UNISON_GET_ENDPOINT = 'https://unison.boidu.dev/lyrics'
 
 const LRCLIB_DURATION_TOLERANCE_SECONDS = 4
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7
-const CACHE_VERSION = 11 // Bumped to invalidate old caches and apply Braccato parsing
+const CACHE_VERSION = 11
 
 export interface SyncedLyricsWord {
     string: string
@@ -34,10 +34,10 @@ export type LyricsSyncMode = 'karaoke' | 'line'
 
 export type SyncedLyricsResult =
     | {
-            status: 'found'
-            source: SyncedLyricsSource
-            lines: SyncedLyricsLine[]
-            syncType: LyricsSyncMode
+          status: 'found'
+          source: SyncedLyricsSource
+          lines: SyncedLyricsLine[]
+          syncType: LyricsSyncMode
       }
     | { status: 'not-found' | 'instrumental' | 'error' }
 
@@ -67,12 +67,84 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 const isFiniteNumber = (value: unknown): value is number =>
     typeof value === 'number' && Number.isFinite(value)
 
+const parseTimestampToMs = (timestamp: string): number => {
+    const parts = timestamp.split(':')
+    if (parts.length < 2) return 0
+
+    const minutes = Number.parseInt(parts[0], 10) || 0
+    const secondParts = parts[1].split('.')
+    const seconds = Number.parseInt(secondParts[0], 10) || 0
+    const milliseconds = Number.parseInt((secondParts[1] || '0').padEnd(3, '0').slice(0, 3), 10) || 0
+
+    return minutes * 60000 + seconds * 1000 + milliseconds
+}
+
+// Custom parser for Adi ESLRC format: [start]word[end]
+const parseAdiEslrc = (rawLyrics: string): SyncedLyricsLine[] => {
+    const lines: SyncedLyricsLine[] = []
+    const rawLines = rawLyrics.split('\n').filter((line) => line.trim() !== '')
+
+    // Matches pair of timestamps wrapping word content: [00:18.291]word[00:18.460]
+    const tokenRegex = /\[(\d{1,2}:\d{2}\.\d{2,3})\]([^\[]+?)\[(\d{1,2}:\d{2}\.\d{2,3})\]/g
+
+    for (const rawLine of rawLines) {
+        const matches = [...rawLine.matchAll(tokenRegex)]
+        if (matches.length === 0) continue
+
+        const wordsWithTiming: Array<{ word: string; startTime: number; endTime: number }> = []
+        let lastEndMs = 0
+
+        for (const match of matches) {
+            const rawStart = match[1]
+            // Fixed 1: Strip out unwanted spacing artifacts inside tokens
+            const wordText = match[2].replace(/\s+/g, ' ').trim()
+            const rawEnd = match[3]
+
+            const parsedStart = parseTimestampToMs(rawStart)
+            const parsedEnd = parseTimestampToMs(rawEnd)
+
+            // Resolve 00:00.000 (0 ms) relative to previous token's closing timestamp
+            const startTime = parsedStart === 0 ? lastEndMs : parsedStart
+            const endTime = parsedEnd === 0 ? startTime + 300 : parsedEnd
+
+            if (wordText) {
+                wordsWithTiming.push({
+                    word: wordText,
+                    startTime,
+                    endTime,
+                })
+            }
+
+            lastEndMs = endTime
+        }
+
+        if (wordsWithTiming.length > 0) {
+            const lineStart = wordsWithTiming[0].startTime
+            const lineEnd = wordsWithTiming[wordsWithTiming.length - 1].endTime
+
+            // Fixed 2: Inject trailing spaces mirroring the Braccato mapper
+            const words: SyncedLyricsWord[] = wordsWithTiming.map((item, index) => ({
+                string: index === wordsWithTiming.length - 1 ? item.word : item.word + ' ',
+                time: item.startTime,
+            }))
+
+            lines.push({
+                startTime: lineStart,
+                endTime: lineEnd,
+                words,
+            })
+        }
+    }
+
+    // Fixed 3: Sort lines chronologically to handle out-of-order harmony tags properly
+    return lines.sort((a, b) => a.startTime - b.startTime)
+}
+
 export const mapBraccatoToSyncedLyrics = (lyrics: Lyric[]): SyncedLyricsLine[] => {
     return lyrics.map((lyric) => {
         const startTime = lyric.startTimeMs
         const endTime = lyric.startTimeMs + lyric.durationMs
 
-        // Map parts to SyncedLyricsWord
         let words: SyncedLyricsWord[] = []
         if (lyric.parts && lyric.parts.length > 0) {
             const validParts = lyric.parts.filter((part) => part.words.trim() !== '')
@@ -87,7 +159,6 @@ export const mapBraccatoToSyncedLyrics = (lyrics: Lyric[]): SyncedLyricsLine[] =
                 }
             })
         } else {
-            // No word/syllable timing, treat the whole line as one word
             words = [
                 {
                     string: lyric.words || '',
@@ -96,21 +167,16 @@ export const mapBraccatoToSyncedLyrics = (lyrics: Lyric[]): SyncedLyricsLine[] =
             ]
         }
 
-        // Find and map translations dynamically
         let translation: string | undefined
         let translations: Record<string, string> | undefined = undefined
 
         if (lyric.translations && Object.keys(lyric.translations).length > 0) {
             translations = { ...lyric.translations }
-            
-            // Retain the first translation in the fallback `translation` string
-            // so default UI behavior isn't broken for existing implementations
             const langs = Object.keys(translations)
             if (langs.length > 0 && langs[0]) {
                 translation = translations[langs[0]]
             }
         } else if (lyric.translation?.text) {
-            // Fallback for older Braccato parsed formats
             translation = lyric.translation.text
         }
 
@@ -126,7 +192,6 @@ export const mapBraccatoToSyncedLyrics = (lyrics: Lyric[]): SyncedLyricsLine[] =
     })
 }
 
-// Keep original robust LRC parsing to satisfy multiple LRC timestamps on one line test
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g
 const whitespacePattern = /\s+/
 
@@ -280,11 +345,9 @@ const fetchAdiLyrics = async (
             return { status: 'not-found' }
         }
 
-        // Find the best match or take the first
         const bestMatch = searchData.results[0]
         if (!bestMatch || !bestMatch.id) return { status: 'not-found' }
 
-        // Fetch lyric details
         const lyricUrl = `https://lyrics.imreallyadi.space/api/lyrics/${bestMatch.id}`
         const lyricResponse = await fetch(lyricUrl, { signal })
         if (!lyricResponse.ok) return { status: 'not-found' }
@@ -295,19 +358,14 @@ const fetchAdiLyrics = async (
         }
 
         const rawLyrics = lyricData.lyric.eslrc
-        const durationMs = getDurationSeconds(track) * 1000
+        const lines = parseAdiEslrc(rawLyrics)
 
-        const parser = detectParser(rawLyrics)
-        const parsed = parser.parse(rawLyrics, durationMs)
-
-        if (parsed && parsed.length > 0) {
-            const lines = mapBraccatoToSyncedLyrics(parsed)
-            const hasWordTiming = parsed.some((lyric) => lyric.parts && lyric.parts.length > 0)
+        if (lines.length > 0) {
             return {
                 status: 'found',
                 source: 'adi',
                 lines,
-                syncType: hasWordTiming ? 'karaoke' : 'line',
+                syncType: 'karaoke',
             }
         }
 
@@ -429,7 +487,6 @@ const getLyricsPlusResult = (
             return { lines: deduplicateLines(lines), syncType: 'line' }
         }
 
-        // Words Sync Mode: parse via Braccato
         const lines = data.lyrics
             .map((line): SyncedLyricsLine | undefined => {
                 if (
