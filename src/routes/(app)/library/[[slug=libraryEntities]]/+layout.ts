@@ -19,8 +19,8 @@ import {
 import { getPersistedLibrarySplitLayoutEnabled } from '$lib/stores/main/store.svelte.ts'
 import { defineViewTransitionMatcher } from '$lib/view-transitions.svelte.ts'
 import type { LayoutLoad } from './$types.js'
-import { configsMap, type LibraryRouteConfig, type LibrarySearchFn } from './config.js'
-import { LibraryStore } from './store.svelte.js'
+import { configsMap, type LibraryRouteConfig, type LibrarySearchFn } from './config.ts'
+import { LibraryStore } from './store.svelte.js.ts'
 
 const defaultSearchFn: LibrarySearchFn<{ name: string }> = (value, searchTerm) =>
 	value.name.toLowerCase().includes(searchTerm)
@@ -66,7 +66,8 @@ const loadData = async <Slug extends LibraryStoreName>(
 				}
 
 				for (const item of onlineItems) {
-					registerRemoteId(item.id, item.uuid); setLibraryValueInCache(slug, item.id, {
+					registerRemoteId(item.id, item.uuid)
+					setLibraryValueInCache(slug, item.id, {
 						...item,
 						type: slug.slice(0, -1) as any,
 						favorite: false,

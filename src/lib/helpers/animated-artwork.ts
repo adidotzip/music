@@ -1,4 +1,4 @@
-import { SerialQueue } from './serial-queue.js'
+import { SerialQueue } from './serial-queue.ts'
 
 const getStorageKey = (artist: string, album: string, title?: string) =>
 	`snaeplayer-animated-artwork-v3.${artist}:${album}${title ? `:${title}` : ''}`
@@ -74,7 +74,10 @@ export const getAnimatedArtwork = async (
 					if (cached.type === 'image') {
 						return cached.value
 					}
-					if (cached.type === 'none' && Date.now() - cached.timestamp < NONE_CACHE_DURATION) {
+					if (
+						cached.type === 'none' &&
+						Date.now() - cached.timestamp < NONE_CACHE_DURATION
+					) {
 						return undefined
 					}
 				}

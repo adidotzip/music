@@ -4,9 +4,9 @@ import { type DatabaseChangeDetails, dispatchDatabaseChangedEvent } from '$lib/d
 import { createUIAction } from '$lib/helpers/ui-action.ts'
 import { truncate } from '$lib/helpers/utils/text.ts'
 import type { Playlist, PlaylistEntry } from '$lib/library/types.ts'
-import { FAVORITE_PLAYLIST_ID } from './types.js'
+import { FAVORITE_PLAYLIST_ID } from './types.ts'
 
-export { FAVORITE_PLAYLIST_ID } from './types.js'
+export { FAVORITE_PLAYLIST_ID } from './types.ts'
 
 export const dbCreatePlaylist = async (
 	name: string,

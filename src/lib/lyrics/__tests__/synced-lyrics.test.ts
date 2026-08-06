@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TrackData } from '$lib/library/get/value.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-import { fetchSyncedLyrics, parseLrc } from '../synced-lyrics.js'
+import { fetchSyncedLyrics, parseLrc } from '../synced-lyrics.ts'
 
 const createTrack = (overrides: Partial<TrackData> = {}): TrackData => ({
 	id: 1,

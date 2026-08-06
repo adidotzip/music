@@ -1,12 +1,11 @@
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-import { SerialQueue } from './serial-queue.js'
+import { SerialQueue } from './serial-queue.ts'
 
 const queue = new SerialQueue()
 
 const NONE_CACHE_DURATION = 1000 * 60 * 30 // 30 mins
 
-const AUDIO_DB_API =
-	'https://www.theaudiodb.com/api/v1/json/2/search.php'
+const AUDIO_DB_API = 'https://www.theaudiodb.com/api/v1/json/2/search.php'
 
 const pendingRequests = new Map<string, Promise<string | undefined>>()
 
@@ -70,13 +69,9 @@ const normalize = (value: string) =>
 		.toLowerCase()
 		.trim()
 
-const delay = (ms: number) =>
-	new Promise((resolve) => setTimeout(resolve, ms))
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const fetchWithRetry = async (
-	url: string,
-	retries = 2,
-): Promise<Response> => {
+const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
 	let lastError: unknown
 
 	for (let attempt = 0; attempt <= retries; attempt++) {
@@ -99,19 +94,14 @@ const fetchWithRetry = async (
 					return response
 				}
 
-				console.warn(
-					`[Artwork] Attempt ${attempt + 1} failed with ${response.status}`,
-				)
+				console.warn(`[Artwork] Attempt ${attempt + 1} failed with ${response.status}`)
 			} finally {
 				clearTimeout(timeout)
 			}
 		} catch (error) {
 			lastError = error
 
-			console.warn(
-				`[Artwork] Retry ${attempt + 1} failed`,
-				error,
-			)
+			console.warn(`[Artwork] Retry ${attempt + 1} failed`, error)
 		}
 
 		if (attempt < retries) {
@@ -122,44 +112,30 @@ const fetchWithRetry = async (
 	throw lastError ?? new Error('Unknown fetch failure')
 }
 
-const resolveBestMatch = (
-	artists: AudioDBArtist[],
-	query: string,
-): AudioDBArtist | undefined => {
+const resolveBestMatch = (artists: AudioDBArtist[], query: string): AudioDBArtist | undefined => {
 	const needle = normalize(query)
 
-	return (
-		artists.find(
-			(artist) => normalize(artist.strArtist ?? '') === needle,
-		) ?? artists[0]
-	)
+	return artists.find((artist) => normalize(artist.strArtist ?? '') === needle) ?? artists[0]
 }
 
 /**
  * Prioritizes proper artist profile pictures first,
  * falls back to fanart/banner.
  */
-const resolveBestArtwork = (
-	artist: AudioDBArtist,
-): string | undefined => {
-	return (
-		artist.strArtistThumb ||
-		artist.strArtistFanart ||
-		artist.strArtistFanart2 ||
-		artist.strArtistFanart3 ||
-		artist.strArtistBanner ||
-		artist.strArtistLogo ||
-		undefined
-	)
-}
+const resolveBestArtwork = (artist: AudioDBArtist): string | undefined =>
+	artist.strArtistThumb ||
+	artist.strArtistFanart ||
+	artist.strArtistFanart2 ||
+	artist.strArtistFanart3 ||
+	artist.strArtistBanner ||
+	artist.strArtistLogo ||
+	undefined
 
 // --------------------
 // Main
 // --------------------
 
-export const getArtistArtwork = async (
-	artist: string,
-): Promise<string | undefined> => {
+export const getArtistArtwork = async (artist: string): Promise<string | undefined> => {
 	if (!artist || artist === UNKNOWN_ITEM) {
 		return undefined
 	}
@@ -174,10 +150,7 @@ export const getArtistArtwork = async (
 			return cached.value
 		}
 
-		if (
-			cached.type === 'none' &&
-			Date.now() - cached.timestamp < NONE_CACHE_DURATION
-		) {
+		if (cached.type === 'none' && Date.now() - cached.timestamp < NONE_CACHE_DURATION) {
 			return undefined
 		}
 	}
@@ -202,8 +175,7 @@ export const getArtistArtwork = async (
 
 					if (
 						cachedAgain.type === 'none' &&
-						Date.now() - cachedAgain.timestamp <
-							NONE_CACHE_DURATION
+						Date.now() - cachedAgain.timestamp < NONE_CACHE_DURATION
 					) {
 						return undefined
 					}
@@ -214,8 +186,7 @@ export const getArtistArtwork = async (
 						`${AUDIO_DB_API}?s=${encodeURIComponent(artist)}`,
 					)
 
-					const payload =
-						(await response.json()) as AudioDBResponse
+					const payload = (await response.json()) as AudioDBResponse
 
 					if (!Array.isArray(payload?.artists)) {
 						safeSetStorage(key, {
@@ -226,10 +197,7 @@ export const getArtistArtwork = async (
 						return undefined
 					}
 
-					const match = resolveBestMatch(
-						payload.artists,
-						artist,
-					)
+					const match = resolveBestMatch(payload.artists, artist)
 
 					if (!match) {
 						safeSetStorage(key, {
@@ -252,10 +220,7 @@ export const getArtistArtwork = async (
 						return artwork
 					}
 				} catch (error) {
-					console.error(
-						`[Artwork] Failed loading artwork for "${artist}"`,
-						error,
-					)
+					console.error(`[Artwork] Failed loading artwork for "${artist}"`, error)
 				}
 
 				safeSetStorage(key, {

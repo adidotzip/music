@@ -5,9 +5,9 @@ import {
 	type QueryResult,
 	QueryResultBox,
 	type QueryStateInternal,
-} from './base-query.svelte.js'
+} from './base-query.svelte.js.ts'
 
-export type { QueryKey } from './base-query.svelte.js'
+export type { QueryKey } from './base-query.svelte.js.ts'
 
 export type PageQueryResult<Result> = QueryResult<Result> & {
 	value: Result

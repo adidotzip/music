@@ -1,5 +1,5 @@
 import { assign } from '$lib/helpers/utils/assign.ts'
-import { type DatabaseChangeDetailsList, onDatabaseChange } from '../events.js'
+import { type DatabaseChangeDetailsList, onDatabaseChange } from '../events.ts'
 
 export type QueryStatus = 'loading' | 'loaded' | 'error'
 

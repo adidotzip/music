@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/useAwait: test code */
 import { describe, expect, it, vi } from 'vitest'
-import { SerialQueue } from '../serial-queue.js'
-import { wait } from '../utils/wait.js'
+import { SerialQueue } from '../serial-queue.ts'
+import { wait } from '../utils/wait.ts'
 
 describe('SerialQueue', () => {
 	it('executes a single task', async () => {

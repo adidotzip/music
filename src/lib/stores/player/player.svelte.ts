@@ -1,17 +1,17 @@
 import type { QueryResult } from '$lib/db/query/query.ts'
+import { getAnimatedArtwork } from '$lib/helpers/animated-artwork.ts'
 import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 import { persist } from '$lib/helpers/persist.svelte.ts'
 import { clamp } from '$lib/helpers/utils/clamp.ts'
 import { debounce } from '$lib/helpers/utils/debounce.ts'
-import { getAnimatedArtwork } from '$lib/helpers/animated-artwork.ts'
 import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
 import { throttle } from '$lib/helpers/utils/throttle.ts'
 import { createTrackQuery, type TrackData } from '$lib/library/get/value-queries.ts'
-import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
-import { AudioLoader } from './audio-loader.svelte.js'
-import { EqualizerStore } from './equalizer.svelte.js'
-import { type PlayTrackOptions, QueueStore } from './queue.svelte.js'
+import { UNKNOWN_ITEM } from '$lib/library/types.ts'
+import { AudioLoader } from './audio-loader.svelte.js.ts'
+import { EqualizerStore } from './equalizer.svelte.js.ts'
+import { type PlayTrackOptions, QueueStore } from './queue.svelte.js.ts'
 
 export type { PlayTrackOptions }
 
@@ -285,7 +285,7 @@ export class PlayerStore {
 			audio.muted = this.muted
 		})
 
-		const ms = typeof window !== 'undefined' ? window.navigator.mediaSession : undefined
+		const ms = typeof window === 'undefined' ? undefined : window.navigator.mediaSession
 
 		if (ms) {
 			$effect(() => {
@@ -331,7 +331,10 @@ export class PlayerStore {
 				audio.currentTime = Math.max(audio.currentTime - (details?.seekOffset ?? 10), 0)
 			})
 			setAction('seekforward', (details) => {
-				audio.currentTime = Math.min(audio.currentTime + (details?.seekOffset ?? 10), audio.duration)
+				audio.currentTime = Math.min(
+					audio.currentTime + (details?.seekOffset ?? 10),
+					audio.duration,
+				)
 			})
 			setAction('seekto', (details) => {
 				if (details.seekTime !== undefined) {
@@ -342,8 +345,8 @@ export class PlayerStore {
 	}
 
 	#updatePositionState = (): void => {
-		const ms = typeof window !== 'undefined' ? window.navigator.mediaSession : undefined
-		if (!ms?.setPositionState || !Number.isFinite(this.#audio.duration)) {
+		const ms = typeof window === 'undefined' ? undefined : window.navigator.mediaSession
+		if (!(ms?.setPositionState && Number.isFinite(this.#audio.duration))) {
 			return
 		}
 

@@ -33,24 +33,16 @@ const config = {
 			directives: {
 				'default-src': ['none'],
 
-				'script-src': [
-					'self',
-					'https://gc.zgo.at/',
-				],
+				'script-src': ['self', 'https://gc.zgo.at/'],
 
-				'style-src': [
-					'self',
-					'unsafe-inline',
-				],
+				'style-src': ['self', 'unsafe-inline'],
 
 				'img-src': [
 					'self',
 					'blob:',
 					'data:',
 
-					env.PUBLIC_GOAT_COUNTER_URL
-						? `${env.PUBLIC_GOAT_COUNTER_URL}/count`
-						: '',
+					env.PUBLIC_GOAT_COUNTER_URL ? `${env.PUBLIC_GOAT_COUNTER_URL}/count` : '',
 
 					// JioSaavn
 					'https://*.jiosaavncdn.com',
@@ -88,9 +80,7 @@ const config = {
 					'https://cdns-preview-*.dzcdn.net',
 				],
 
-				'font-src': [
-					'self',
-				],
+				'font-src': ['self'],
 
 				'connect-src': [
 					'self',
@@ -122,35 +112,19 @@ const config = {
 					'https://api.deezer.com',
 				],
 
-				'worker-src': [
-					'self',
-					'blob:',
-				],
+				'worker-src': ['self', 'blob:'],
 
-				'child-src': [
-					'self',
-					'blob:',
-				],
+				'child-src': ['self', 'blob:'],
 
-				'object-src': [
-					'none',
-				],
+				'object-src': ['none'],
 
-				'frame-ancestors': [
-					'none',
-				],
+				'frame-ancestors': ['none'],
 
-				'form-action': [
-					'none',
-				],
+				'form-action': ['none'],
 
-				'manifest-src': [
-					'self',
-				],
+				'manifest-src': ['self'],
 
-				'base-uri': [
-					'none',
-				],
+				'base-uri': ['none'],
 			},
 		},
 
@@ -158,9 +132,7 @@ const config = {
 			config: (tsConfig) => {
 				tsConfig.extends = '../../tsconfig.base.json'
 
-				tsConfig.include.push(
-					'../paraglide/**/*',
-				)
+				tsConfig.include.push('../paraglide/**/*')
 
 				return tsConfig
 			},

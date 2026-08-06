@@ -1,5 +1,5 @@
 import { isPrimaryModifierKey } from '$lib/helpers/utils/ua.ts'
-import { SelectionTracker } from './selection.svelte.js'
+import { SelectionTracker } from './selection.svelte.js.ts'
 
 interface SelectionInteractionState {
 	hoverRangeEnd: number | null

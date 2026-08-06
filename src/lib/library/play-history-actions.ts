@@ -1,7 +1,7 @@
 import { getDatabase } from '$lib/db/database.ts'
 import { dispatchDatabaseChangedEvent } from '$lib/db/events.ts'
 import { createUIAction } from '$lib/helpers/ui-action.ts'
-import type { PlayHistoryEntry } from './types.js'
+import type { PlayHistoryEntry } from './types.ts'
 
 const PLAY_HISTORY_LIMIT = 100
 
