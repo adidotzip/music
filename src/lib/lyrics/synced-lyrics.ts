@@ -273,9 +273,10 @@ const getLrclibFoundResult = (
     const parser = detectParser(rawLyrics)
     const parsed = parser.parse(rawLyrics, durationMs)
     const lines = mapBraccatoToSyncedLyrics(parsed)
+    const hasWordTiming = parsed.some((lyric) => lyric.parts && lyric.parts.length > 0)
 
     return lines.length > 0
-        ? { status: 'found', source: 'lrclib', lines, syncType: 'line' }
+        ? { status: 'found', source: 'lrclib', lines, syncType: hasWordTiming ? 'karaoke' : 'line' }
         : { status: 'not-found' }
 }
 
@@ -724,16 +725,22 @@ export const fetchSyncedLyrics = async (
     }
 
     try {
+        const adiResult = await fetchAdiLyrics(track, signal)
+        if (adiResult.status === 'found') {
+            await saveLyricsToCache(track.id, adiResult)
+            return adiResult
+        }
+
         const betterResult = await fetchBetterLyrics(track, signal)
         if (betterResult.status === 'found') {
             await saveLyricsToCache(track.id, betterResult)
             return betterResult
         }
 
-        const adiResult = await fetchAdiLyrics(track, signal)
-        if (adiResult.status === 'found') {
-            await saveLyricsToCache(track.id, adiResult)
-            return adiResult
+        const lrclibResult = await fetchLrclibLyrics(track, signal)
+        if (lrclibResult.status === 'found' || lrclibResult.status === 'instrumental') {
+            await saveLyricsToCache(track.id, lrclibResult)
+            return lrclibResult
         }
 
         const lpResult = await fetchLyricsPlusLyrics(track, signal)
@@ -751,12 +758,6 @@ export const fetchSyncedLyrics = async (
         if (unisonResult.status === 'found') {
             await saveLyricsToCache(track.id, unisonResult)
             return unisonResult
-        }
-
-        const lrclibResult = await fetchLrclibLyrics(track, signal)
-        if (lrclibResult.status === 'found' || lrclibResult.status === 'instrumental') {
-            await saveLyricsToCache(track.id, lrclibResult)
-            return lrclibResult
         }
 
         if (cachedResult && cachedResult.status !== 'found') {
