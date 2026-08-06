@@ -13,26 +13,38 @@
 
 	let { lyrics, audioElement, class: className }: Props = $props()
 
-	let el: (HTMLElement & { lyrics: Lyric[] | null; source: HTMLAudioElement | string | null }) | undefined = $state()
+	let el:
+		| (HTMLElement & {
+				lyrics: Lyric[] | null
+				source: HTMLAudioElement | string | null
+		  })
+		| undefined = $state()
+
+	let previousLyrics: Lyric[] | null = null
 
 	if (browser) {
-		import('@braccato/core/element')
+		void import('@braccato/core/element')
 	}
 
 	$effect(() => {
-		if (el) {
+		if (!el) return
+
+		if (lyrics !== previousLyrics) {
+			previousLyrics = lyrics
 			el.lyrics = lyrics
 		}
 	})
 
 	$effect(() => {
-		if (el) {
+		if (!el) return
+
+		if (el.source !== audioElement) {
 			el.source = audioElement
 		}
 	})
 </script>
 
-<braccato-lyrics bind:this={el} class={className}></braccato-lyrics>
+<braccato-lyrics bind:this={el} class={className} />
 
 <style lang="postcss">
 	@reference "../../app.css";
@@ -42,7 +54,7 @@
 		width: 100%;
 		height: 100%;
 		overflow-y: auto;
-		scrollbar-width: none; /* Hide scrollbar for premium aesthetic */
+		scrollbar-width: none;
 		-webkit-overflow-scrolling: touch;
 	}
 
@@ -50,66 +62,81 @@
 		display: none;
 	}
 
-	/* Align with Adi Music's premium typography, spacing, and colors */
 	:global(.blyrics-container) {
-		padding-top: var(--blyrics-padding-top, 50vh) !important;
-		padding-bottom: var(--blyrics-padding-bottom, 50vh) !important;
 		font-family: var(--font-sans);
 		text-align: left;
+
+		padding-top: var(--blyrics-padding-top, 50vh);
+		padding-bottom: var(--blyrics-padding-bottom, 50vh);
+
 		--blyrics-font-size: 2.25rem;
 		--blyrics-line-height: 1.35;
 		--blyrics-padding: 1.25rem;
 
-		@media (width >= 640px) {
+		/* Let Braccato animate these */
+		--blyrics-scale: 0.97;
+		--blyrics-active-scale: 1.02;
+		--blyrics-lyric-scroll-duration: 900ms;
+
+		/* Colors */
+		--blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(0, 0, 0, 0.45));
+		--blyrics-lyric-active-color: var(--lyric-active-fill, #140c0b);
+		--blyrics-glow-color: var(--lyric-active-unfill, rgba(0, 0, 0, 0.12));
+
+		contain: layout paint;
+	}
+
+	@media (width >= 640px) {
+		:global(.blyrics-container) {
 			--blyrics-font-size: 2.85rem;
 			--blyrics-padding: 1.5rem;
 		}
+	}
 
-		@media (width >= 1024px) {
+	@media (width >= 1024px) {
+		:global(.blyrics-container) {
 			--blyrics-font-size: 3.5rem;
 			--blyrics-padding: 1.75rem;
 		}
-
-		/* Smooth, premium transitions */
-		transition: padding 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 
-	/* Map Adi Music's CSS design tokens to Braccato variables */
-	:global(.blyrics-container) {
-		--blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(0, 0, 0, 0.4));
-		--blyrics-lyric-active-color: var(--lyric-active-fill, #140c0b);
-		--blyrics-glow-color: var(--lyric-active-unfill, rgba(0, 0, 0, 0.12));
-	}
-
-	/* Handle dark mode or dark backgrounds natively */
 	:global(.dark .blyrics-container),
-	:global([data-theme="dark"] .blyrics-container) {
-		--blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(255, 255, 255, 0.4));
+	:global([data-theme='dark'] .blyrics-container) {
+		--blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(255, 255, 255, 0.45));
 		--blyrics-lyric-active-color: var(--lyric-active-fill, #f1dedc);
 		--blyrics-glow-color: var(--lyric-active-unfill, rgba(255, 255, 255, 0.22));
 	}
 
-	/* Fade out inactive lines and highlight active line elegantly */
+	/* Typography only. No animation overrides. */
 	:global(.blyrics--line) {
 		font-weight: 800;
 		letter-spacing: -0.025em;
-		transition:
-			opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
-			transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
-			filter 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-		opacity: 0.3;
-		filter: blur(1px);
-		transform: scale(0.97);
+		will-change: transform;
 	}
 
-	:global(.blyrics--active) {
-		opacity: 1 !important;
-		filter: blur(0px) !important;
-		transform: scale(1.03) !important;
+	:global(.blyrics--translated) {
+		display: block;
+		margin-top: 0.25rem;
+		font-size: 0.65em;
+		font-weight: 600;
+		color: var(--lyric-translation, rgba(0, 0, 0, 0.65));
 	}
 
-	/* Make sure active word gets perfect contrast and transition */
-	:global(.blyrics--word) {
-		transition: color 0.3s ease;
+	:global(.blyrics--romanized) {
+		display: block;
+		margin-top: 0.15rem;
+		font-size: 0.55em;
+		font-weight: 500;
+		color: var(--lyric-romanization, rgba(0, 0, 0, 0.5));
+	}
+
+	:global(.dark .blyrics--translated),
+	:global([data-theme='dark'] .blyrics--translated) {
+		color: var(--lyric-translation, rgba(255, 255, 255, 0.85));
+	}
+
+	:global(.dark .blyrics--romanized),
+	:global([data-theme='dark'] .blyrics--romanized) {
+		color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
 	}
 </style>
