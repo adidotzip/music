@@ -84,8 +84,8 @@ const parseAdiEslrc = (rawLyrics: string): SyncedLyricsLine[] => {
     const lines: SyncedLyricsLine[] = []
     const rawLines = rawLyrics.split('\n').filter((line) => line.trim() !== '')
 
-    // Matches pair of timestamps wrapping word content: [00:18.291]word[00:18.460]
-    const tokenRegex = /\[(\d{1,2}:\d{2}\.\d{2,3})\]([^\[]+?)\[(\d{1,2}:\d{2}\.\d{2,3})\]/g
+    // Matches pair of timestamps wrapping word content using non-consuming lookahead to handle consecutive words
+    const tokenRegex = /\[(\d{1,2}:\d{2}\.\d{2,3})\]([^\[\r\n]+?)(?=\[(\d{1,2}:\d{2}\.\d{2,3})\])/g
 
     for (const rawLine of rawLines) {
         const matches = [...rawLine.matchAll(tokenRegex)]
