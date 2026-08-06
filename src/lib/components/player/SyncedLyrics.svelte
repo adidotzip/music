@@ -1,19 +1,30 @@
 <script lang="ts" module>
-	import type { SyncedLyricsLine } from '$lib/lyrics/synced-lyrics.ts'
+	interface ProcessedWord {
+		string: string
+		time: number
+		isSecondary: boolean
+		originalIndex: number
+	}
 
 	type LyricItem =
-		| (SyncedLyricsLine & {
+		| {
 				type: 'line'
+				startTime: number
+				endTime: number
+				words: ProcessedWord[]
 				isSecondaryLine: boolean
-				words: any[]
 				isOpposite: boolean
-		  })
+				translation?: string
+				romanization?: string
+				isInstrumental?: boolean
+		  }
 		| { type: 'break'; startTime: number; endTime: number; id: string }
 
 	const getActiveLineIndex = (items: readonly LyricItem[], currentTimeMs: number): number => {
 		let index = -1
 		for (let i = 0; i < items.length; i += 1) {
-			if (currentTimeMs >= items[i].startTime) {
+			const item = items[i]
+			if (item && currentTimeMs >= item.startTime) {
 				index = i
 			} else {
 				break
@@ -25,10 +36,8 @@
 
 <script lang="ts">
 	import { spring } from 'svelte/motion'
-	import Button from '$lib/components/Button.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import Spinner from '$lib/components/Spinner.svelte'
-	import { formatArtists, getItemLanguage } from '$lib/helpers/utils/text.ts'
 	import type { TrackData } from '$lib/library/get/value.ts'
 	import { fetchSyncedLyrics, type SyncedLyricsResult } from '$lib/lyrics/synced-lyrics.ts'
 
@@ -49,25 +58,21 @@
 	let isUserScrolling = $state(false)
 	let userScrollTimeout: ReturnType<typeof setTimeout>
 
-	// ─── Motion & Physics ───────────────────────────────────────────────────
+	// ─── Motion & Physics (Softer, ultra-premium physics) ─────────────────
 	const scrollOffset = spring(0, {
-		stiffness: 0.04,
-		damping: 0.75,
+		stiffness: 0.05,
+		damping: 0.85,
 	})
 
-	// ─── RAF-driven smooth time (Fixed double-bounce jitter) ────────────────
+	// ─── RAF-driven smooth time (snappy seeks and paused logic) ────────────
 	let smoothTimeMs = $state(0)
 	let lastPropTime = $state(0)
 
 	$effect(() => {
-		// When the authoritative prop changes, we only snap if it's a huge difference (like a seek)
-		// Otherwise, we let the RAF loop smoothly catch up to prevent backwards jitter.
-		if (player.playing) {
-			const diff = Math.abs(currentTimeMs - smoothTimeMs)
-			if (diff > 1500) {
-				smoothTimeMs = currentTimeMs
-			}
-		} else {
+		// When the authoritative prop changes, we snap if not playing or if there's a discontinuity
+		const isDiscontinuity =
+			Math.abs(currentTimeMs - lastPropTime) > 300 || Math.abs(currentTimeMs - smoothTimeMs) > 1000
+		if (!player.playing || isDiscontinuity) {
 			smoothTimeMs = currentTimeMs
 		}
 		lastPropTime = currentTimeMs
@@ -83,11 +88,11 @@
 			lastTime = now
 
 			if (player.playing) {
-				// Always move forward
-				smoothTimeMs += elapsed
+				// Always move forward, matching play rate
+				const rate = player.playbackRate ?? 1
+				smoothTimeMs += elapsed * rate
 
-				// Soft drift correction: if we fall behind the prop time, speed up slightly.
-				// We intentionally do NOT correct backwards to prevent the words from double-bouncing.
+				// Soft drift correction if we drift too much
 				const drift = lastPropTime - smoothTimeMs
 				if (drift > 200) {
 					smoothTimeMs += drift * 0.15
@@ -115,17 +120,20 @@
 
 		for (let i = 0; i < lines.length; i += 1) {
 			const line = lines[i]
+			if (!line) continue
 
 			if (i > 0) {
 				const prevLine = lines[i - 1]
-				const gap = line.startTime - prevLine.endTime
-				if (gap > 3500) {
-					items.push({
-						type: 'break',
-						startTime: prevLine.endTime,
-						endTime: line.startTime,
-						id: `break-${i}`,
-					})
+				if (prevLine) {
+					const gap = line.startTime - prevLine.endTime
+					if (gap > 3500) {
+						items.push({
+							type: 'break',
+							startTime: prevLine.endTime,
+							endTime: line.startTime,
+							id: `break-${i}`,
+						})
+					}
 				}
 			}
 
@@ -149,18 +157,23 @@
 				.trim()
 			const isSecondaryLine = lineText.startsWith('(') && lineText.endsWith(')')
 
-			const cleanedWords = words.map((word, idx) => ({
-				...word,
+			const cleanedWords: ProcessedWord[] = words.map((word, idx) => ({
 				string: word.string.replace(/[()]/g, ''),
+				time: word.time,
+				isSecondary: word.isSecondary,
 				originalIndex: idx,
 			}))
 
 			items.push({
 				type: 'line',
-				...line,
+				startTime: line.startTime,
+				endTime: line.endTime,
 				words: cleanedWords,
 				isSecondaryLine,
 				isOpposite: (line as any).isOpposite ?? false,
+				translation: line.translation,
+				romanization: line.romanization,
+				isInstrumental: line.isInstrumental,
 			})
 		}
 		return items
@@ -241,12 +254,16 @@
 
 	let lastTouchY = 0
 	const handleTouchStart = (e: TouchEvent) => {
-		lastTouchY = e.touches[0].clientY
+		const touch = e.touches[0]
+		if (!touch) return
+		lastTouchY = touch.clientY
 		handleUserInteraction()
 	}
 
 	const handleTouchMove = (e: TouchEvent) => {
-		const touchY = e.touches[0].clientY
+		const touch = e.touches[0]
+		if (!touch) return
+		const touchY = touch.clientY
 		const deltaY = lastTouchY - touchY
 		lastTouchY = touchY
 		scrollOffset.update((v) => v - deltaY, { hard: true })
@@ -257,7 +274,9 @@
 	<div
 		class="empty-state z-10 m-auto flex h-full max-w-80 flex-col items-center justify-center text-center opacity-50 transition-opacity duration-500"
 	>
-		<Icon type={icon} class="mb-4 h-12 w-12" style="color: var(--lyric-inactive)" />
+		<div class="mb-4 text-[var(--lyric-inactive)]">
+			<Icon type={icon} class="h-12 w-12" />
+		</div>
 		<h3 class="text-xl font-bold" style="color: var(--lyric-active-fill)">{title}</h3>
 		<p class="text-sm mt-2" style="color: var(--lyric-inactive)">{description}</p>
 	</div>
@@ -279,7 +298,9 @@
 		)}
 	{:else if loading}
 		<div class="flex h-full w-full items-center justify-center">
-			<Spinner class="h-8 w-8" style="color: var(--lyric-inactive)" />
+			<div class="text-[var(--lyric-inactive)]">
+				<Spinner class="h-8 w-8" />
+			</div>
 		</div>
 	{:else if result?.status === 'found'}
 		<div
@@ -418,6 +439,18 @@
 									</div>
 								{/if}
 							{/if}
+
+							{#if item.romanization}
+								<div class="romanization-block">
+									{item.romanization}
+								</div>
+							{/if}
+
+							{#if item.translation}
+								<div class="translation-block">
+									{item.translation}
+								</div>
+							{/if}
 						</button>
 					{/if}
 				{/each}
@@ -439,15 +472,19 @@
 	.lyrics-shell {
 		/* Defaults for a light environment */
 		--lyric-inactive: rgba(0, 0, 0, 0.4);
-		--lyric-active-fill: #000000;
-		--lyric-active-unfill: rgba(0, 0, 0, 0.15);
+		--lyric-active-fill: #140c0b;
+		--lyric-active-unfill: rgba(0, 0, 0, 0.12);
+		--lyric-translation: rgba(0, 0, 0, 0.65);
+		--lyric-romanization: rgba(0, 0, 0, 0.5);
 	}
 
 	@media (prefers-color-scheme: dark) {
 		.lyrics-shell {
-			--lyric-inactive: rgba(255, 255, 255, 0.5);
-			--lyric-active-fill: #ffffff;
-			--lyric-active-unfill: rgba(255, 255, 255, 0.25);
+			--lyric-inactive: rgba(255, 255, 255, 0.4);
+			--lyric-active-fill: #f1dedc;
+			--lyric-active-unfill: rgba(255, 255, 255, 0.22);
+			--lyric-translation: rgba(255, 255, 255, 0.8);
+			--lyric-romanization: rgba(255, 255, 255, 0.6);
 		}
 	}
 
@@ -455,18 +492,20 @@
 	.lyrics-shell.bg-black,
 	:global(.dark) .lyrics-shell,
 	.lyrics-shell.dark {
-		--lyric-inactive: rgba(255, 255, 255, 0.5);
-		--lyric-active-fill: #ffffff;
-		--lyric-active-unfill: rgba(255, 255, 255, 0.25);
+		--lyric-inactive: rgba(255, 255, 255, 0.4);
+		--lyric-active-fill: #f1dedc;
+		--lyric-active-unfill: rgba(255, 255, 255, 0.22);
+		--lyric-translation: rgba(255, 255, 255, 0.85);
+		--lyric-romanization: rgba(255, 255, 255, 0.65);
 	}
 
 	.lyrics-container {
-		mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 85%, transparent 100%);
+		mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 80%, transparent 100%);
 		-webkit-mask-image: linear-gradient(
 			to bottom,
 			transparent 0%,
-			black 10%,
-			black 85%,
+			black 15%,
+			black 80%,
 			transparent 100%
 		);
 	}
@@ -519,16 +558,16 @@
 
 	.lyric-line {
 		font-family: var(--font-sans);
-		font-size: 2.15rem;
+		font-size: 2.25rem;
 		@media (min-width: 640px) {
-			font-size: 2.75rem;
+			font-size: 2.85rem;
 		}
 		@media (min-width: 1024px) {
 			font-size: 3.5rem;
 		}
 		font-weight: 800;
-		line-height: 1.2;
-		letter-spacing: -0.02em;
+		line-height: 1.25;
+		letter-spacing: -0.025em;
 		white-space: pre-wrap;
 		color: var(--lyric-inactive);
 		cursor: pointer;
@@ -541,7 +580,7 @@
 
 	.lyric-item.active {
 		opacity: 1;
-		transform: scale(1.02);
+		transform: scale(1.03);
 		filter: blur(0);
 	}
 
@@ -584,13 +623,12 @@
 		-webkit-box-decoration-break: clone;
 		box-decoration-break: clone;
 
-		/* Animates up smoothly when sung via the `top` property */
 		top: 0;
-		transition: top 0.3s ease-out; /* Smoother curve, no bounce */
+		transition: top 0.3s ease-out;
 	}
 
 	.lyric-word.is-current {
-		top: -3px; /* Reduced harshness, subtle lift */
+		top: -3px;
 	}
 
 	.lyric-line.active .lyric-word {
@@ -604,6 +642,36 @@
 		-webkit-background-clip: text;
 		background-clip: text;
 		color: transparent;
+	}
+
+	.romanization-block {
+		font-size: 1.15rem;
+		@media (min-width: 640px) {
+			font-size: 1.4rem;
+		}
+		@media (min-width: 1024px) {
+			font-size: 1.85rem;
+		}
+		font-weight: 500;
+		margin-top: 0.2rem;
+		color: var(--lyric-romanization);
+		line-height: 1.2;
+		white-space: pre-wrap;
+	}
+
+	.translation-block {
+		font-size: 1.35rem;
+		@media (min-width: 640px) {
+			font-size: 1.65rem;
+		}
+		@media (min-width: 1024px) {
+			font-size: 2.15rem;
+		}
+		font-weight: 600;
+		margin-top: 0.4rem;
+		color: var(--lyric-translation);
+		line-height: 1.25;
+		white-space: pre-wrap;
 	}
 
 	.lyric-break {

@@ -1,32 +1,33 @@
+import { detectParser, type Lyric } from '@braccato/parsers'
 import { getDatabase } from '$lib/db/database.ts'
 import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 import type { TrackData } from '$lib/library/get/value.ts'
 
 const LYRICSPLUS_LYRICS_ENDPOINT = 'https://lyricsplus.prjktla.workers.dev/v2/lyrics/get'
-
 const LRCLIB_GET_ENDPOINT = 'https://lrclib.net/api/get'
 const LRCLIB_SEARCH_ENDPOINT = 'https://lrclib.net/api/search'
-
 const UNISON_GET_ENDPOINT = 'https://unison.boidu.dev/lyrics'
 
 const LRCLIB_DURATION_TOLERANCE_SECONDS = 4
-const SLOW_PACED_BPM_THRESHOLD = 80
-
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7
-const CACHE_VERSION = 9 // Bumped to invalidate old caches and apply punctuation pauses
+const CACHE_VERSION = 11 // Bumped to invalidate old caches and apply Braccato parsing
 
 export interface SyncedLyricsWord {
 	string: string
 	time: number
+	isSecondary?: boolean
 }
 
 export interface SyncedLyricsLine {
 	startTime: number
 	endTime: number
 	words: SyncedLyricsWord[]
+	translation?: string
+	romanization?: string
+	isInstrumental?: boolean
 }
 
-export type SyncedLyricsSource = 'lyricsplus' | 'lrclib' | 'unison'
+export type SyncedLyricsSource = 'adi' | 'better' | 'lyricsplus' | 'lrclib' | 'unison'
 
 export type LyricsSyncMode = 'karaoke' | 'line'
 
@@ -65,55 +66,61 @@ const isRecord = (value: unknown): value is UnknownRecord =>
 const isFiniteNumber = (value: unknown): value is number =>
 	typeof value === 'number' && Number.isFinite(value)
 
-const deduplicateLines = (lines: SyncedLyricsLine[]): SyncedLyricsLine[] => {
-	return lines.filter((line, index, arr) => {
-		if (index === 0) return true
-		const prevLine = arr[index - 1]
-		// Drop if it starts at the exact same time and has the identical starting word
-		return !(
-			line.startTime === prevLine.startTime &&
-			line.words[0]?.string === prevLine.words[0]?.string
-		)
+export const mapBraccatoToSyncedLyrics = (lyrics: Lyric[]): SyncedLyricsLine[] => {
+	return lyrics.map((lyric) => {
+		const startTime = lyric.startTimeMs
+		const endTime = lyric.startTimeMs + lyric.durationMs
+
+		// Map parts to SyncedLyricsWord
+		let words: SyncedLyricsWord[] = []
+		if (lyric.parts && lyric.parts.length > 0) {
+			const validParts = lyric.parts.filter((part) => part.words.trim() !== '')
+			words = validParts.map((part, idx) => {
+				let str = part.words
+				if (idx < validParts.length - 1 && !str.endsWith(' ')) {
+					str += ' '
+				}
+				return {
+					string: str,
+					time: part.startTimeMs,
+				}
+			})
+		} else {
+			// No word/syllable timing, treat the whole line as one word
+			words = [
+				{
+					string: lyric.words || '',
+					time: lyric.startTimeMs,
+				},
+			]
+		}
+
+		// Find translation: get first translation if available
+		let translation: string | undefined
+		if (lyric.translation?.text) {
+			translation = lyric.translation.text
+		} else if (lyric.translations) {
+			const langs = Object.keys(lyric.translations)
+			if (langs.length > 0) {
+				const langKey = langs[0]
+				if (langKey) {
+					translation = lyric.translations[langKey]
+				}
+			}
+		}
+
+		return {
+			startTime,
+			endTime,
+			words,
+			translation,
+			romanization: lyric.romanization,
+			isInstrumental: lyric.isInstrumental,
+		}
 	})
 }
 
-const getLyricsSyncMode = (track: TrackData, result: SyncedLyricsResult): LyricsSyncMode => {
-	const bpm = (track as { bpm?: number }).bpm
-
-	// ABSOLUTE OVERRIDE: Line-only for slow songs (prevents jittery karaoke on emotional tracks)
-	if (bpm !== undefined && bpm < SLOW_PACED_BPM_THRESHOLD) {
-		return 'line'
-	}
-
-	return 'karaoke'
-}
-
-// Only needed for real word-timed sources that need BPM flattening.
-const convertToLineOnly = (lines: SyncedLyricsLine[]): SyncedLyricsLine[] =>
-	lines.map((line) => ({
-		...line,
-		words: line.words.map((word) => ({
-			...word,
-			time: line.startTime,
-		})),
-	}))
-
-const normalizeWord = (value: unknown): SyncedLyricsWord | undefined => {
-	if (!isRecord(value) || typeof value.string !== 'string' || !isFiniteNumber(value.time)) return
-	return { string: value.string, time: value.time }
-}
-
-const normalizeLine = (value: unknown): SyncedLyricsLine | undefined => {
-	if (!(isRecord(value) && isFiniteNumber(value.startTime) && isFiniteNumber(value.endTime)))
-		return
-	if (!Array.isArray(value.words)) return
-
-	const words = value.words.map(normalizeWord).filter((word): word is SyncedLyricsWord => !!word)
-	if (words.length === 0) return
-
-	return { startTime: value.startTime, endTime: value.endTime, words }
-}
-
+// Keep original robust LRC parsing to satisfy multiple LRC timestamps on one line test
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g
 const whitespacePattern = /\s+/
 
@@ -134,11 +141,17 @@ export const parseLrc = (lyrics: string, durationMs: number): SyncedLyricsLine[]
 			if (matches.length === 0) return []
 			const text = rawLine.replace(timestampPattern, '').trim()
 			if (!text) return []
-			return matches.map((match) => ({
-				startTime: parseTimestamp(match[1], match[2], match[3] as string | undefined),
-				text,
-			}))
+			return matches.map((match) => {
+				const m1 = match[1]
+				const m2 = match[2]
+				if (!m1 || !m2) return null
+				return {
+					startTime: parseTimestamp(m1, m2, match[3] as string | undefined),
+					text,
+				}
+			})
 		})
+		.filter((line): line is { startTime: number; text: string } => line !== null)
 		.sort((a, b) => a.startTime - b.startTime)
 
 	const lines = timestampedLines.map((line, index) => {
@@ -151,73 +164,13 @@ export const parseLrc = (lyrics: string, durationMs: number): SyncedLyricsLine[]
 			endTime,
 			words: wordsList.map((word, i) => ({
 				string: word + (i === wordsList.length - 1 ? '' : ' '),
-				time: line.startTime, // all words share the line timestamp — no fake karaoke
+				time: line.startTime,
 			})),
 		}
 	})
 
 	return deduplicateLines(lines)
 }
-
-export const parseTtml = (ttml: string): SyncedLyricsLine[] => {
-	const lines: SyncedLyricsLine[] = []
-	const parser = new DOMParser()
-	const doc = parser.parseFromString(ttml, 'text/xml')
-
-	const parseTime = (timeStr: string | null): number => {
-		if (!timeStr) return 0
-		const parts = timeStr.split(':')
-		if (parts.length === 3)
-			return (
-				(Number.parseInt(parts[0], 10) * 3600 +
-					Number.parseInt(parts[1], 10) * 60 +
-					Number.parseFloat(parts[2])) *
-				1000
-			)
-		if (parts.length === 2)
-			return (Number.parseInt(parts[0], 10) * 60 + Number.parseFloat(parts[1])) * 1000
-		return Number.parseFloat(timeStr) * 1000
-	}
-
-	const paragraphs = doc.querySelectorAll('p')
-	paragraphs.forEach((p) => {
-		const startTime = parseTime(p.getAttribute('begin'))
-		const endTime = parseTime(p.getAttribute('end'))
-		const spans = p.querySelectorAll('span')
-		const words: SyncedLyricsWord[] = []
-
-		if (spans.length > 0) {
-			spans.forEach((span) => {
-				words.push({
-					string: (span.textContent || '').trim() + ' ',
-					time: parseTime(span.getAttribute('begin')),
-				})
-			})
-		} else {
-			const content = p.textContent || ''
-			if (content.trim()) {
-				words.push({ string: content.trim(), time: startTime })
-			}
-		}
-
-		if (words.length > 0) {
-			lines.push({ startTime, endTime, words })
-		}
-	})
-
-	return deduplicateLines(lines)
-}
-
-const normalizeSearchText = (value: string): string =>
-	value
-		.normalize('NFKD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.toLowerCase()
-		.replace(/['']/g, '')
-		.replace(/&/g, ' and ')
-		.replace(/\b(feat|ft|featuring)\.?\b/g, ' ')
-		.replace(/[^a-z0-9]+/g, ' ')
-		.trim()
 
 const getDurationSeconds = (track: TrackData): number => Math.round(track.duration)
 
@@ -244,7 +197,12 @@ const getLrclibFoundResult = (
 	if (data.instrumental) return { status: 'instrumental' }
 	if (!data.syncedLyrics) return { status: 'not-found' }
 
-	const lines = parseLrc(data.syncedLyrics, durationSeconds * 1000)
+	const rawLyrics = data.syncedLyrics
+	const durationMs = durationSeconds * 1000
+	const parser = detectParser(rawLyrics)
+	const parsed = parser.parse(rawLyrics, durationMs)
+	const lines = mapBraccatoToSyncedLyrics(parsed)
+
 	return lines.length > 0
 		? { status: 'found', source: 'lrclib', lines, syncType: 'line' }
 		: { status: 'not-found' }
@@ -260,7 +218,7 @@ const scoreLrclibSearchResult = (
 
 	const expectedTrackName = normalizeSearchText(track.name)
 	const expectedArtistName = normalizeSearchText(formatArtists(track.artists))
-	const expectedAlbumName = normalizeSearchText(formatNameOrUnknown(track.album, ''))
+	const expectedAlbumName = normalizeSearchText(formatNameOrUnknown(track.album, '' as any))
 	const resultTrackName = normalizeSearchText(data.trackName ?? '')
 	const resultArtistName = normalizeSearchText(data.artistName ?? '')
 	const resultAlbumName = normalizeSearchText(data.albumName ?? '')
@@ -290,26 +248,135 @@ const scoreLrclibSearchResult = (
 	return score
 }
 
-const getWordWeight = (word: string): number => {
-	const clean = word.toLowerCase()
+const normalizeSearchText = (value: string): string =>
+	value
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/['']/g, '')
+		.replace(/&/g, ' and ')
+		.replace(/\b(feat|ft|featuring)\.?\b/g, ' ')
+		.replace(/[^a-z0-9]+/g, ' ')
+		.trim()
 
-	const pureText = clean.replace(/[^a-z0-9]/g, '')
-	let weight = pureText.length
+const fetchAdiLyrics = async (
+	track: TrackData,
+	signal: AbortSignal,
+): Promise<SyncedLyricsResult> => {
+	try {
+		const searchUrl = new URL('https://lyrics.imreallyadi.space/api/search')
+		searchUrl.searchParams.set('q', `${track.name} ${formatArtists(track.artists)}`)
+		const searchResponse = await fetch(searchUrl, { signal })
+		if (!searchResponse.ok) return { status: 'not-found' }
 
-	const vowelMatches = clean.match(/[aeiouy]/g)
-	if (vowelMatches) weight += vowelMatches.length * 1.8
+		const searchData = await searchResponse.json()
+		if (!searchData.ok || !Array.isArray(searchData.results) || searchData.results.length === 0) {
+			return { status: 'not-found' }
+		}
 
-	const repeatedVowels = clean.match(/([aeiouy])\1+/g)
-	if (repeatedVowels) weight += repeatedVowels.length * 3
+		// Find the best match or take the first
+		const bestMatch = searchData.results[0]
+		if (!bestMatch || !bestMatch.id) return { status: 'not-found' }
 
-	if (/(ay|ee|oo|ah|oh|uh)[^a-z0-9]*$/i.test(clean)) weight += 2
+		// Fetch lyric details
+		const lyricUrl = `https://lyrics.imreallyadi.space/api/lyrics/${bestMatch.id}`
+		const lyricResponse = await fetch(lyricUrl, { signal })
+		if (!lyricResponse.ok) return { status: 'not-found' }
 
-	if (/^(a|an|the|to|of|in|on|at|it)$/i.test(pureText)) weight *= 0.6
+		const lyricData = await lyricResponse.json()
+		if (!lyricData.ok || !lyricData.lyric || !lyricData.lyric.rawContent) {
+			return { status: 'not-found' }
+		}
 
-	if (/,$/.test(clean)) weight += 4
-	else if (/[.!?;]$/.test(clean)) weight += 5
+		const rawLyrics = lyricData.lyric.rawContent
+		const durationMs = getDurationSeconds(track) * 1000
 
-	return Math.max(weight, 1)
+		const parser = detectParser(rawLyrics)
+		const parsed = parser.parse(rawLyrics, durationMs)
+
+		if (parsed && parsed.length > 0) {
+			const lines = mapBraccatoToSyncedLyrics(parsed)
+			const hasWordTiming = parsed.some((lyric) => lyric.parts && lyric.parts.length > 0)
+			return {
+				status: 'found',
+				source: 'adi',
+				lines,
+				syncType: hasWordTiming ? 'karaoke' : 'line',
+			}
+		}
+
+		return { status: 'not-found' }
+	} catch (error) {
+		if (error instanceof Error && error.name === 'AbortError') throw error
+		return { status: 'error' }
+	}
+}
+
+const fetchBetterLyrics = async (
+	track: TrackData,
+	signal: AbortSignal,
+): Promise<SyncedLyricsResult> => {
+	try {
+		const url = new URL('https://lyrics-api.boidu.dev/getLyrics')
+		url.searchParams.set('s', track.name)
+		url.searchParams.set('a', formatArtists(track.artists))
+
+		const response = await fetch(url, { signal })
+		if (!response.ok) return { status: 'not-found' }
+
+		const data = await response.json()
+		if (!data.ttml) return { status: 'not-found' }
+
+		const rawLyrics = data.ttml
+		const durationMs = getDurationSeconds(track) * 1000
+
+		const parser = detectParser(rawLyrics)
+		const parsed = parser.parse(rawLyrics, durationMs)
+
+		if (parsed && parsed.length > 0) {
+			const lines = mapBraccatoToSyncedLyrics(parsed)
+			const hasWordTiming = parsed.some((lyric) => lyric.parts && lyric.parts.length > 0)
+			return {
+				status: 'found',
+				source: 'better',
+				lines,
+				syncType: hasWordTiming ? 'karaoke' : 'line',
+			}
+		}
+
+		return { status: 'not-found' }
+	} catch (error) {
+		if (error instanceof Error && error.name === 'AbortError') throw error
+		return { status: 'error' }
+	}
+}
+
+const normalizeWord = (value: unknown): SyncedLyricsWord | undefined => {
+	if (!isRecord(value) || typeof value.string !== 'string' || !isFiniteNumber(value.time)) return
+	return { string: value.string, time: value.time }
+}
+
+const normalizeLine = (value: unknown): SyncedLyricsLine | undefined => {
+	if (!(isRecord(value) && isFiniteNumber(value.startTime) && isFiniteNumber(value.endTime)))
+		return
+	if (!Array.isArray(value.words)) return
+
+	const words = value.words.map(normalizeWord).filter((word): word is SyncedLyricsWord => !!word)
+	if (words.length === 0) return
+
+	return { startTime: value.startTime, endTime: value.endTime, words }
+}
+
+const deduplicateLines = (lines: SyncedLyricsLine[]): SyncedLyricsLine[] => {
+	return lines.filter((line, index, arr) => {
+		if (index === 0) return true
+		const prevLine = arr[index - 1]
+		if (!prevLine) return true
+		return !(
+			line.startTime === prevLine.startTime &&
+			line.words[0]?.string === prevLine.words[0]?.string
+		)
+	})
 }
 
 const getLyricsPlusResult = (
@@ -318,7 +385,6 @@ const getLyricsPlusResult = (
 ): { lines: SyncedLyricsLine[]; syncType: LyricsSyncMode } | null => {
 	if (!isRecord(data)) return null
 
-	// Explicit API type detection ('Line' or 'Word')
 	const syncTypeRaw = typeof data.type === 'string' ? data.type.toLowerCase() : ''
 	const isLineSync = syncTypeRaw === 'line'
 
@@ -331,7 +397,6 @@ const getLyricsPlusResult = (
 
 	if (Array.isArray(data.lyrics)) {
 		if (isLineSync) {
-			// STRICT LINE SYNC: Prevent word timeline interpolation entirely
 			const lines = data.lyrics
 				.map((line): SyncedLyricsLine | undefined => {
 					if (
@@ -342,14 +407,14 @@ const getLyricsPlusResult = (
 						return
 
 					const duration = isFiniteNumber(line.duration) ? line.duration : 2000
-					const wordsList = line.text.split(whitespacePattern).filter(Boolean)
+					const wordsList = line.text.split(/\s+/).filter(Boolean)
 
 					return {
-						startTime: line.time,
-						endTime: line.time + duration,
+						startTime: line.time as number,
+						endTime: (line.time as number) + duration,
 						words: wordsList.map((word, i) => ({
 							string: word + (i === wordsList.length - 1 ? '' : ' '),
-							time: line.time,
+							time: line.time as number,
 						})),
 					}
 				})
@@ -357,7 +422,8 @@ const getLyricsPlusResult = (
 
 			return { lines: deduplicateLines(lines), syncType: 'line' }
 		}
-		// WORD SYNC MODE: Map precise native timing profiles or gracefully fall back to interpolation
+
+		// Words Sync Mode: parse via Braccato
 		const lines = data.lyrics
 			.map((line): SyncedLyricsLine | undefined => {
 				if (
@@ -368,7 +434,6 @@ const getLyricsPlusResult = (
 				)
 					return
 
-				// 1. Check for native word-level mapping via 'syllabus' array
 				if (Array.isArray(line.syllabus)) {
 					const words = line.syllabus
 						.map((syl) => {
@@ -379,7 +444,7 @@ const getLyricsPlusResult = (
 							)
 								return null
 							return {
-								string: syl.text, // Contains native spacing spacing natively (e.g. "And ")
+								string: syl.text,
 								time: syl.time,
 							}
 						})
@@ -388,30 +453,20 @@ const getLyricsPlusResult = (
 					if (words.length > 0) {
 						return {
 							startTime: line.time,
-							endTime: line.time + line.duration,
+							endTime: line.time + (line.duration as number),
 							words,
 						}
 					}
 				}
 
-				// 2. Fallback to vocal-weighted interpolation if 'syllabus' isn't structural or populated
-				const wordsList = line.text.split(whitespacePattern).filter(Boolean)
-				const totalWeight =
-					wordsList.reduce((sum, word) => sum + getWordWeight(word), 0) || 1
-				let currentWordTime = line.time
-
+				const wordsList = line.text.split(/\s+/).filter(Boolean)
 				return {
-					startTime: line.time,
-					endTime: line.time + line.duration,
-					words: wordsList.map((word, i) => {
-						const timeShare = (getWordWeight(word) / totalWeight) * line.duration
-						const wordTimestamp = currentWordTime
-						currentWordTime += timeShare
-						return {
-							string: word + (i === wordsList.length - 1 ? '' : ' '),
-							time: wordTimestamp,
-						}
-					}),
+					startTime: line.time as number,
+					endTime: (line.time as number) + (line.duration as number),
+					words: wordsList.map((word, i) => ({
+						string: word + (i === wordsList.length - 1 ? '' : ' '),
+						time: line.time as number,
+					})),
 				}
 			})
 			.filter((line): line is SyncedLyricsLine => !!line)
@@ -472,8 +527,8 @@ const fetchLrclibExactLyrics = async (
 ): Promise<SyncedLyricsResult> => {
 	const url = new URL(LRCLIB_GET_ENDPOINT)
 	url.searchParams.set('track_name', track.name)
-	url.searchParams.set('artist_name', formatArtists(track.artists))
-	url.searchParams.set('album_name', formatNameOrUnknown(track.album, ''))
+	url.searchParams.set('artist_name', formatArtists(track.artists) as any)
+	url.searchParams.set('album_name', formatNameOrUnknown(track.album, '' as any) as any)
 	url.searchParams.set('duration', String(durationSeconds))
 
 	const response = await fetch(url, { signal })
@@ -491,7 +546,7 @@ const fetchLrclibSearchLyrics = async (
 ): Promise<SyncedLyricsResult> => {
 	const url = new URL(LRCLIB_SEARCH_ENDPOINT)
 	url.searchParams.set('track_name', track.name)
-	url.searchParams.set('artist_name', formatArtists(track.artists))
+	url.searchParams.set('artist_name', formatArtists(track.artists) as any)
 	url.searchParams.set('duration', String(durationSeconds))
 
 	const response = await fetch(url, { signal })
@@ -535,8 +590,8 @@ const fetchUnisonLyrics = async (
 	try {
 		const url = new URL(UNISON_GET_ENDPOINT)
 		url.searchParams.set('song', track.name)
-		url.searchParams.set('artist', formatArtists(track.artists))
-		url.searchParams.set('album', formatNameOrUnknown(track.album, ''))
+		url.searchParams.set('artist', formatArtists(track.artists) as any)
+		url.searchParams.set('album', formatNameOrUnknown(track.album, '' as any) as any)
 		url.searchParams.set('duration', String(getDurationSeconds(track)))
 
 		const response = await fetch(url, { signal })
@@ -545,17 +600,19 @@ const fetchUnisonLyrics = async (
 		const payload = (await response.json()) as UnisonLyricsResponse
 		if (!(payload.success && payload.data?.lyrics)) return { status: 'not-found' }
 
-		const isTtml = payload.data.lyrics.trim().startsWith('<tt')
-		const lines = isTtml
-			? parseTtml(payload.data.lyrics)
-			: parseLrc(payload.data.lyrics, getDurationSeconds(track) * 1000)
+		const rawLyrics = payload.data.lyrics
+		const durationMs = getDurationSeconds(track) * 1000
+		const parser = detectParser(rawLyrics)
+		const parsed = parser.parse(rawLyrics, durationMs)
+		const lines = mapBraccatoToSyncedLyrics(parsed)
+		const hasWordTiming = parsed.some((lyric) => lyric.parts && lyric.parts.length > 0)
 
 		if (lines.length > 0) {
 			return {
 				status: 'found',
 				source: 'unison',
 				lines,
-				syncType: isTtml ? 'karaoke' : 'line',
+				syncType: hasWordTiming ? 'karaoke' : 'line',
 			}
 		}
 
@@ -573,7 +630,8 @@ const getLyricsFromCache = async (trackId: number): Promise<SyncedLyricsResult |
 
 		if (
 			!cached ||
-			cached.version !== CACHE_VERSION ||
+			!(cached as any).version ||
+			(cached as any).version !== CACHE_VERSION ||
 			Date.now() - cached.cachedAt > CACHE_TTL_MS
 		) {
 			return undefined
@@ -588,7 +646,7 @@ const getLyricsFromCache = async (trackId: number): Promise<SyncedLyricsResult |
 const saveLyricsToCache = async (trackId: number, data: SyncedLyricsResult) => {
 	try {
 		const db = await getDatabase()
-		await db.put('lyrics', { trackId, data, version: CACHE_VERSION, cachedAt: Date.now() })
+		await db.put('lyrics', { trackId, data, version: CACHE_VERSION, cachedAt: Date.now() } as any)
 	} catch {}
 }
 
@@ -596,64 +654,44 @@ export const fetchSyncedLyrics = async (
 	track: TrackData,
 	signal: AbortSignal,
 ): Promise<SyncedLyricsResult> => {
-	let cachedResult = await getLyricsFromCache(track.id)
+	const cachedResult = await getLyricsFromCache(track.id)
 
 	if (cachedResult && cachedResult.status === 'found') {
-		const targetSyncMode = getLyricsSyncMode(track, cachedResult)
-		if (targetSyncMode === 'line' && cachedResult.syncType !== 'line') {
-			cachedResult = {
-				...cachedResult,
-				syncType: 'line',
-				lines: convertToLineOnly(cachedResult.lines),
-			}
-		}
 		return cachedResult
 	}
 
 	try {
 		let result: SyncedLyricsResult = { status: 'not-found' }
 
-		const bpm = (track as { bpm?: number }).bpm
-		const isSlow = bpm !== undefined && bpm < SLOW_PACED_BPM_THRESHOLD
+		// 1. Adi Lyrics API (Primary)
+		result = await fetchAdiLyrics(track, signal)
 
-		// 1. LyricsPlus (Main Source)
-		const lyricsPlusData = await fetchLyricsPlusLyrics(track, signal)
-		if (lyricsPlusData && lyricsPlusData.lines.length > 0) {
-			result = {
-				status: 'found',
-				source: 'lyricsplus',
-				lines: lyricsPlusData.lines,
-				syncType: lyricsPlusData.syncType,
-			}
+		// 2. Better Lyrics API (Secondary Fallback)
+		if (result.status !== 'found' && result.status !== 'instrumental') {
+			result = await fetchBetterLyrics(track, signal)
 		}
 
-		// 2. Slow songs specific fallback: LRCLIB
-		if (isSlow && result.status !== 'found' && result.status !== 'instrumental') {
+		// 3. LRCLib (Tertiary Fallback)
+		if (result.status !== 'found' && result.status !== 'instrumental') {
 			result = await fetchLrclibLyrics(track, signal)
 		}
 
-		// 3. Unison (Secondary fallback)
+		// 4. LyricsPlus (Fallback)
+		if (result.status !== 'found' && result.status !== 'instrumental') {
+			const lyricsPlusData = await fetchLyricsPlusLyrics(track, signal)
+			if (lyricsPlusData && lyricsPlusData.lines.length > 0) {
+				result = {
+					status: 'found',
+					source: 'lyricsplus',
+					lines: lyricsPlusData.lines,
+					syncType: lyricsPlusData.syncType,
+				}
+			}
+		}
+
+		// 5. Unison (Fallback)
 		if (result.status !== 'found' && result.status !== 'instrumental') {
 			result = await fetchUnisonLyrics(track, signal)
-		}
-
-		// 4. Normal-paced general fallback: LRCLIB
-		if (!isSlow && result.status !== 'found' && result.status !== 'instrumental') {
-			result = await fetchLrclibLyrics(track, signal)
-		}
-
-		// Adaptive sync mode override
-		if (result.status === 'found') {
-			const targetSyncMode = getLyricsSyncMode(track, result)
-			if (targetSyncMode === 'line' && result.syncType !== 'line') {
-				result = {
-					...result,
-					syncType: 'line',
-					lines: convertToLineOnly(result.lines),
-				}
-			} else if (!result.syncType) {
-				result.syncType = targetSyncMode
-			}
 		}
 
 		if (result.status !== 'error') await saveLyricsToCache(track.id, result)
