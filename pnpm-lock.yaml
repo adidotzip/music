@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  '@braccato/core': bd99fb5638d94635193c5ff38d23c0e48fad1de80d2ca46fce6270ee2bb86cb6
   '@material/material-color-utilities': ba9c0fd32469c32e8fbc40d212f789ab9438cca094fa57f398755793916bd133
 
 importers:
@@ -13,7 +14,7 @@ importers:
     dependencies:
       '@braccato/core':
         specifier: ^1.1.0
-        version: 1.1.0
+        version: 1.1.0(patch_hash=bd99fb5638d94635193c5ff38d23c0e48fad1de80d2ca46fce6270ee2bb86cb6)
       '@braccato/parsers':
         specifier: ^0.2.0
         version: 0.2.0
@@ -1648,7 +1649,7 @@ snapshots:
 
   '@borewit/text-codec@0.2.2': {}
 
-  '@braccato/core@1.1.0':
+  '@braccato/core@1.1.0(patch_hash=bd99fb5638d94635193c5ff38d23c0e48fad1de80d2ca46fce6270ee2bb86cb6)':
     dependencies:
       '@braccato/types': 1.0.0
 
