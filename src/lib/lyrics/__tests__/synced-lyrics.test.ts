@@ -47,17 +47,26 @@ describe('synced lyrics', () => {
 	})
 
 	it('prefers LyricsPlus endpoint when available', async () => {
-		const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(
-			jsonResponse({
-				syncedLyrics: '[00:01.00]First line\n[00:02.00]Second line',
-			}),
-		)
+		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+			const url = String(input)
+			if (url.includes('lyricsplus.prjktla.workers.dev')) {
+				return jsonResponse({
+					syncedLyrics: '[00:01.00]First line\n[00:02.00]Second line',
+				})
+			}
+			return new Response(null, { status: 404 })
+		})
 		vi.stubGlobal('fetch', fetchMock)
 
 		const result = await fetchSyncedLyrics(createTrack(), new AbortController().signal)
 
-		expect(fetchMock).toHaveBeenCalledTimes(1)
-		const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]))
+		const lpCall = fetchMock.mock.calls.find((call) =>
+			String(call[0]).includes('lyricsplus.prjktla.workers.dev'),
+		)
+		expect(lpCall).toBeDefined()
+		if (!lpCall) return
+
+		const requestUrl = new URL(String(lpCall[0]))
 		expect(requestUrl.hostname).toBe('lyricsplus.prjktla.workers.dev')
 		expect(requestUrl.pathname).toBe('/v2/lyrics/get')
 		expect(requestUrl.searchParams.get('title')).toBe('Drowning (Avicii Remix)')
@@ -75,12 +84,10 @@ describe('synced lyrics', () => {
 	})
 
 	it('falls back to LRCLIB search when exact lookup misses matching synced lyrics', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(new Response(null, { status: 404 }))
-			.mockResolvedValueOnce(new Response(null, { status: 404 }))
-			.mockResolvedValueOnce(
-				jsonResponse([
+		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+			const url = String(input)
+			if (url.includes('lrclib.net/api/search')) {
+				return jsonResponse([
 					{
 						trackName: 'Drowning - Avicii Remix',
 						artistName: 'Armin van Buuren feat. Laura V',
@@ -88,14 +95,18 @@ describe('synced lyrics', () => {
 						duration: 472,
 						syncedLyrics: '[00:01.00]First line\n[00:02.00]Second line',
 					},
-				]),
-			)
+				])
+			}
+			return new Response(null, { status: 404 })
+		})
 		vi.stubGlobal('fetch', fetchMock)
 
 		const result = await fetchSyncedLyrics(createTrack(), new AbortController().signal)
 
-		expect(fetchMock).toHaveBeenCalledTimes(3)
-		expect(String(fetchMock.mock.calls[2]?.[0])).toContain('/api/search')
+		const searchCall = fetchMock.mock.calls.find((call) =>
+			String(call[0]).includes('lrclib.net/api/search'),
+		)
+		expect(searchCall).toBeDefined()
 		expect(result.status).toBe('found')
 		if (result.status !== 'found') {
 			return
@@ -108,20 +119,20 @@ describe('synced lyrics', () => {
 	})
 
 	it('ignores search results with mismatched durations', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(new Response(null, { status: 404 }))
-			.mockResolvedValueOnce(new Response(null, { status: 404 }))
-			.mockResolvedValueOnce(
-				jsonResponse([
+		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+			const url = String(input)
+			if (url.includes('lrclib.net/api/search')) {
+				return jsonResponse([
 					{
 						trackName: 'Drowning - Avicii Remix',
 						artistName: 'Armin van Buuren feat. Laura V',
 						duration: 300,
 						syncedLyrics: '[00:01.00]Wrong version',
 					},
-				]),
-			)
+				])
+			}
+			return new Response(null, { status: 404 })
+		})
 		vi.stubGlobal('fetch', fetchMock)
 
 		const result = await fetchSyncedLyrics(createTrack(), new AbortController().signal)
@@ -130,26 +141,31 @@ describe('synced lyrics', () => {
 	})
 
 	it('falls back to LRCLIB search when exact lookup errors', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(new Response(null, { status: 404 }))
-			.mockResolvedValueOnce(new Response(null, { status: 500 }))
-			.mockResolvedValueOnce(
-				jsonResponse([
+		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+			const url = String(input)
+			if (url.includes('lrclib.net/api/get')) {
+				return new Response(null, { status: 500 })
+			}
+			if (url.includes('lrclib.net/api/search')) {
+				return jsonResponse([
 					{
 						trackName: 'Drowning - Avicii Remix',
 						artistName: 'Armin van Buuren feat. Laura V',
 						duration: 472,
 						syncedLyrics: '[00:01.00]First line\n[00:02.00]Second line',
 					},
-				]),
-			)
+				])
+			}
+			return new Response(null, { status: 404 })
+		})
 		vi.stubGlobal('fetch', fetchMock)
 
 		const result = await fetchSyncedLyrics(createTrack(), new AbortController().signal)
 
-		expect(fetchMock).toHaveBeenCalledTimes(3)
-		expect(String(fetchMock.mock.calls[2]?.[0])).toContain('/api/search')
+		const searchCall = fetchMock.mock.calls.find((call) =>
+			String(call[0]).includes('lrclib.net/api/search'),
+		)
+		expect(searchCall).toBeDefined()
 		expect(result.status).toBe('found')
 		if (result.status !== 'found') {
 			return
@@ -158,6 +174,42 @@ describe('synced lyrics', () => {
 		expect(result.lines.map((line) => line.words.map((word) => word.string).join(''))).toEqual([
 			'First line',
 			'Second line',
+		])
+	})
+
+	it('fetches and parses Adi Lyrics ESLRC correctly', async () => {
+		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+			const url = String(input)
+			if (url.includes('lyrics.imreallyadi.space/api/search')) {
+				return jsonResponse({
+					ok: true,
+					results: [{ id: 'test-id' }],
+				})
+			}
+			if (url.includes('lyrics.imreallyadi.space/api/lyrics/test-id')) {
+				return jsonResponse({
+					ok: true,
+					lyric: {
+						eslrc: '[00:10.100]hello[00:10.500]world[00:11.000]',
+					},
+				})
+			}
+			return new Response(null, { status: 404 })
+		})
+		vi.stubGlobal('fetch', fetchMock)
+
+		const result = await fetchSyncedLyrics(createTrack(), new AbortController().signal)
+
+		expect(result.status).toBe('found')
+		if (result.status !== 'found') return
+		expect(result.source).toBe('adi')
+		expect(result.syncType).toBe('karaoke')
+		expect(result.lines).toHaveLength(1)
+		expect(result.lines[0]?.startTime).toBe(10100)
+		expect(result.lines[0]?.endTime).toBe(11000)
+		expect(result.lines[0]?.words).toEqual([
+			{ string: 'hello ', time: 10100 },
+			{ string: 'world', time: 10500 },
 		])
 	})
 })
