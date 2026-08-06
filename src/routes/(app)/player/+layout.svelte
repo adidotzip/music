@@ -1,6 +1,9 @@
 <script lang="ts">
+	// Import Svelte transitions
+	import { fade, fly } from 'svelte/transition'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/state'
+	import Artwork from '$lib/components/Artwork.svelte'
 	import BackButton from '$lib/components/BackButton.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
@@ -14,7 +17,6 @@
 	import PlayTogglePillButton from '$lib/components/player/buttons/PlayTogglePillButton.svelte'
 	import RepeatButton from '$lib/components/player/buttons/RepeatButton.svelte'
 	import ShuffleButton from '$lib/components/player/buttons/ShuffleButton.svelte'
-	import Artwork from '$lib/components/Artwork.svelte'
 	import PlayerArtwork from '$lib/components/player/PlayerArtwork.svelte'
 	import SyncedLyrics from '$lib/components/player/SyncedLyrics.svelte'
 	import Timeline from '$lib/components/player/Timeline.svelte'
@@ -26,9 +28,6 @@
 	import { formatArtists, getItemLanguage } from '$lib/helpers/utils/text.ts'
 	import { clearPlayHistory, dbRemoveFromPlayHistory } from '$lib/library/play-history-actions.js'
 	import { getLayoutProps } from './layout-props.ts'
-	
-	// Import Svelte transitions
-	import { fade, fly } from 'svelte/transition'
 
 	const { data } = $props()
 
@@ -60,23 +59,22 @@
 {#if player.animatedArtworkSrc}
 	{#key activeTrack?.id}
 		<div
-			class="fixed inset-0 -z-1 overflow-hidden pointer-events-none"
+			class="pointer-events-none fixed inset-0 -z-1 overflow-hidden"
 			in:fade={{ duration: 600 }}
 			out:fade={{ duration: 600 }}
 		>
 			<Artwork
 				src={player.artworkSrc}
-				animatedSrc={isCompact ? (player.animatedArtworkTallSrc ?? player.animatedArtworkSrc) : player.animatedArtworkSrc}
+				animatedSrc={isCompact
+					? (player.animatedArtworkTallSrc ?? player.animatedArtworkSrc)
+					: player.animatedArtworkSrc}
 				noAspectSquare
 				onVideoLoad={() => (player.animatedArtworkLoaded = true)}
-				class={[
-					"size-full object-cover",
-					!isCompact && "blur-3xl opacity-50 scale-110"
-				]}
+				class={['size-full object-cover', !isCompact && 'scale-110 opacity-50 blur-3xl']}
 			/>
 			{#if isCompact && player.animatedArtworkLoaded}
 				<div
-					class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"
+					class="from-black/80 to-black/20 absolute inset-0 bg-gradient-to-t via-transparent"
 					transition:fade
 				></div>
 			{/if}
@@ -90,7 +88,9 @@
 			layoutMode === 'both' && 'w-100 2xl:w-[28dvw]',
 			layoutMode === 'list' && 'mx-auto w-full',
 			'player-content z-0 grow items-center gap-x-6 overflow-clip px-2 pb-2',
-			(player.animatedArtworkSrc && player.animatedArtworkLoaded) ? 'bg-transparent' : 'bg-secondaryContainerVariant',
+			player.animatedArtworkSrc && player.animatedArtworkLoaded
+				? 'bg-transparent'
+				: 'bg-secondaryContainerVariant',
 			isCompactVertical && !isCompactHorizontal && 'player-content-horizontal',
 		]}
 	>
@@ -108,7 +108,7 @@
 		</div>
 
 		<!-- Wrap Artwork in a relative container to handle absolute transition children -->
-		<div class="relative flex items-center justify-center [grid-area:artwork] h-full w-full">
+		<div class="relative flex h-full w-full items-center justify-center [grid-area:artwork]">
 			{#if !isCompact || !player.animatedArtworkSrc || !player.animatedArtworkLoaded}
 				{#key activeTrack?.id}
 					<div
@@ -204,7 +204,12 @@
 					</IconButton>
 
 					{#if layoutMode === 'list'}
-						<IconButton tooltip={m.playerOpenLyrics()} icon="musicNote" as="a" href="/player/lyrics" />
+						<IconButton
+							tooltip={m.playerOpenLyrics()}
+							icon="musicNote"
+							as="a"
+							href="/player/lyrics"
+						/>
 
 						<IconButton tooltip={m.playerOpenQueue()} icon="trayFull" as="a" href="/player/queue" />
 					{/if}
@@ -216,7 +221,7 @@
 
 {#snippet emptyList(title: string)}
 	<div class="m-auto flex flex-col items-center text-center">
-		<Icon type="playlistMusic" class="text-onSecondaryContainer my-auto size-35 opacity-54" />
+		<Icon type="playlistMusic" class="my-auto size-35 text-onSecondaryContainer opacity-54" />
 
 		<div class="mb-4 text-body-lg">{title}</div>
 		<Button kind="outlined" as="a" href="/library/tracks">
@@ -233,7 +238,10 @@
 	<ScrollContainer
 		class={[
 			'flex h-dvh scroll-pt-(--app-header-height) flex-col overflow-auto contain-strict scrollbar-gutter-stable',
-			isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded && 'dark bg-black/60 backdrop-blur-3xl [color-scheme:dark]',
+			isCompact &&
+				player.animatedArtworkSrc &&
+				player.animatedArtworkLoaded &&
+				'dark bg-black/60 [color-scheme:dark] backdrop-blur-3xl',
 		]}
 	>
 		<Header
@@ -282,7 +290,7 @@
 		</Header>
 
 		<div class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col">
-			<div class={["flex grow", page.route.id !== '/(app)/player/lyrics' && "p-4"]}>
+			<div class={['flex grow', page.route.id !== '/(app)/player/lyrics' && 'p-4']}>
 				{#if page.route.id === '/(app)/player/lyrics'}
 					<SyncedLyrics track={activeTrack} currentTimeMs={player.currentTime * 1000} />
 				{:else if isSelectedTabQueue}
@@ -346,7 +354,9 @@
 	mode={layoutMode}
 	class={[
 		'grow active-view-player:view-name-[pl-card]',
-		layoutMode === 'both' && !(player.animatedArtworkSrc && player.animatedArtworkLoaded) && 'bg-secondaryContainer',
+		layoutMode === 'both' &&
+			!(player.animatedArtworkSrc && player.animatedArtworkLoaded) &&
+			'bg-secondaryContainer',
 	]}
 	list={playerSnippet}
 	details={queueSnippet}

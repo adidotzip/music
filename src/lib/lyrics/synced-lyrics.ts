@@ -2,8 +2,7 @@ import { getDatabase } from '$lib/db/database.ts'
 import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 import type { TrackData } from '$lib/library/get/value.ts'
 
-const LYRICSPLUS_LYRICS_ENDPOINT =
-	'https://lyricsplus.prjktla.workers.dev/v2/lyrics/get'
+const LYRICSPLUS_LYRICS_ENDPOINT = 'https://lyricsplus.prjktla.workers.dev/v2/lyrics/get'
 
 const LRCLIB_GET_ENDPOINT = 'https://lrclib.net/api/get'
 const LRCLIB_SEARCH_ENDPOINT = 'https://lrclib.net/api/search'
@@ -78,10 +77,7 @@ const deduplicateLines = (lines: SyncedLyricsLine[]): SyncedLyricsLine[] => {
 	})
 }
 
-const getLyricsSyncMode = (
-	track: TrackData,
-	result: SyncedLyricsResult,
-): LyricsSyncMode => {
+const getLyricsSyncMode = (track: TrackData, result: SyncedLyricsResult): LyricsSyncMode => {
 	const bpm = (track as { bpm?: number }).bpm
 
 	// ABSOLUTE OVERRIDE: Line-only for slow songs (prevents jittery karaoke on emotional tracks)
@@ -93,17 +89,14 @@ const getLyricsSyncMode = (
 }
 
 // Only needed for real word-timed sources that need BPM flattening.
-const convertToLineOnly = (
-	lines: SyncedLyricsLine[],
-): SyncedLyricsLine[] => {
-	return lines.map((line) => ({
+const convertToLineOnly = (lines: SyncedLyricsLine[]): SyncedLyricsLine[] =>
+	lines.map((line) => ({
 		...line,
 		words: line.words.map((word) => ({
 			...word,
 			time: line.startTime,
 		})),
 	}))
-}
 
 const normalizeWord = (value: unknown): SyncedLyricsWord | undefined => {
 	if (!isRecord(value) || typeof value.string !== 'string' || !isFiniteNumber(value.time)) return
@@ -111,7 +104,8 @@ const normalizeWord = (value: unknown): SyncedLyricsWord | undefined => {
 }
 
 const normalizeLine = (value: unknown): SyncedLyricsLine | undefined => {
-	if (!(isRecord(value) && isFiniteNumber(value.startTime) && isFiniteNumber(value.endTime))) return
+	if (!(isRecord(value) && isFiniteNumber(value.startTime) && isFiniteNumber(value.endTime)))
+		return
 	if (!Array.isArray(value.words)) return
 
 	const words = value.words.map(normalizeWord).filter((word): word is SyncedLyricsWord => !!word)
@@ -125,7 +119,11 @@ const whitespacePattern = /\s+/
 
 const parseTimestamp = (minutes: string, seconds: string, fraction: string | undefined): number => {
 	const msString = (fraction ?? '0').padEnd(3, '0').slice(0, 3)
-	return Number.parseInt(minutes, 10) * 60_000 + Number.parseInt(seconds, 10) * 1000 + Number.parseInt(msString, 10)
+	return (
+		Number.parseInt(minutes, 10) * 60_000 +
+		Number.parseInt(seconds, 10) * 1000 +
+		Number.parseInt(msString, 10)
+	)
 }
 
 export const parseLrc = (lyrics: string, durationMs: number): SyncedLyricsLine[] => {
@@ -169,8 +167,15 @@ export const parseTtml = (ttml: string): SyncedLyricsLine[] => {
 	const parseTime = (timeStr: string | null): number => {
 		if (!timeStr) return 0
 		const parts = timeStr.split(':')
-		if (parts.length === 3) return ((Number.parseInt(parts[0], 10) * 3600 + Number.parseInt(parts[1], 10) * 60 + Number.parseFloat(parts[2])) * 1000)
-		if (parts.length === 2) return ((Number.parseInt(parts[0], 10) * 60 + Number.parseFloat(parts[1])) * 1000)
+		if (parts.length === 3)
+			return (
+				(Number.parseInt(parts[0], 10) * 3600 +
+					Number.parseInt(parts[1], 10) * 60 +
+					Number.parseFloat(parts[2])) *
+				1000
+			)
+		if (parts.length === 2)
+			return (Number.parseInt(parts[0], 10) * 60 + Number.parseFloat(parts[1])) * 1000
 		return Number.parseFloat(timeStr) * 1000
 	}
 
@@ -185,7 +190,7 @@ export const parseTtml = (ttml: string): SyncedLyricsLine[] => {
 			spans.forEach((span) => {
 				words.push({
 					string: (span.textContent || '').trim() + ' ',
-					time: parseTime(span.getAttribute('begin'))
+					time: parseTime(span.getAttribute('begin')),
 				})
 			})
 		} else {
@@ -204,12 +209,21 @@ export const parseTtml = (ttml: string): SyncedLyricsLine[] => {
 }
 
 const normalizeSearchText = (value: string): string =>
-	value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/['']/g, '').replace(/&/g, ' and ').replace(/\b(feat|ft|featuring)\.?\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim()
+	value
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/['']/g, '')
+		.replace(/&/g, ' and ')
+		.replace(/\b(feat|ft|featuring)\.?\b/g, ' ')
+		.replace(/[^a-z0-9]+/g, ' ')
+		.trim()
 
 const getDurationSeconds = (track: TrackData): number => Math.round(track.duration)
 
 const isDurationClose = (actualDuration: number | undefined, expectedDuration: number): boolean =>
-	!(actualDuration && expectedDuration) || Math.abs(Math.round(actualDuration) - expectedDuration) <= LRCLIB_DURATION_TOLERANCE_SECONDS
+	!(actualDuration && expectedDuration) ||
+	Math.abs(Math.round(actualDuration) - expectedDuration) <= LRCLIB_DURATION_TOLERANCE_SECONDS
 
 const getLrclibResponse = (value: unknown): LrclibLyricsResponse | undefined => {
 	if (!isRecord(value)) return
@@ -223,7 +237,10 @@ const getLrclibResponse = (value: unknown): LrclibLyricsResponse | undefined => 
 	}
 }
 
-const getLrclibFoundResult = (data: LrclibLyricsResponse, durationSeconds: number): SyncedLyricsResult => {
+const getLrclibFoundResult = (
+	data: LrclibLyricsResponse,
+	durationSeconds: number,
+): SyncedLyricsResult => {
 	if (data.instrumental) return { status: 'instrumental' }
 	if (!data.syncedLyrics) return { status: 'not-found' }
 
@@ -233,8 +250,13 @@ const getLrclibFoundResult = (data: LrclibLyricsResponse, durationSeconds: numbe
 		: { status: 'not-found' }
 }
 
-const scoreLrclibSearchResult = (data: LrclibLyricsResponse, track: TrackData, durationSeconds: number): number => {
-	if (!(data.syncedLyrics && isDurationClose(data.duration, durationSeconds))) return Number.NEGATIVE_INFINITY
+const scoreLrclibSearchResult = (
+	data: LrclibLyricsResponse,
+	track: TrackData,
+	durationSeconds: number,
+): number => {
+	if (!(data.syncedLyrics && isDurationClose(data.duration, durationSeconds)))
+		return Number.NEGATIVE_INFINITY
 
 	const expectedTrackName = normalizeSearchText(track.name)
 	const expectedArtistName = normalizeSearchText(formatArtists(track.artists))
@@ -245,19 +267,32 @@ const scoreLrclibSearchResult = (data: LrclibLyricsResponse, track: TrackData, d
 
 	let score = 0
 	if (resultTrackName === expectedTrackName) score += 8
-	else if (resultTrackName.includes(expectedTrackName) || expectedTrackName.includes(resultTrackName)) score += 4
+	else if (
+		resultTrackName.includes(expectedTrackName) ||
+		expectedTrackName.includes(resultTrackName)
+	)
+		score += 4
 
 	if (expectedArtistName && resultArtistName === expectedArtistName) score += 5
-	else if (expectedArtistName && (resultArtistName.includes(expectedArtistName) || expectedArtistName.includes(resultArtistName))) score += 2
+	else if (
+		expectedArtistName &&
+		(resultArtistName.includes(expectedArtistName) ||
+			expectedArtistName.includes(resultArtistName))
+	)
+		score += 2
 
 	if (expectedAlbumName && resultAlbumName === expectedAlbumName) score += 3
-	if (data.duration) score += Math.max(0, LRCLIB_DURATION_TOLERANCE_SECONDS - Math.abs(data.duration - durationSeconds))
+	if (data.duration)
+		score += Math.max(
+			0,
+			LRCLIB_DURATION_TOLERANCE_SECONDS - Math.abs(data.duration - durationSeconds),
+		)
 	return score
 }
 
 const getWordWeight = (word: string): number => {
 	const clean = word.toLowerCase()
-	
+
 	const pureText = clean.replace(/[^a-z0-9]/g, '')
 	let weight = pureText.length
 
@@ -271,13 +306,16 @@ const getWordWeight = (word: string): number => {
 
 	if (/^(a|an|the|to|of|in|on|at|it)$/i.test(pureText)) weight *= 0.6
 
-	if (/,$/.test(clean)) weight += 4 
-	else if (/[.!?;]$/.test(clean)) weight += 5 
+	if (/,$/.test(clean)) weight += 4
+	else if (/[.!?;]$/.test(clean)) weight += 5
 
 	return Math.max(weight, 1)
 }
 
-const getLyricsPlusResult = (data: unknown, durationSeconds: number): { lines: SyncedLyricsLine[]; syncType: LyricsSyncMode } | null => {
+const getLyricsPlusResult = (
+	data: unknown,
+	durationSeconds: number,
+): { lines: SyncedLyricsLine[]; syncType: LyricsSyncMode } | null => {
 	if (!isRecord(data)) return null
 
 	// Explicit API type detection ('Line' or 'Word')
@@ -285,7 +323,9 @@ const getLyricsPlusResult = (data: unknown, durationSeconds: number): { lines: S
 	const isLineSync = syncTypeRaw === 'line'
 
 	if (Array.isArray(data.lines)) {
-		const lines = data.lines.map(normalizeLine).filter((line): line is SyncedLyricsLine => !!line)
+		const lines = data.lines
+			.map(normalizeLine)
+			.filter((line): line is SyncedLyricsLine => !!line)
 		return { lines: deduplicateLines(lines), syncType: isLineSync ? 'line' : 'karaoke' }
 	}
 
@@ -294,78 +334,99 @@ const getLyricsPlusResult = (data: unknown, durationSeconds: number): { lines: S
 			// STRICT LINE SYNC: Prevent word timeline interpolation entirely
 			const lines = data.lyrics
 				.map((line): SyncedLyricsLine | undefined => {
-					if (!isRecord(line) || typeof line.text !== 'string' || !isFiniteNumber(line.time)) return
-					
+					if (
+						!isRecord(line) ||
+						typeof line.text !== 'string' ||
+						!isFiniteNumber(line.time)
+					)
+						return
+
 					const duration = isFiniteNumber(line.duration) ? line.duration : 2000
 					const wordsList = line.text.split(whitespacePattern).filter(Boolean)
-					
+
 					return {
 						startTime: line.time,
 						endTime: line.time + duration,
 						words: wordsList.map((word, i) => ({
 							string: word + (i === wordsList.length - 1 ? '' : ' '),
-							time: line.time, 
+							time: line.time,
 						})),
 					}
 				})
 				.filter((line): line is SyncedLyricsLine => !!line)
-			
-			return { lines: deduplicateLines(lines), syncType: 'line' }
-		} else {
-			// WORD SYNC MODE: Map precise native timing profiles or gracefully fall back to interpolation
-			const lines = data.lyrics
-				.map((line): SyncedLyricsLine | undefined => {
-					if (!isRecord(line) || typeof line.text !== 'string' || !isFiniteNumber(line.time) || !isFiniteNumber(line.duration)) return
-					
-					// 1. Check for native word-level mapping via 'syllabus' array
-					if (Array.isArray(line.syllabus)) {
-						const words = line.syllabus
-							.map((syl) => {
-								if (!isRecord(syl) || typeof syl.text !== 'string' || !isFiniteNumber(syl.time)) return null
-								return {
-									string: syl.text, // Contains native spacing spacing natively (e.g. "And ")
-									time: syl.time
-								}
-							})
-							.filter((w): w is SyncedLyricsWord => w !== null)
 
-						if (words.length > 0) {
+			return { lines: deduplicateLines(lines), syncType: 'line' }
+		}
+		// WORD SYNC MODE: Map precise native timing profiles or gracefully fall back to interpolation
+		const lines = data.lyrics
+			.map((line): SyncedLyricsLine | undefined => {
+				if (
+					!isRecord(line) ||
+					typeof line.text !== 'string' ||
+					!isFiniteNumber(line.time) ||
+					!isFiniteNumber(line.duration)
+				)
+					return
+
+				// 1. Check for native word-level mapping via 'syllabus' array
+				if (Array.isArray(line.syllabus)) {
+					const words = line.syllabus
+						.map((syl) => {
+							if (
+								!isRecord(syl) ||
+								typeof syl.text !== 'string' ||
+								!isFiniteNumber(syl.time)
+							)
+								return null
 							return {
-								startTime: line.time,
-								endTime: line.time + line.duration,
-								words
+								string: syl.text, // Contains native spacing spacing natively (e.g. "And ")
+								time: syl.time,
 							}
+						})
+						.filter((w): w is SyncedLyricsWord => w !== null)
+
+					if (words.length > 0) {
+						return {
+							startTime: line.time,
+							endTime: line.time + line.duration,
+							words,
 						}
 					}
+				}
 
-					// 2. Fallback to vocal-weighted interpolation if 'syllabus' isn't structural or populated
-					const wordsList = line.text.split(whitespacePattern).filter(Boolean)
-					const totalWeight = wordsList.reduce((sum, word) => sum + getWordWeight(word), 0) || 1
-					let currentWordTime = line.time
-					
-					return {
-						startTime: line.time,
-						endTime: line.time + line.duration,
-						words: wordsList.map((word, i) => {
-							const timeShare = (getWordWeight(word) / totalWeight) * line.duration
-							const wordTimestamp = currentWordTime
-							currentWordTime += timeShare
-							return {
-								string: word + (i === wordsList.length - 1 ? '' : ' '),
-								time: wordTimestamp, 
-							}
-						}),
-					}
-				})
-				.filter((line): line is SyncedLyricsLine => !!line)
-			
-			return { lines: deduplicateLines(lines), syncType: 'karaoke' }
-		}
+				// 2. Fallback to vocal-weighted interpolation if 'syllabus' isn't structural or populated
+				const wordsList = line.text.split(whitespacePattern).filter(Boolean)
+				const totalWeight =
+					wordsList.reduce((sum, word) => sum + getWordWeight(word), 0) || 1
+				let currentWordTime = line.time
+
+				return {
+					startTime: line.time,
+					endTime: line.time + line.duration,
+					words: wordsList.map((word, i) => {
+						const timeShare = (getWordWeight(word) / totalWeight) * line.duration
+						const wordTimestamp = currentWordTime
+						currentWordTime += timeShare
+						return {
+							string: word + (i === wordsList.length - 1 ? '' : ' '),
+							time: wordTimestamp,
+						}
+					}),
+				}
+			})
+			.filter((line): line is SyncedLyricsLine => !!line)
+
+		return { lines: deduplicateLines(lines), syncType: 'karaoke' }
 	}
 
-	const lyricsText = typeof data.syncedLyrics === 'string' ? data.syncedLyrics : typeof data.lyrics === 'string' ? data.lyrics : null
+	const lyricsText =
+		typeof data.syncedLyrics === 'string'
+			? data.syncedLyrics
+			: typeof data.lyrics === 'string'
+				? data.lyrics
+				: null
 	if (lyricsText) return { lines: parseLrc(lyricsText, durationSeconds * 1000), syncType: 'line' }
-	
+
 	if (isRecord(data.data)) return getLyricsPlusResult(data.data, durationSeconds)
 
 	return null
@@ -373,7 +434,7 @@ const getLyricsPlusResult = (data: unknown, durationSeconds: number): { lines: S
 
 const fetchLyricsPlusLyrics = async (
 	track: TrackData,
-	signal: AbortSignal
+	signal: AbortSignal,
 ): Promise<{ lines: SyncedLyricsLine[]; syncType: LyricsSyncMode } | null> => {
 	const sources = ['apple', 'musixmatch']
 
@@ -404,7 +465,11 @@ const fetchLyricsPlusLyrics = async (
 	return null
 }
 
-const fetchLrclibExactLyrics = async (track: TrackData, durationSeconds: number, signal: AbortSignal): Promise<SyncedLyricsResult> => {
+const fetchLrclibExactLyrics = async (
+	track: TrackData,
+	durationSeconds: number,
+	signal: AbortSignal,
+): Promise<SyncedLyricsResult> => {
 	const url = new URL(LRCLIB_GET_ENDPOINT)
 	url.searchParams.set('track_name', track.name)
 	url.searchParams.set('artist_name', formatArtists(track.artists))
@@ -419,7 +484,11 @@ const fetchLrclibExactLyrics = async (track: TrackData, durationSeconds: number,
 	return data ? getLrclibFoundResult(data, durationSeconds) : { status: 'not-found' }
 }
 
-const fetchLrclibSearchLyrics = async (track: TrackData, durationSeconds: number, signal: AbortSignal): Promise<SyncedLyricsResult> => {
+const fetchLrclibSearchLyrics = async (
+	track: TrackData,
+	durationSeconds: number,
+	signal: AbortSignal,
+): Promise<SyncedLyricsResult> => {
 	const url = new URL(LRCLIB_SEARCH_ENDPOINT)
 	url.searchParams.set('track_name', track.name)
 	url.searchParams.set('artist_name', formatArtists(track.artists))
@@ -443,11 +512,15 @@ const fetchLrclibSearchLyrics = async (track: TrackData, durationSeconds: number
 	return getLrclibFoundResult(bestMatch, durationSeconds)
 }
 
-const fetchLrclibLyrics = async (track: TrackData, signal: AbortSignal): Promise<SyncedLyricsResult> => {
+const fetchLrclibLyrics = async (
+	track: TrackData,
+	signal: AbortSignal,
+): Promise<SyncedLyricsResult> => {
 	const durationSeconds = getDurationSeconds(track)
 	try {
 		const exactResult = await fetchLrclibExactLyrics(track, durationSeconds, signal)
-		if (exactResult.status === 'found' || exactResult.status === 'instrumental') return exactResult
+		if (exactResult.status === 'found' || exactResult.status === 'instrumental')
+			return exactResult
 		return await fetchLrclibSearchLyrics(track, durationSeconds, signal)
 	} catch (error) {
 		if (error instanceof Error && error.name === 'AbortError') throw error
@@ -455,7 +528,10 @@ const fetchLrclibLyrics = async (track: TrackData, signal: AbortSignal): Promise
 	}
 }
 
-const fetchUnisonLyrics = async (track: TrackData, signal: AbortSignal): Promise<SyncedLyricsResult> => {
+const fetchUnisonLyrics = async (
+	track: TrackData,
+	signal: AbortSignal,
+): Promise<SyncedLyricsResult> => {
 	try {
 		const url = new URL(UNISON_GET_ENDPOINT)
 		url.searchParams.set('song', track.name)
@@ -467,20 +543,22 @@ const fetchUnisonLyrics = async (track: TrackData, signal: AbortSignal): Promise
 		if (!response.ok) return { status: 'not-found' }
 
 		const payload = (await response.json()) as UnisonLyricsResponse
-		if (!payload.success || !payload.data?.lyrics) return { status: 'not-found' }
+		if (!(payload.success && payload.data?.lyrics)) return { status: 'not-found' }
 
 		const isTtml = payload.data.lyrics.trim().startsWith('<tt')
-		const lines = isTtml ? parseTtml(payload.data.lyrics) : parseLrc(payload.data.lyrics, getDurationSeconds(track) * 1000)
+		const lines = isTtml
+			? parseTtml(payload.data.lyrics)
+			: parseLrc(payload.data.lyrics, getDurationSeconds(track) * 1000)
 
 		if (lines.length > 0) {
 			return {
 				status: 'found',
 				source: 'unison',
 				lines,
-				syncType: isTtml ? 'karaoke' : 'line'
+				syncType: isTtml ? 'karaoke' : 'line',
 			}
 		}
-		
+
 		return { status: 'not-found' }
 	} catch (error) {
 		if (error instanceof Error && error.name === 'AbortError') throw error
@@ -492,11 +570,15 @@ const getLyricsFromCache = async (trackId: number): Promise<SyncedLyricsResult |
 	try {
 		const db = await getDatabase()
 		const cached = await db.get('lyrics', trackId)
-		
-		if (!cached || cached.version !== CACHE_VERSION || Date.now() - cached.cachedAt > CACHE_TTL_MS) {
+
+		if (
+			!cached ||
+			cached.version !== CACHE_VERSION ||
+			Date.now() - cached.cachedAt > CACHE_TTL_MS
+		) {
 			return undefined
 		}
-		
+
 		return cached.data
 	} catch {
 		return undefined
@@ -507,10 +589,13 @@ const saveLyricsToCache = async (trackId: number, data: SyncedLyricsResult) => {
 	try {
 		const db = await getDatabase()
 		await db.put('lyrics', { trackId, data, version: CACHE_VERSION, cachedAt: Date.now() })
-	} catch { }
+	} catch {}
 }
 
-export const fetchSyncedLyrics = async (track: TrackData, signal: AbortSignal): Promise<SyncedLyricsResult> => {
+export const fetchSyncedLyrics = async (
+	track: TrackData,
+	signal: AbortSignal,
+): Promise<SyncedLyricsResult> => {
 	let cachedResult = await getLyricsFromCache(track.id)
 
 	if (cachedResult && cachedResult.status === 'found') {
@@ -538,7 +623,7 @@ export const fetchSyncedLyrics = async (track: TrackData, signal: AbortSignal): 
 				status: 'found',
 				source: 'lyricsplus',
 				lines: lyricsPlusData.lines,
-				syncType: lyricsPlusData.syncType
+				syncType: lyricsPlusData.syncType,
 			}
 		}
 
@@ -573,7 +658,6 @@ export const fetchSyncedLyrics = async (track: TrackData, signal: AbortSignal): 
 
 		if (result.status !== 'error') await saveLyricsToCache(track.id, result)
 		return result
-
 	} catch (error) {
 		if (error instanceof Error && error.name === 'AbortError') throw error
 		return { status: 'error' }

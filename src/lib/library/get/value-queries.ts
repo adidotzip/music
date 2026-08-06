@@ -1,8 +1,8 @@
 import { createQuery, type QueryResult } from '$lib/db/query/query.ts'
-import type { LibraryStoreName } from '../types.js'
-import { type GetLibraryValueResult, getLibraryValue, shouldRefetchLibraryValue } from './value.js'
+import type { LibraryStoreName } from '../types.ts'
+import { type GetLibraryValueResult, getLibraryValue, shouldRefetchLibraryValue } from './value.ts'
 
-export type { AlbumData, ArtistData, PlaylistData, TrackData } from './value.js'
+export type { AlbumData, ArtistData, PlaylistData, TrackData } from './value.ts'
 
 export interface LibraryValueQueryOptions<AllowEmpty extends boolean = false> {
 	allowEmpty?: AllowEmpty

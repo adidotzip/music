@@ -1,14 +1,16 @@
 <script lang="ts" module>
 	import type { SyncedLyricsLine } from '$lib/lyrics/synced-lyrics.ts'
 
-	type LyricItem = 
-		| (SyncedLyricsLine & { type: 'line'; isSecondaryLine: boolean; words: any[]; isOpposite: boolean })
-		| { type: 'break'; startTime: number; endTime: number; id: string };
+	type LyricItem =
+		| (SyncedLyricsLine & {
+				type: 'line'
+				isSecondaryLine: boolean
+				words: any[]
+				isOpposite: boolean
+		  })
+		| { type: 'break'; startTime: number; endTime: number; id: string }
 
-	const getActiveLineIndex = (
-		items: readonly LyricItem[],
-		currentTimeMs: number,
-	): number => {
+	const getActiveLineIndex = (items: readonly LyricItem[], currentTimeMs: number): number => {
 		let index = -1
 		for (let i = 0; i < items.length; i += 1) {
 			if (currentTimeMs >= items[i].startTime) {
@@ -28,10 +30,7 @@
 	import Spinner from '$lib/components/Spinner.svelte'
 	import { formatArtists, getItemLanguage } from '$lib/helpers/utils/text.ts'
 	import type { TrackData } from '$lib/library/get/value.ts'
-	import {
-		fetchSyncedLyrics,
-		type SyncedLyricsResult,
-	} from '$lib/lyrics/synced-lyrics.ts'
+	import { fetchSyncedLyrics, type SyncedLyricsResult } from '$lib/lyrics/synced-lyrics.ts'
 
 	interface Props {
 		track: TrackData | undefined
@@ -53,7 +52,7 @@
 	// ─── Motion & Physics ───────────────────────────────────────────────────
 	const scrollOffset = spring(0, {
 		stiffness: 0.04,
-		damping: 0.75, 
+		damping: 0.75,
 	})
 
 	// ─── RAF-driven smooth time (Fixed double-bounce jitter) ────────────────
@@ -63,13 +62,13 @@
 	$effect(() => {
 		// When the authoritative prop changes, we only snap if it's a huge difference (like a seek)
 		// Otherwise, we let the RAF loop smoothly catch up to prevent backwards jitter.
-		if (!player.playing) {
-			smoothTimeMs = currentTimeMs
-		} else {
+		if (player.playing) {
 			const diff = Math.abs(currentTimeMs - smoothTimeMs)
 			if (diff > 1500) {
 				smoothTimeMs = currentTimeMs
 			}
+		} else {
+			smoothTimeMs = currentTimeMs
 		}
 		lastPropTime = currentTimeMs
 	})
@@ -86,17 +85,17 @@
 			if (player.playing) {
 				// Always move forward
 				smoothTimeMs += elapsed
-				
+
 				// Soft drift correction: if we fall behind the prop time, speed up slightly.
 				// We intentionally do NOT correct backwards to prevent the words from double-bouncing.
 				const drift = lastPropTime - smoothTimeMs
 				if (drift > 200) {
-					smoothTimeMs += drift * 0.15 
+					smoothTimeMs += drift * 0.15
 				}
 			}
 			requestAnimationFrame(tick)
 		}
-		
+
 		const rafId = requestAnimationFrame(tick)
 		return () => {
 			running = false
@@ -106,14 +105,14 @@
 
 	const foundResult = $derived(result?.status === 'found' ? result : undefined)
 	const lines = $derived(foundResult?.lines ?? [])
-	
+
 	const syncType = $derived(foundResult?.syncType ?? 'line')
 	const isLineLevel = $derived(syncType === 'line')
 
 	// ─── Process Lyrics & Inject Breaks ─────────────────────────────────────
 	const processedItems = $derived.by(() => {
 		const items: LyricItem[] = []
-		
+
 		for (let i = 0; i < lines.length; i += 1) {
 			const line = lines[i]
 
@@ -125,7 +124,7 @@
 						type: 'break',
 						startTime: prevLine.endTime,
 						endTime: line.startTime,
-						id: `break-${i}`
+						id: `break-${i}`,
 					})
 				}
 			}
@@ -143,24 +142,25 @@
 				}
 				return { ...word, isSecondary: isWordSecondary }
 			})
-			
-			const lineText = words.map((w) => w.string).join('').trim()
+
+			const lineText = words
+				.map((w) => w.string)
+				.join('')
+				.trim()
 			const isSecondaryLine = lineText.startsWith('(') && lineText.endsWith(')')
 
-			const cleanedWords = words.map((word, idx) => {
-				return {
-					...word,
-					string: word.string.replace(/[()]/g, ''),
-					originalIndex: idx
-				}
-			})
-			
-			items.push({ 
-				type: 'line', 
-				...line, 
-				words: cleanedWords, 
+			const cleanedWords = words.map((word, idx) => ({
+				...word,
+				string: word.string.replace(/[()]/g, ''),
+				originalIndex: idx,
+			}))
+
+			items.push({
+				type: 'line',
+				...line,
+				words: cleanedWords,
 				isSecondaryLine,
-				isOpposite: (line as any).isOpposite ?? false
+				isOpposite: (line as any).isOpposite ?? false,
 			})
 		}
 		return items
@@ -205,7 +205,7 @@
 	})
 
 	const updateScrollPosition = (immediate = false) => {
-		if (!containerElement || !contentElement || activeLineIndex < 0) return
+		if (!(containerElement && contentElement) || activeLineIndex < 0) return
 		const activeEl = contentElement.querySelector<HTMLElement>(
 			`[data-line-index="${activeLineIndex}"]`,
 		)
@@ -215,7 +215,7 @@
 		const lineTop = activeEl.offsetTop
 		const lineHeight = activeEl.offsetHeight
 
-		const target = (containerHeight / 2) - lineTop - (lineHeight / 2)
+		const target = containerHeight / 2 - lineTop - lineHeight / 2
 		scrollOffset.set(target, { hard: immediate })
 	}
 
@@ -249,21 +249,34 @@
 		const touchY = e.touches[0].clientY
 		const deltaY = lastTouchY - touchY
 		lastTouchY = touchY
-		scrollOffset.update(v => v - deltaY, { hard: true })
+		scrollOffset.update((v) => v - deltaY, { hard: true })
 	}
 </script>
 
 {#snippet emptyState(icon: 'musicNote' | 'alertCircle', title: string, description: string)}
-	<div class="empty-state z-10 m-auto flex h-full max-w-80 flex-col items-center justify-center text-center opacity-50 transition-opacity duration-500">
+	<div
+		class="empty-state z-10 m-auto flex h-full max-w-80 flex-col items-center justify-center text-center opacity-50 transition-opacity duration-500"
+	>
 		<Icon type={icon} class="mb-4 h-12 w-12" style="color: var(--lyric-inactive)" />
 		<h3 class="text-xl font-bold" style="color: var(--lyric-active-fill)">{title}</h3>
-		<p class="mt-2 text-sm" style="color: var(--lyric-inactive)">{description}</p>
+		<p class="text-sm mt-2" style="color: var(--lyric-inactive)">{description}</p>
 	</div>
 {/snippet}
 
-<section class={["lyrics-shell w-full h-full relative overflow-hidden", !(player.animatedArtworkSrc && player.animatedArtworkLoaded) && "bg-black dark", className]} aria-live="polite">
+<section
+	class={[
+		'lyrics-shell relative h-full w-full overflow-hidden',
+		!(player.animatedArtworkSrc && player.animatedArtworkLoaded) && 'bg-black dark',
+		className,
+	]}
+	aria-live="polite"
+>
 	{#if !track}
-		{@render emptyState('musicNote', 'No Track Playing', 'Play a track to follow along with the lyrics.')}
+		{@render emptyState(
+			'musicNote',
+			'No Track Playing',
+			'Play a track to follow along with the lyrics.',
+		)}
 	{:else if loading}
 		<div class="flex h-full w-full items-center justify-center">
 			<Spinner class="h-8 w-8" style="color: var(--lyric-inactive)" />
@@ -276,7 +289,7 @@
 			bind:this={containerElement}
 			onwheel={(e) => {
 				handleUserInteraction()
-				scrollOffset.update(v => v - e.deltaY, { hard: true })
+				scrollOffset.update((v) => v - e.deltaY, { hard: true })
 			}}
 			ontouchstart={handleTouchStart}
 			ontouchmove={handleTouchMove}
@@ -293,7 +306,9 @@
 
 					{#if item.type === 'break'}
 						{@const breakDuration = item.endTime - item.startTime}
-						{@const breakProgress = isActiveLine ? Math.min(Math.max((smoothTimeMs - item.startTime) / breakDuration, 0), 1) : 0}
+						{@const breakProgress = isActiveLine
+							? Math.min(Math.max((smoothTimeMs - item.startTime) / breakDuration, 0), 1)
+							: 0}
 						<div
 							class="lyric-item lyric-break"
 							class:active={isActiveLine}
@@ -303,14 +318,14 @@
 						>
 							<div class="dots-container">
 								<span class="dot" class:filled={breakProgress >= 0.25}></span>
-								<span class="dot" class:filled={breakProgress >= 0.50}></span>
+								<span class="dot" class:filled={breakProgress >= 0.5}></span>
 								<span class="dot" class:filled={breakProgress >= 0.75}></span>
 							</div>
 						</div>
 					{:else}
 						{@const activeWordIdx = isActiveLine ? getActiveWordIndex(item, smoothTimeMs) : -1}
-						{@const primaryWords = item.words.filter(w => !w.isSecondary)}
-						{@const secondaryWords = item.words.filter(w => w.isSecondary)}
+						{@const primaryWords = item.words.filter((w) => !w.isSecondary)}
+						{@const secondaryWords = item.words.filter((w) => w.isSecondary)}
 
 						<button
 							type="button"
@@ -330,34 +345,76 @@
 							{#if isLineLevel}
 								{#if primaryWords.length > 0}
 									<div class="primary-lyrics-block">
-										<span 
-											class="lyric-word" 
-											class:is-sung={isActiveLine || isLinePast} 
+										<span
+											class="lyric-word"
+											class:is-sung={isActiveLine || isLinePast}
 											class:is-current={isActiveLine}
 											style="--word-progress: {isActiveLine || isLinePast ? 100 : 0}%"
-										>{primaryWords.map(w => w.string).join('')}</span>
+											>{primaryWords.map((w) => w.string).join('')}</span
+										>
 									</div>
 								{/if}
 								{#if secondaryWords.length > 0}
 									<div class="secondary-lyrics-block">
-										<span 
-											class="lyric-word secondary-word" 
-											class:is-sung={isActiveLine || isLinePast} 
+										<span
+											class="lyric-word secondary-word"
+											class:is-sung={isActiveLine || isLinePast}
 											class:is-current={isActiveLine}
 											style="--word-progress: {isActiveLine || isLinePast ? 100 : 0}%"
-										>{secondaryWords.map(w => w.string).join('')}</span>
+											>{secondaryWords.map((w) => w.string).join('')}</span
+										>
 									</div>
 								{/if}
 							{:else}
 								{#if primaryWords.length > 0}
 									<div class="primary-lyrics-block">
-										{#each primaryWords as word}{#if word.string.length > 0}{@const isPastWord = isLinePast || (isActiveLine && word.originalIndex < activeWordIdx)}{@const isCurrentWord = isActiveLine && word.originalIndex === activeWordIdx}{@const nextTime = item.words[word.originalIndex + 1]?.time ?? item.endTime}{@const duration = Math.max(nextTime - word.time, 1)}{@const wordProgress = isLinePast ? 100 : (isCurrentWord ? Math.min(Math.max((smoothTimeMs - word.time) / duration, 0), 1) * 100 : isPastWord ? 100 : 0)}<span class="lyric-word" class:is-sung={isPastWord || isCurrentWord} class:is-current={isCurrentWord} style="--word-progress: {wordProgress}%">{word.string}</span>{/if}{/each}
+										{#each primaryWords as word}{#if word.string.length > 0}{@const isPastWord =
+													isLinePast ||
+													(isActiveLine &&
+														word.originalIndex < activeWordIdx)}{@const isCurrentWord =
+													isActiveLine && word.originalIndex === activeWordIdx}{@const nextTime =
+													item.words[word.originalIndex + 1]?.time ??
+													item.endTime}{@const duration = Math.max(
+													nextTime - word.time,
+													1,
+												)}{@const wordProgress = isLinePast
+													? 100
+													: isCurrentWord
+														? Math.min(Math.max((smoothTimeMs - word.time) / duration, 0), 1) * 100
+														: isPastWord
+															? 100
+															: 0}<span
+													class="lyric-word"
+													class:is-sung={isPastWord || isCurrentWord}
+													class:is-current={isCurrentWord}
+													style="--word-progress: {wordProgress}%">{word.string}</span
+												>{/if}{/each}
 									</div>
 								{/if}
 
 								{#if secondaryWords.length > 0}
 									<div class="secondary-lyrics-block">
-										{#each secondaryWords as word}{#if word.string.length > 0}{@const isPastWord = isLinePast || (isActiveLine && word.originalIndex < activeWordIdx)}{@const isCurrentWord = isActiveLine && word.originalIndex === activeWordIdx}{@const nextTime = item.words[word.originalIndex + 1]?.time ?? item.endTime}{@const duration = Math.max(nextTime - word.time, 1)}{@const wordProgress = isLinePast ? 100 : (isCurrentWord ? Math.min(Math.max((smoothTimeMs - word.time) / duration, 0), 1) * 100 : isPastWord ? 100 : 0)}<span class="lyric-word secondary-word" class:is-sung={isPastWord || isCurrentWord} class:is-current={isCurrentWord} style="--word-progress: {wordProgress}%">{word.string}</span>{/if}{/each}
+										{#each secondaryWords as word}{#if word.string.length > 0}{@const isPastWord =
+													isLinePast ||
+													(isActiveLine &&
+														word.originalIndex < activeWordIdx)}{@const isCurrentWord =
+													isActiveLine && word.originalIndex === activeWordIdx}{@const nextTime =
+													item.words[word.originalIndex + 1]?.time ??
+													item.endTime}{@const duration = Math.max(
+													nextTime - word.time,
+													1,
+												)}{@const wordProgress = isLinePast
+													? 100
+													: isCurrentWord
+														? Math.min(Math.max((smoothTimeMs - word.time) / duration, 0), 1) * 100
+														: isPastWord
+															? 100
+															: 0}<span
+													class="lyric-word secondary-word"
+													class:is-sung={isPastWord || isCurrentWord}
+													class:is-current={isCurrentWord}
+													style="--word-progress: {wordProgress}%">{word.string}</span
+												>{/if}{/each}
 									</div>
 								{/if}
 							{/if}
@@ -367,7 +424,11 @@
 			</div>
 		</div>
 	{:else}
-		{@render emptyState('alertCircle', 'Lyrics Unavailable', "We couldn't find synced lyrics for this track.")}
+		{@render emptyState(
+			'alertCircle',
+			'Lyrics Unavailable',
+			"We couldn't find synced lyrics for this track.",
+		)}
 	{/if}
 </section>
 
@@ -391,20 +452,16 @@
 	}
 
 	/* Overrides: if the container gets 'bg-black' or 'dark' forcefully */
-	.lyrics-shell.bg-black, :global(.dark) .lyrics-shell, .lyrics-shell.dark {
+	.lyrics-shell.bg-black,
+	:global(.dark) .lyrics-shell,
+	.lyrics-shell.dark {
 		--lyric-inactive: rgba(255, 255, 255, 0.5);
 		--lyric-active-fill: #ffffff;
 		--lyric-active-unfill: rgba(255, 255, 255, 0.25);
 	}
 
 	.lyrics-container {
-		mask-image: linear-gradient(
-			to bottom,
-			transparent 0%,
-			black 10%,
-			black 85%,
-			transparent 100%
-		);
+		mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 85%, transparent 100%);
 		-webkit-mask-image: linear-gradient(
 			to bottom,
 			transparent 0%,
@@ -422,9 +479,11 @@
 		display: flex;
 		flex-direction: column;
 		padding: 0 1.5rem;
-		@media (min-width: 640px) { padding: 0 2rem; }
+		@media (min-width: 640px) {
+			padding: 0 2rem;
+		}
 		padding-bottom: calc(env(safe-area-inset-bottom) + 60vh);
-		padding-top: 50vh; 
+		padding-top: 50vh;
 		will-change: transform;
 	}
 
@@ -435,14 +494,14 @@
 		background: transparent;
 		border: none;
 		margin: 0;
-		padding: 1.25rem 0; 
+		padding: 1.25rem 0;
 		transform-origin: left center;
 		will-change: transform, opacity, filter;
-		
+
 		opacity: clamp(0.1, calc(0.4 / (1 + var(--distance) * 0.4)), 1);
 		transform: scale(calc(1 - var(--distance) * 0.03));
 		filter: blur(calc(var(--distance) * 1.5px));
-		
+
 		transition:
 			opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
 			transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -461,8 +520,12 @@
 	.lyric-line {
 		font-family: var(--font-sans);
 		font-size: 2.15rem;
-		@media (min-width: 640px) { font-size: 2.75rem; }
-		@media (min-width: 1024px) { font-size: 3.5rem; }
+		@media (min-width: 640px) {
+			font-size: 2.75rem;
+		}
+		@media (min-width: 1024px) {
+			font-size: 3.5rem;
+		}
 		font-weight: 800;
 		line-height: 1.2;
 		letter-spacing: -0.02em;
@@ -499,14 +562,18 @@
 
 	.lyric-line.secondary-line {
 		font-size: 1.5rem;
-		@media (min-width: 640px) { font-size: 1.85rem; }
-		@media (min-width: 1024px) { font-size: 2.5rem; }
+		@media (min-width: 640px) {
+			font-size: 1.85rem;
+		}
+		@media (min-width: 1024px) {
+			font-size: 2.5rem;
+		}
 		font-weight: 600;
 		font-style: italic;
 	}
 
 	.lyric-word.secondary-word {
-		font-size: 0.85em; 
+		font-size: 0.85em;
 		font-style: italic;
 	}
 
@@ -516,7 +583,7 @@
 		white-space: pre-wrap;
 		-webkit-box-decoration-break: clone;
 		box-decoration-break: clone;
-		
+
 		/* Animates up smoothly when sung via the `top` property */
 		top: 0;
 		transition: top 0.3s ease-out; /* Smoother curve, no bounce */

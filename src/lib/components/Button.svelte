@@ -91,26 +91,23 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
-		border-radius: 9999px; 
+		border-radius: 9999px;
 		border: none;
 		cursor: pointer;
 		overflow: hidden;
 		user-select: none;
-		transition: 
+		transition:
 			background-color 200ms var(--m3-easing-standard),
 			color 200ms var(--m3-easing-standard),
 			box-shadow 200ms var(--m3-easing-standard),
 			border-radius 400ms var(--m3-easing-emphasized),
 			transform 200ms var(--m3-easing-emphasized);
-		
-		
+
 		font-weight: 500;
 		letter-spacing: 0.1px;
 	}
 
-	
 	.m3-button-base:active:not(:disabled) {
-		
 		border-radius: 12px;
 		transform: scale(0.97);
 	}
@@ -123,7 +120,6 @@
 		z-index: 1;
 	}
 
-	
 	.filled-button {
 		background-color: var(--color-primary);
 		color: var(--color-onPrimary);
@@ -143,11 +139,15 @@
 	.elevated-button {
 		background-color: var(--color-surfaceContainerLow);
 		color: var(--color-primary);
-		box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1);
+		box-shadow:
+			0 1px 3px 0 rgba(0, 0, 0, 0.1),
+			0 1px 2px -1px rgba(0, 0, 0, 0.1);
 	}
-	
+
 	.elevated-button:hover:not(:disabled) {
-		box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+		box-shadow:
+			0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -2px rgba(0, 0, 0, 0.1);
 	}
 
 	/* Disabled state logic consistent with the Switch example */
@@ -161,7 +161,6 @@
 		border-radius: 9999px; /* Reset shape */
 	}
 
-	
 	.m3-button-base:focus-visible {
 		outline: 2px solid var(--color-primary);
 		outline-offset: 2px;

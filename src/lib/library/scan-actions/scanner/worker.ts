@@ -1,7 +1,7 @@
 /// <reference lib='WebWorker' />
 
-import { workerAction } from './actions.js'
-import type { TracksScanOptions } from './types.js'
+import { workerAction } from './actions.ts'
+import type { TracksScanOptions } from './types.ts'
 
 declare const self: DedicatedWorkerGlobalScope
 

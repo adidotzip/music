@@ -1,4 +1,4 @@
-import type { TracksScanMessage, TracksScanOptions, TracksScanResult } from './types.js'
+import type { TracksScanMessage, TracksScanOptions, TracksScanResult } from './types.ts'
 import TracksWorker from './worker.ts?worker'
 
 export type {
@@ -6,7 +6,7 @@ export type {
 	TracksScanOptions,
 	/** @public */
 	TracksScanResult,
-} from './types.js'
+} from './types.ts'
 
 /** @public */
 export type TrackParsedFn = (totalParsedCount: number) => void

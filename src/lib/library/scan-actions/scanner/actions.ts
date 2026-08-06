@@ -3,10 +3,10 @@ import { type FileEntity, getFileHandlesRecursively } from '$lib/helpers/file-sy
 import { SerialQueue } from '$lib/helpers/serial-queue.ts'
 import { dbRemoveTracks } from '$lib/library/remove.ts'
 import { LEGACY_NO_NATIVE_DIRECTORY, type Track } from '$lib/library/types.ts'
-import { dbImportTrack } from './import-track.js'
-import { getArtworkRelatedData } from './parse/format-artwork.js'
-import { parseTrackMetadata } from './parse/parse-track.js'
-import type { TracksScanMessage, TracksScanOptions } from './types.js'
+import { dbImportTrack } from './import-track.ts'
+import { getArtworkRelatedData } from './parse/format-artwork.ts'
+import { parseTrackMetadata } from './parse/parse-track.ts'
+import type { TracksScanMessage, TracksScanOptions } from './types.ts'
 
 declare const self: DedicatedWorkerGlobalScope
 

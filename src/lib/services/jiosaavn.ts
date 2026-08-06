@@ -89,40 +89,39 @@ const mapJioSaavnSongToTrack = (song: JioSaavnSong): Track => {
 	} as Track
 }
 
-const mapJioSaavnAlbumToAlbum = (album: JioSaavnAlbum): Album => {
-	return {
+const mapJioSaavnAlbumToAlbum = (album: JioSaavnAlbum): Album =>
+	({
 		id: generateStableId(album.id),
 		uuid: album.id,
 		name: album.name || 'Unknown Album',
 		artists: album.artists?.primary?.map((a) => a.name) || ['Unknown Artist'],
 		year: album.year || '',
 		source: 'jiosaavn',
-	} as any
-}
+	}) as any
 
-const mapJioSaavnArtistToArtist = (artist: JioSaavnArtist): Artist => {
-	return {
+const mapJioSaavnArtistToArtist = (artist: JioSaavnArtist): Artist =>
+	({
 		id: generateStableId(artist.id),
 		uuid: artist.id,
 		name: artist.name || 'Unknown Artist',
 		source: 'jiosaavn',
-	} as any
-}
+	}) as any
 
-const mapJioSaavnPlaylistToPlaylist = (playlist: JioSaavnPlaylist): Playlist => {
-	return {
+const mapJioSaavnPlaylistToPlaylist = (playlist: JioSaavnPlaylist): Playlist =>
+	({
 		id: generateStableId(playlist.id),
 		uuid: playlist.id,
 		name: playlist.name || 'Unknown Playlist',
 		description: '',
 		createdAt: Date.now(),
 		source: 'jiosaavn',
-	} as any
-}
+	}) as any
 
 export const searchSongs = async (query: string): Promise<Track[]> => {
 	try {
-		const response = await fetch(`${API_BASE_URL}/search/songs?query=${encodeURIComponent(query)}`)
+		const response = await fetch(
+			`${API_BASE_URL}/search/songs?query=${encodeURIComponent(query)}`,
+		)
 		const json = await response.json()
 		if (json.success && json.data.results) {
 			return json.data.results.map(mapJioSaavnSongToTrack)
@@ -135,7 +134,9 @@ export const searchSongs = async (query: string): Promise<Track[]> => {
 
 export const searchAlbums = async (query: string): Promise<Album[]> => {
 	try {
-		const response = await fetch(`${API_BASE_URL}/search/albums?query=${encodeURIComponent(query)}`)
+		const response = await fetch(
+			`${API_BASE_URL}/search/albums?query=${encodeURIComponent(query)}`,
+		)
 		const json = await response.json()
 		if (json.success && json.data.results) {
 			return json.data.results.map(mapJioSaavnAlbumToAlbum)
@@ -148,7 +149,9 @@ export const searchAlbums = async (query: string): Promise<Album[]> => {
 
 export const searchArtists = async (query: string): Promise<Artist[]> => {
 	try {
-		const response = await fetch(`${API_BASE_URL}/search/artists?query=${encodeURIComponent(query)}`)
+		const response = await fetch(
+			`${API_BASE_URL}/search/artists?query=${encodeURIComponent(query)}`,
+		)
 		const json = await response.json()
 		if (json.success && json.data.results) {
 			return json.data.results.map(mapJioSaavnArtistToArtist)
@@ -161,7 +164,9 @@ export const searchArtists = async (query: string): Promise<Artist[]> => {
 
 export const searchPlaylists = async (query: string): Promise<Playlist[]> => {
 	try {
-		const response = await fetch(`${API_BASE_URL}/search/playlists?query=${encodeURIComponent(query)}`)
+		const response = await fetch(
+			`${API_BASE_URL}/search/playlists?query=${encodeURIComponent(query)}`,
+		)
 		const json = await response.json()
 		if (json.success && json.data.results) {
 			return json.data.results.map(mapJioSaavnPlaylistToPlaylist)
