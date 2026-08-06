@@ -1,20 +1,14 @@
 <script lang="ts">
-// https://github.com/KTibow/m3-svelte/blob/main/src/lib/forms/LoadingIndicator.svelte
+	// https://github.com/KTibow/m3-svelte/blob/main/src/lib/forms/LoadingIndicator.svelte
 
 	interface Props {
-		class?: ClassValue;
+		class?: ClassValue
 	}
 
-	const { class: className }: Props = $props();
+	const { class: className }: Props = $props()
 </script>
 
-<svg
-	class={['spinner', className]}
-	width="40"
-	height="40"
-	viewBox="0 0 48 48"
-	role="progressbar"
->
+<svg class={['spinner', className]} width="40" height="40" viewBox="0 0 48 48" role="progressbar">
 	<path fill="currentColor">
 		<animate
 			attributeName="d"
@@ -41,7 +35,6 @@
 
 <style>
 	.spinner {
-
-		color: currentcolor; 
+		color: currentcolor;
 	}
 </style>

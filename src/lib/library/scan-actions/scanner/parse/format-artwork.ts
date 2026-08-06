@@ -1,5 +1,5 @@
 import { isSafari as isSafariCheck } from '$lib/helpers/utils/ua.ts'
-import { getPrimaryColor } from './image-primary-color.js'
+import { getPrimaryColor } from './image-primary-color.ts'
 
 const getSmallImageDimensions = (
 	originalWidth: number,

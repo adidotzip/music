@@ -1,4 +1,4 @@
-import { isMobile, isSafari } from './utils/ua.js'
+import { isMobile, isSafari } from './utils/ua.ts'
 
 /**
  * Safari mobile does not allow changing audio volume

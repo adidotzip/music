@@ -1,4 +1,4 @@
-import type { AppDB, AppStoreNames } from './database.js'
+import type { AppDB, AppStoreNames } from './database.ts'
 
 export type DbBaseChange<
 	StoreName extends AppStoreNames,

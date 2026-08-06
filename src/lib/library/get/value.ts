@@ -2,7 +2,7 @@ import { WeakLRUCache } from 'weak-lru-cache'
 import { type DbKey, getDatabase } from '$lib/db/database.ts'
 import { type DatabaseChangeDetails, onDatabaseChange } from '$lib/db/events.ts'
 import type { Album, Artist, Playlist, Track } from '$lib/library/types.ts'
-import { FAVORITE_PLAYLIST_ID, FAVORITE_PLAYLIST_UUID, type LibraryStoreName } from '../types.js'
+import { FAVORITE_PLAYLIST_ID, FAVORITE_PLAYLIST_UUID, type LibraryStoreName } from '../types.ts'
 
 const idToUuidMap = new Map<number, string>()
 
@@ -61,7 +61,7 @@ const trackConfig: QueryConfig<TrackData> = {
 					return {
 						...details,
 						type: 'track',
-						favorite: false
+						favorite: false,
 					} as TrackData
 				}
 			}
@@ -316,7 +316,6 @@ export const getLibraryValue = <Store extends LibraryStoreName, AllowEmpty exten
 ): Promise<GetLibraryValueResult<Store, AllowEmpty>> | GetLibraryValueResult<Store, AllowEmpty> => {
 	const key = getCacheKey(storeName, id)
 	const result = getCachedOrFetchValue(key, () => {
-
 		const config: LibraryConfigMap[Store] = libraryConfigMap[storeName]
 
 		return config.fetch(id)

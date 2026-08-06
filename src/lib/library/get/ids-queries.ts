@@ -6,8 +6,8 @@ import {
 	type PageQueryResult,
 	type QueryKey,
 } from '$lib/db/query/page-query.svelte.ts'
-import type { LibraryStoreName } from '../types.js'
-import { preloadLibraryValue } from './value.js'
+import type { LibraryStoreName } from '../types.ts'
+import { preloadLibraryValue } from './value.ts'
 
 export type { PageQueryResult } from '$lib/db/query/page-query.svelte.ts'
 export type { QueryResult } from '$lib/db/query/query.ts'

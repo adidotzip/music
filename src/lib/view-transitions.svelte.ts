@@ -2,8 +2,8 @@ import type { AfterNavigate, OnNavigate } from '@sveltejs/kit'
 import { browser } from '$app/environment'
 import { onNavigate } from '$app/navigation'
 import type { RouteId } from '$app/types'
-import { getActiveRipplesCount } from './attachments/ripple.js'
-import { wait } from './helpers/utils/wait.js'
+import { getActiveRipplesCount } from './attachments/ripple.ts'
+import { wait } from './helpers/utils/wait.ts'
 
 export type AppViewTransitionType = 'regular' | 'player' | 'library' | 'disabled'
 

@@ -3,7 +3,7 @@ import { type DatabaseChangeDetails, dispatchDatabaseChangedEvent } from '$lib/d
 import { lockDatabase } from '$lib/db/lock-database.ts'
 import { dbRemoveTracks } from '$lib/library/remove.ts'
 import type { Directory } from '$lib/library/types.ts'
-import { scanTracks } from './scan-tracks.js'
+import { scanTracks } from './scan-tracks.ts'
 
 export interface DirectoryStatus {
 	status: 'child' | 'existing' | 'parent'

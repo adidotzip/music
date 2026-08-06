@@ -2,7 +2,7 @@ import { getDatabase } from '$lib/db/database.ts'
 import { createPageQuery, type PageQueryResult } from '$lib/db/query/page-query.svelte.ts'
 import { defineViewTransitionMatcher } from '$lib/view-transitions.svelte.ts'
 import type { LayoutLoad } from './$types.js'
-import { getLayoutProps } from './layout-props.js'
+import { getLayoutProps } from './layout-props.ts'
 
 interface LoadResult {
 	historyTrackIds: PageQueryResult<number[]>

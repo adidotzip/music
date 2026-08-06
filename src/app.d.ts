@@ -81,4 +81,16 @@ declare global {
 	interface MouseEvent {
 		pointerType: 'mouse' | 'pen' | 'touch'
 	}
+
+	namespace svelteHTML {
+		interface IntrinsicElements {
+			'braccato-lyrics': {
+				source?: any
+				theme?: string
+				playing?: boolean
+				'current-time'?: number
+				class?: string
+			} & svelteHTML.HTMLAttributes<HTMLElement>
+		}
+	}
 }

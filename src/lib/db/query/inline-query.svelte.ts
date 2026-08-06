@@ -1,4 +1,4 @@
-import { type DatabaseChangeDetailsList, onDatabaseChange } from '../events.js'
+import { type DatabaseChangeDetailsList, onDatabaseChange } from '../events.ts'
 import type { QueryKey } from './base-query.svelte.js'
 
 export type { QueryKey, QueryResult } from './base-query.svelte.js'
