@@ -79,8 +79,35 @@ export class LyricsProvider {
             const response = await fetch(url, { signal })
             if (!response.ok) return null
 
-            const rawLyrics = await response.text()
-            if (!rawLyrics || rawLyrics.trim().length === 0) return null
+            const data = await response.json()
+            if (!data || !Array.isArray(data.lyrics) || data.lyrics.length === 0) return null
+
+            const formattedLines: string[] = []
+            for (const line of data.lyrics) {
+                if (typeof line.time !== 'number') continue
+                const text = line.text || ''
+
+                if (Array.isArray(line.syllabus) && line.syllabus.length > 0) {
+                    const duration = typeof line.duration === 'number' ? line.duration : 0
+                    const syllabusParts = line.syllabus.map((word: any) => {
+                        const wordText = word.text || ''
+                        const wordTime = typeof word.time === 'number' ? word.time : line.time
+                        const wordDur = typeof word.duration === 'number' ? word.duration : 0
+                        return `${wordText}(${wordTime},${wordDur})`
+                    }).join('')
+                    formattedLines.push(`[${line.time},${duration}]${syllabusParts}`)
+                } else {
+                    const timeMs = line.time
+                    const min = String(Math.floor(timeMs / 60000)).padStart(2, '0')
+                    const sec = String(Math.floor((timeMs % 60000) / 1000)).padStart(2, '0')
+                    const ms = String(Math.floor((timeMs % 1000) / 10)).padStart(2, '0')
+                    const timestamp = `[${min}:${sec}.${ms}]`
+                    formattedLines.push(`${timestamp}${text}`)
+                }
+            }
+
+            const rawLyrics = formattedLines.join('\n')
+            if (rawLyrics.trim().length === 0) return null
 
             return {
                 rawLyrics,
