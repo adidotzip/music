@@ -39,15 +39,15 @@ export class LyricsProvider {
             const bestMatch = searchData.results[0]
             if (!bestMatch || !bestMatch.id) return null
 
-            // Request QRC explicitly using format=qrc
-            const lyricUrl = `https://lyrics.imreallyadi.space/api/lyrics/${bestMatch.id}?format=qrc`
+            // Request TTML explicitly using format=ttml
+            const lyricUrl = `https://lyrics.imreallyadi.space/api/lyrics/${bestMatch.id}?format=ttml`
             const lyricResponse = await fetch(lyricUrl, { signal })
             if (!lyricResponse.ok) return null
 
             const lyricData = await lyricResponse.json()
             if (!lyricData.ok || !lyricData.lyric) return null
 
-            if (lyricData.lyric.format === 'qrc' && lyricData.lyric.rawContent) {
+            if ((lyricData.lyric.format === 'ttml' || lyricData.lyric.format === 'qrc') && lyricData.lyric.rawContent) {
                 return {
                     rawLyrics: lyricData.lyric.rawContent,
                     source: 'adi',
