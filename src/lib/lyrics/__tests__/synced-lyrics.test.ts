@@ -89,6 +89,9 @@ describe('Braccato Lyrics System', () => {
 				})
 			) // Adi search returns no match
 			.mockResolvedValueOnce(
+				new Response(null, { status: 404 })
+			) // LRC Mux fetch returns 404
+			.mockResolvedValueOnce(
 				jsonResponse({
 					syncedLyrics: '[00:01.00]LRCLib Line 1\n[00:02.00]LRCLib Line 2'
 				})
@@ -123,6 +126,7 @@ describe('Braccato Lyrics System', () => {
 					}
 				})
 			) // Adi returns plain lyrics
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRC Mux exact returns 404
 			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRCLib exact returns 404
 			.mockResolvedValueOnce(jsonResponse([])) // LRCLib search returns empty
 
@@ -134,7 +138,7 @@ describe('Braccato Lyrics System', () => {
 		if (result.status !== 'found' || !result.lyrics) {
 			throw new Error('Expected found with lyrics')
 		}
-		expect(result.source).toBe('plain')
+		expect(result.source).toBe('adi')
 		expect(result.syncType).toBe('plain')
 		expect(result.lyrics[0]?.words).toBe('Plain lyric line 1')
 	})

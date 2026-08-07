@@ -31,6 +31,11 @@
     const player = setPlayerStoreContext(new PlayerStore())
     const dialogs = setDialogsStoreContext(new DialogsStore())
 
+    if (browser) {
+        (window as any).player = player;
+        (window as any).dialogs = dialogs;
+    }
+
     setupTheme()
     setupGlobalMenu()
     setupAppInstallPromptListeners()

@@ -70,6 +70,52 @@ export class LyricsProvider {
         }
     }
 
+    static async fetchFromCustomSource(
+        track: TrackData,
+        customSource: { url: string; name: string },
+        signal?: AbortSignal
+    ): Promise<ProviderResponse | null> {
+        try {
+            let urlStr = customSource.url
+            urlStr = urlStr.replace('{title}', encodeURIComponent(track.name))
+            urlStr = urlStr.replace('{artist}', encodeURIComponent(formatArtists(track.artists)))
+            urlStr = urlStr.replace('{album}', encodeURIComponent(track.album))
+            urlStr = urlStr.replace('{duration}', encodeURIComponent(String(Math.round(track.duration))))
+
+            const url = new URL(urlStr)
+            const response = await fetch(url, { signal })
+            if (!response.ok) return null
+
+            const contentType = response.headers.get('content-type') || ''
+            if (contentType.includes('application/json')) {
+                const data = await response.json()
+                const rawLyrics = data.syncedLyrics || data.plainLyrics || data.lyrics || data.rawLyrics || data.rawContent || data.content
+                if (typeof rawLyrics === 'string') {
+                    const isPlainOnly = !rawLyrics.includes('[') && !rawLyrics.includes('<tt')
+                    return {
+                        rawLyrics,
+                        source: 'custom' as any,
+                        isPlainOnly
+                    }
+                }
+            } else {
+                const rawLyrics = await response.text()
+                if (rawLyrics.trim().length > 0) {
+                    const isPlainOnly = !rawLyrics.includes('[') && !rawLyrics.includes('<tt')
+                    return {
+                        rawLyrics,
+                        source: 'custom' as any,
+                        isPlainOnly
+                    }
+                }
+            }
+            return null
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
     static async fetchFromLrcmux(track: TrackData, signal?: AbortSignal): Promise<ProviderResponse | null> {
         try {
             const url = new URL('https://api.lrcmux.dev/compat/kpoe/v2/lyrics/get')
