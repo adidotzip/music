@@ -7,11 +7,59 @@ export type FileEntity = File | FileSystemFileHandle
 const supportedExtensions = ['aac', 'mp3', 'ogg', 'wav', 'flac', 'm4a', 'opus', 'webm']
 const supportedExtensionsWithDot = supportedExtensions.map((ext) => `.${ext}`)
 
-const isSupportedFile = (fileName: string): boolean => {
+export const isSupportedFile = (fileName: string): boolean => {
 	// On Windows .MP3 and .mp3 are both valid file extensions
 	const fileNameLower = fileName.toLowerCase()
 
 	return supportedExtensionsWithDot.some((ext) => fileNameLower.endsWith(ext))
+}
+
+export const getFilesFromEntry = async (entry: any): Promise<File[]> => {
+	if (entry.isFile) {
+		return new Promise<File[]>((resolve) => {
+			entry.file(
+				(file: File) => {
+					resolve(isSupportedFile(file.name) ? [file] : [])
+				},
+				() => resolve([]),
+			)
+		})
+	} else if (entry.isDirectory) {
+		const dirReader = entry.createReader()
+		const allFiles: File[] = []
+
+		const readAllEntries = (): Promise<any[]> => {
+			return new Promise((resolve) => {
+				const entriesList: any[] = []
+				const read = () => {
+					dirReader.readEntries(
+						(results: any[]) => {
+							if (results.length === 0) {
+								resolve(entriesList)
+							} else {
+								entriesList.push(...results)
+								read()
+							}
+						},
+						() => resolve(entriesList),
+					)
+				}
+				read()
+			})
+		}
+
+		try {
+			const entries = await readAllEntries()
+			for (const childEntry of entries) {
+				const childFiles = await getFilesFromEntry(childEntry)
+				allFiles.push(...childFiles)
+			}
+		} catch (e) {
+			console.error(e)
+		}
+		return allFiles
+	}
+	return []
 }
 
 export const getFileHandlesRecursively = async (
