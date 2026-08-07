@@ -2,7 +2,7 @@
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import Spinner from '$lib/components/Spinner.svelte'
 	import LyricsRenderer from '$lib/lyrics/LyricsRenderer.svelte'
-	import { LyricsService, type ServiceLyricsResult } from '$lib/lyrics/LyricsService.ts'
+	import { LyricsService, type ServiceLyricsResult, getSourceDisplayName } from '$lib/lyrics/LyricsService.ts'
 	import type { TrackData } from '$lib/library/get/value-queries.ts'
 
 	interface Props {
@@ -96,6 +96,13 @@
 				audioElement={player.audioElement}
 				class="h-full w-full"
 			/>
+			{#if result.source}
+				<div
+					class="absolute bottom-4 right-4 z-20 rounded-full border border-onSurface/10 bg-surfaceContainerHighest/85 px-3 py-1 text-label-sm text-onSurfaceVariant backdrop-blur-md shadow-sm"
+				>
+					Source: {getSourceDisplayName(result.source)}
+				</div>
+			{/if}
 		</div>
 	{:else}
 		{@render emptyState(
