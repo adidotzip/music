@@ -45,7 +45,7 @@
 		}
 	})
 
-	// Inject secondary lyrics (translations/romanizations) & agent alignment tags
+	// Inject secondary lyrics & apply agent alignments directly to DOM elements
 	$effect(() => {
 		if (!el) return
 
@@ -55,15 +55,33 @@
 			if (!renderer || !renderer.lines || !lyrics) return
 
 			let requiresRelayout = false
+
 			for (const [index, line] of renderer.lines.entries()) {
 				const item = lyrics[index]
-				if (!item) continue
+				if (!item || !line.lyricElement) continue
 
-				// Set singer alignment attribute
+				// Direct inline DOM manipulation (bypasses Shadow DOM & CSS scope)
 				if (item.agent) {
+					const isRightAligned = item.agent === 'v2' || item.agent === 'v3'
+					const alignValue = isRightAligned ? 'end' : 'start'
+					const flexAlign = isRightAligned ? 'flex-end' : 'flex-start'
+
 					line.lyricElement.setAttribute('data-agent', item.agent)
-					// Also set directly as class for maximum CSS priority
-					line.lyricElement.classList.add(`agent-${item.agent}`)
+
+					// Set inline styles directly on the DOM node
+					line.lyricElement.style.setProperty('text-align', alignValue, 'important')
+					line.lyricElement.style.setProperty('justify-content', flexAlign, 'important')
+					line.lyricElement.style.setProperty('align-items', flexAlign, 'important')
+
+					if (isRightAligned) {
+						line.lyricElement.style.setProperty('padding-inline-start', '1.5rem', 'important')
+						line.lyricElement.style.setProperty('padding-inline-end', '0px', 'important')
+						line.lyricElement.style.setProperty('margin-inline-start', 'auto', 'important')
+					} else {
+						line.lyricElement.style.setProperty('padding-inline-end', '1.5rem', 'important')
+						line.lyricElement.style.setProperty('padding-inline-start', '0px', 'important')
+						line.lyricElement.style.setProperty('margin-inline-end', 'auto', 'important')
+					}
 				}
 
 				// Inject translation
@@ -86,9 +104,8 @@
 				}
 			}
 
-			if (requiresRelayout) {
-				renderer.relayout()
-			}
+			// Force relayout so renderer updates internal line width/scroll measurements
+			renderer.relayout()
 		}
 
 		el.addEventListener('braccato:lyrics-loaded', handleLoaded)
@@ -163,16 +180,6 @@
 		--blyrics-glow-color: rgba(255, 255, 255, 0.15);
 	}
 
-	/* Base line overrides */
-	:global(braccato-lyrics .blyrics--line) {
-		display: block !important;
-		width: 100% !important;
-		box-sizing: border-box !important;
-		font-weight: 800;
-		letter-spacing: -0.025em;
-		will-change: transform;
-	}
-
 	:global(.blyrics--translated) {
 		display: block;
 		margin-top: 0.25rem;
@@ -197,24 +204,5 @@
 	:global(.dark .blyrics--romanized),
 	:global([data-theme='dark'] .blyrics--romanized) {
 		color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
-	}
-
-	/* Specificity fix using element scope & class fallback */
-	:global(braccato-lyrics .blyrics--line[data-agent='v1']),
-	:global(braccato-lyrics .blyrics--line[data-agent='v1000']),
-	:global(braccato-lyrics .blyrics--line.agent-v1),
-	:global(braccato-lyrics .blyrics--line.agent-v1000) {
-		text-align: start !important;
-		padding-inline-end: 1.5rem !important;
-		padding-inline-start: 0 !important;
-	}
-
-	:global(braccato-lyrics .blyrics--line[data-agent='v2']),
-	:global(braccato-lyrics .blyrics--line[data-agent='v3']),
-	:global(braccato-lyrics .blyrics--line.agent-v2),
-	:global(braccato-lyrics .blyrics--line.agent-v3) {
-		text-align: end !important;
-		padding-inline-start: 1.5rem !important;
-		padding-inline-end: 0 !important;
 	}
 </style>
