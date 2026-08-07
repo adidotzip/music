@@ -4,6 +4,7 @@
 	import '@braccato/core/styles/lyrics.css'
 	import '@braccato/core/styles/instrumental.css'
 	import type { Lyric } from '@braccato/parsers'
+	import { getLocale } from '$paraglide/runtime'
 
 	interface Props {
 		lyrics: Lyric[] | null
@@ -67,12 +68,14 @@
 					else if (item.agent === 'v1000') label = 'Duet'
 					else label = item.agent.toUpperCase()
 
+					line.lyricElement.setAttribute('data-agent', item.agent)
 					line.lyricElement.setAttribute('data-agent-label', label)
 					modified = true
 				}
 
 				// Inject translation
-				if (item.translation?.text) {
+				const isChinese = getLocale().startsWith('zh')
+				if (item.translation?.text && isChinese) {
 					injectTranslation(document, line.lyricElement, item.translation.text)
 					modified = true
 				}
