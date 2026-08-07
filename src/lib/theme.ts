@@ -1,7 +1,7 @@
 import {
 	argbFromHex,
-	Cam16,
-	HctSolver,
+	Hct,
+	SchemeVibrant,
 	hexFromArgb,
 	// biome-ignore lint/style/noRestrictedImports: Main module for theme utilities
 } from '@material/material-color-utilities'
@@ -92,31 +92,20 @@ const COLOR_TOKENS_GENERATION_ENTRIES = Object.entries(COLOR_TOKENS_GENERATION_M
 	PaletteTokenInput,
 ][]
 
-const createTonalPalette = (hue: number, chroma: number) => ({
-	tone: (tone: number) => HctSolver.solveToInt(hue, chroma, tone),
-})
-
-interface TonalPalette {
-	tone: (argb: number) => number
-}
-
 type ThemeEntry = [key: PaletteToken, hexValue: string]
 
 /** @public */
 export const getThemePaletteRgbEntries = (argb: number, isDark: boolean): ThemeEntry[] => {
-	const cam16 = Cam16.fromInt(argb)
-	const hue = cam16.hue
-	const chroma = cam16.chroma
+	const hct = Hct.fromInt(argb)
+	const scheme = new SchemeVibrant(hct, isDark, 0.0)
 
-	// We do not use material-color-utilities CorePalette because of large bundle size
-	// and because its color scheme is bit outdated with the current design guidelines
-	const palette: Record<Tone, TonalPalette> = {
-		a1: createTonalPalette(hue, Math.max(48, chroma)),
-		a2: createTonalPalette(hue, 16),
-		a3: createTonalPalette(hue + 60, 24),
-		n1: createTonalPalette(hue, 6),
-		n2: createTonalPalette(hue, 8),
-		error: createTonalPalette(25, 84),
+	const palette = {
+		a1: scheme.primaryPalette,
+		a2: scheme.secondaryPalette,
+		a3: scheme.tertiaryPalette,
+		n1: scheme.neutralPalette,
+		n2: scheme.neutralVariantPalette,
+		error: scheme.errorPalette,
 	}
 
 	const transformedEntries = COLOR_TOKENS_GENERATION_ENTRIES.map(([key, value]): ThemeEntry => {
