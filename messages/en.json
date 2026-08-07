@@ -192,5 +192,7 @@
 	"validationMaxLength": "At most {max} characters are allowed",
 	"validationMinLength": "At least {min} characters are required",
 	"validationRequired": "Field is required",
-	"year": "Year"
+	"year": "Year",
+	"dragAndDropFilesTitle": "Drop music files or folders here",
+	"dragAndDropFilesDesc": "Import them directly into your library"
 }
