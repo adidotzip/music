@@ -45,7 +45,7 @@
 		}
 	})
 
-	// Inject secondary lyrics & apply agent alignments directly to DOM elements
+	// Inject secondary lyrics (translations/romanizations) & agent alignment tags
 	$effect(() => {
 		if (!el) return
 
@@ -54,41 +54,22 @@
 			const renderer = el.renderer
 			if (!renderer || !renderer.lines || !lyrics) return
 
-			let requiresRelayout = false
-
+			let modified = false
 			for (const [index, line] of renderer.lines.entries()) {
 				const item = lyrics[index]
-				if (!item || !line.lyricElement) continue
+				if (!item) continue
 
-				// Direct inline DOM manipulation (bypasses Shadow DOM & CSS scope)
+				// Set singer alignment attribute
 				if (item.agent) {
-					const isRightAligned = item.agent === 'v2' || item.agent === 'v3'
-					const alignValue = isRightAligned ? 'end' : 'start'
-					const flexAlign = isRightAligned ? 'flex-end' : 'flex-start'
-
 					line.lyricElement.setAttribute('data-agent', item.agent)
-
-					// Set inline styles directly on the DOM node
-					line.lyricElement.style.setProperty('text-align', alignValue, 'important')
-					line.lyricElement.style.setProperty('justify-content', flexAlign, 'important')
-					line.lyricElement.style.setProperty('align-items', flexAlign, 'important')
-
-					if (isRightAligned) {
-						line.lyricElement.style.setProperty('padding-inline-start', '1.5rem', 'important')
-						line.lyricElement.style.setProperty('padding-inline-end', '0px', 'important')
-						line.lyricElement.style.setProperty('margin-inline-start', 'auto', 'important')
-					} else {
-						line.lyricElement.style.setProperty('padding-inline-end', '1.5rem', 'important')
-						line.lyricElement.style.setProperty('padding-inline-start', '0px', 'important')
-						line.lyricElement.style.setProperty('margin-inline-end', 'auto', 'important')
-					}
+					modified = true
 				}
 
 				// Inject translation
 				const isChinese = getLocale().startsWith('zh')
 				if (item.translation?.text && isChinese) {
 					injectTranslation(document, line.lyricElement, item.translation.text)
-					requiresRelayout = true
+					modified = true
 				}
 
 				// Inject romanization
@@ -100,15 +81,17 @@
 						item.romanization,
 						item.timedRomanization
 					)
-					requiresRelayout = true
+					modified = true
 				}
 			}
 
-			// Force relayout so renderer updates internal line width/scroll measurements
-			renderer.relayout()
+			if (modified) {
+				renderer.relayout()
+			}
 		}
 
 		el.addEventListener('braccato:lyrics-loaded', handleLoaded)
+		// Run once on load if already loaded
 		if (el.renderer && el.renderer.lines) {
 			void handleLoaded()
 		}
@@ -139,7 +122,7 @@
 
 	:global(.blyrics-container) {
 		font-family: var(--font-sans);
-		text-align: start;
+		text-align: left;
 
 		padding-top: var(--blyrics-padding-top, 50vh);
 		padding-bottom: var(--blyrics-padding-bottom, 50vh);
@@ -148,10 +131,12 @@
 		--blyrics-line-height: 1.35;
 		--blyrics-padding: 1.25rem;
 
+		/* Let Braccato animate these */
 		--blyrics-scale: 0.97;
 		--blyrics-active-scale: 1.02;
 		--blyrics-lyric-scroll-duration: 900ms;
 
+		/* Colors */
 		--blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(0, 0, 0, 0.45));
 		--blyrics-lyric-active-color: var(--lyric-active-fill, #140c0b);
 		--blyrics-glow-color: var(--lyric-active-unfill, rgba(0, 0, 0, 0.12));
@@ -175,9 +160,16 @@
 
 	:global(.dark .blyrics-container),
 	:global([data-theme='dark'] .blyrics-container) {
-		--blyrics-lyric-inactive-color: rgba(255, 255, 255, 0.45);
-		--blyrics-lyric-active-color: #ffffff;
-		--blyrics-glow-color: rgba(255, 255, 255, 0.15);
+		--blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(255, 255, 255, 0.45));
+		--blyrics-lyric-active-color: var(--lyric-active-fill, #f1dedc);
+		--blyrics-glow-color: var(--lyric-active-unfill, rgba(255, 255, 255, 0.22));
+	}
+
+	/* Typography only. No animation overrides. */
+	:global(.blyrics--line) {
+		font-weight: 800;
+		letter-spacing: -0.025em;
+		will-change: transform;
 	}
 
 	:global(.blyrics--translated) {
@@ -204,5 +196,19 @@
 	:global(.dark .blyrics--romanized),
 	:global([data-theme='dark'] .blyrics--romanized) {
 		color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
+	}
+
+	/* Multi-Singer Alignment */
+	:global(.blyrics--line[data-agent='v1']) {
+		text-align: left;
+	}
+
+	:global(.blyrics--line[data-agent='v2']) {
+		text-align: right;
+	}
+
+	:global(.blyrics--line[data-agent='v3']),
+	:global(.blyrics--line[data-agent='v1000']) {
+		text-align: center;
 	}
 </style>
