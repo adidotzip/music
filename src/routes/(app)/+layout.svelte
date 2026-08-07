@@ -10,8 +10,9 @@
     import MenuRenderer, { setupGlobalMenu } from '$lib/components/menu/MenuRenderer.svelte'
     import PlayerOverlay from '$lib/components/PlayerOverlay.svelte'
     import SnackbarRenderer from '$lib/components/snackbar/SnackbarRenderer.svelte'
-    import { getFilesFromDataTransfer } from '$lib/helpers/file-utils.ts'
+    import { getFilesFromDataTransfer } from '$lib/helpers/file-system.ts'
     import { isElementTextInput } from '$lib/helpers/input.ts'
+    import { importLegacyFiles } from '$lib/library/scan-actions/directories.ts'
     import { setupOverlaySnippets } from '$lib/layout-bottom-bar.svelte'
     import { DialogsStore } from '$lib/stores/dialogs/store.svelte.ts'
     import { setDialogsStoreContext } from '$lib/stores/dialogs/use-store.ts'
@@ -70,7 +71,7 @@
 
         const files = await getFilesFromDataTransfer(e.dataTransfer)
         if (files.length > 0) {
-            console.log('Supported audio files dropped:', files)
+            await importLegacyFiles(files)
         }
     }
 
