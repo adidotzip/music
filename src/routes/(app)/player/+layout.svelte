@@ -292,7 +292,7 @@
 		<div class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col">
 			<div class={['flex grow', page.route.id !== '/(app)/player/lyrics' && 'p-4']}>
 				{#if page.route.id === '/(app)/player/lyrics'}
-					<SyncedLyrics track={activeTrack} currentTimeMs={player.currentTime * 1000} />
+					<SyncedLyrics track={activeTrack} currentTimeMs={player.currentTime * 1000} {isCompact} />
 				{:else if isSelectedTabQueue}
 					{#if player.isQueueEmpty}
 						{@render emptyList(m.playerQueueEmpty())}
