@@ -111,7 +111,7 @@ export const getThemePaletteRgbEntries = (argb: number, isDark: boolean): ThemeE
 	// We do not use material-color-utilities CorePalette because of large bundle size
 	// and because its color scheme is bit outdated with the current design guidelines
 	const palette: Record<Tone, TonalPalette> = {
-		a1: createTonalPalette(hue, Math.max(48, chroma)),
+		a1: createTonalPalette(hue, 36),
 		a2: createTonalPalette(hue, 16),
 		a3: createTonalPalette(hue + 60, 24),
 		n1: createTonalPalette(hue, 6),

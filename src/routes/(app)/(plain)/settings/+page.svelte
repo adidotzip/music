@@ -43,10 +43,6 @@
 			name: m.settingsThemeDark(),
 			value: 'dark',
 		},
-		{
-			name: m.settingsThemeLight(),
-			value: 'light',
-		},
 	]
 
 	const motionOptions: { name: string; value: AppMotionOption }[] = [

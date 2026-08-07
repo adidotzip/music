@@ -3,10 +3,10 @@
 	--color-*: initial;
 	--color-transparent: transparent;
 	--color-current: currentColor;
-	--color-primary: light-dark(#b12c24, #ffb4aa);
-	--color-onPrimary: light-dark(#ffffff, #690003);
-	--color-primaryContainer: light-dark(#ffdad5, #8f110f);
-	--color-onPrimaryContainer: light-dark(#410001, #ffdad5);
+	--color-primary: light-dark(#904a42, #ffb4aa);
+	--color-onPrimary: light-dark(#ffffff, #561e18);
+	--color-primaryContainer: light-dark(#ffdad5, #73342c);
+	--color-onPrimaryContainer: light-dark(#3b0906, #ffdad5);
 	--color-secondary: light-dark(#775652, #e7bdb7);
 	--color-onSecondary: light-dark(#ffffff, #442926);
 	--color-secondaryContainer: light-dark(#ffdad5, #5d3f3b);
@@ -37,5 +37,5 @@
 	--color-scrim: light-dark(#000000, #000000);
 	--color-inverseSurface: light-dark(#392e2c, #f1dedc);
 	--color-inverseOnSurface: light-dark(#ffedea, #231918);
-	--color-inversePrimary: light-dark(#ffb4aa, #b12c24);
+	--color-inversePrimary: light-dark(#ffb4aa, #904a42);
 }
