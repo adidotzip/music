@@ -59,19 +59,21 @@
 				const item = lyrics[index]
 				if (!item) continue
 
-				// Set singer alignment attribute (pure CSS, no DOM layout shift)
+				// Set singer alignment attribute
 				if (item.agent) {
 					line.lyricElement.setAttribute('data-agent', item.agent)
+					// Also set directly as class for maximum CSS priority
+					line.lyricElement.classList.add(`agent-${item.agent}`)
 				}
 
-				// Inject translation (modifies DOM nodes)
+				// Inject translation
 				const isChinese = getLocale().startsWith('zh')
 				if (item.translation?.text && isChinese) {
 					injectTranslation(document, line.lyricElement, item.translation.text)
 					requiresRelayout = true
 				}
 
-				// Inject romanization (modifies DOM nodes)
+				// Inject romanization
 				if (item.romanization) {
 					injectRomanization(
 						document,
@@ -84,14 +86,12 @@
 				}
 			}
 
-			// Only trigger relayout if extra DOM nodes were added
 			if (requiresRelayout) {
 				renderer.relayout()
 			}
 		}
 
 		el.addEventListener('braccato:lyrics-loaded', handleLoaded)
-		// Run once on load if already loaded
 		if (el.renderer && el.renderer.lines) {
 			void handleLoaded()
 		}
@@ -131,12 +131,10 @@
 		--blyrics-line-height: 1.35;
 		--blyrics-padding: 1.25rem;
 
-		/* Let Braccato animate these */
 		--blyrics-scale: 0.97;
 		--blyrics-active-scale: 1.02;
 		--blyrics-lyric-scroll-duration: 900ms;
 
-		/* Colors */
 		--blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(0, 0, 0, 0.45));
 		--blyrics-lyric-active-color: var(--lyric-active-fill, #140c0b);
 		--blyrics-glow-color: var(--lyric-active-unfill, rgba(0, 0, 0, 0.12));
@@ -165,8 +163,11 @@
 		--blyrics-glow-color: rgba(255, 255, 255, 0.15);
 	}
 
-	/* Typography only. Preservation of Braccato internal transforms */
-	:global(.blyrics--line) {
+	/* Base line overrides */
+	:global(braccato-lyrics .blyrics--line) {
+		display: block !important;
+		width: 100% !important;
+		box-sizing: border-box !important;
 		font-weight: 800;
 		letter-spacing: -0.025em;
 		will-change: transform;
@@ -198,16 +199,22 @@
 		color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
 	}
 
-	/* Safe Area Alignment Offsets without Transform Collisions */
-	:global(.blyrics--line[data-agent='v1']),
-	:global(.blyrics--line[data-agent='v1000']) {
-		text-align: start;
-		padding-inline-end: 1rem;
+	/* Specificity fix using element scope & class fallback */
+	:global(braccato-lyrics .blyrics--line[data-agent='v1']),
+	:global(braccato-lyrics .blyrics--line[data-agent='v1000']),
+	:global(braccato-lyrics .blyrics--line.agent-v1),
+	:global(braccato-lyrics .blyrics--line.agent-v1000) {
+		text-align: start !important;
+		padding-inline-end: 1.5rem !important;
+		padding-inline-start: 0 !important;
 	}
 
-	:global(.blyrics--line[data-agent='v2']),
-	:global(.blyrics--line[data-agent='v3']) {
-		text-align: end;
-		padding-inline-start: 1rem;
+	:global(braccato-lyrics .blyrics--line[data-agent='v2']),
+	:global(braccato-lyrics .blyrics--line[data-agent='v3']),
+	:global(braccato-lyrics .blyrics--line.agent-v2),
+	:global(braccato-lyrics .blyrics--line.agent-v3) {
+		text-align: end !important;
+		padding-inline-start: 1.5rem !important;
+		padding-inline-end: 0 !important;
 	}
 </style>
