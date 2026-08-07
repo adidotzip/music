@@ -5,93 +5,125 @@ import { LyricsCache, type CachedLyricsResult } from './LyricsCache.ts'
 
 export type ServiceLyricsResult = CachedLyricsResult
 
+export function getSourceDisplayName(source?: string): string {
+    if (!source) return 'Unknown'
+    const s = source.toLowerCase()
+    if (s === 'adi') return 'Adi Lyrics'
+    if (s === 'lrcmux') return 'LRC Mux'
+    if (s === 'lrclib') return 'LRCLIB'
+    if (s === 'plain') return 'Lyrics+'
+    if (s === 'lyrics-plus' || s === 'lyricsplus') return 'Lyrics+'
+    if (s === 'musixmatch') return 'Musixmatch'
+    if (s === 'apple' || s === 'apple-music') return 'Apple Music'
+    if (s === 'unison') return 'Unison'
+    return source.charAt(0).toUpperCase() + source.slice(1)
+}
+
 export class LyricsService {
-	static async fetchLyrics(track: TrackData, signal?: AbortSignal): Promise<ServiceLyricsResult> {
-		const cached = await LyricsCache.get(track.id)
-		if (cached) {
-			return cached
-		}
+    static async fetchLyrics(track: TrackData, signal?: AbortSignal): Promise<ServiceLyricsResult> {
+        const cached = await LyricsCache.get(track.id)
+        if (cached) {
+            return cached
+        }
 
-		try {
-			const durationMs = Math.round(track.duration) * 1000
-			let adiPlain: string | null = null
+        try {
+            const durationMs = Math.round(track.duration) * 1000
+            let plainLyrics: { content: string; source: string } | null = null
 
-			// A. Query Adi Lyrics
-			try {
-				const adiResponse = await LyricsProvider.fetchFromAdi(track, signal)
-				if (adiResponse) {
-					if (!adiResponse.isPlainOnly) {
-						// Found QRC synchronized lyrics from Adi Lyrics
-						const lyrics = LyricsParser.parse(adiResponse.rawLyrics, durationMs)
-						const result: ServiceLyricsResult = {
-							status: 'found',
-							source: 'adi',
-							lyrics,
-							syncType: 'karaoke'
-						}
-						await LyricsCache.set(track.id, result)
-						return result
-					} else {
-						adiPlain = adiResponse.rawLyrics
-					}
-				}
-			} catch (e) {
-				if (e instanceof Error && e.name === 'AbortError') throw e
-				// Continue to fallback
-			}
+            // A. Query Adi Lyrics (Primary)
+            try {
+                const adiResponse = await LyricsProvider.fetchFromAdi(track, signal)
+                if (adiResponse) {
+                    if (!adiResponse.isPlainOnly) {
+                        const lyrics = LyricsParser.parse(adiResponse.rawLyrics, durationMs)
+                        const result: ServiceLyricsResult = {
+                            status: 'found',
+                            source: 'adi',
+                            lyrics,
+                            syncType: 'karaoke'
+                        }
+                        await LyricsCache.set(track.id, result)
+                        return result
+                    } else {
+                        plainLyrics = { content: adiResponse.rawLyrics, source: 'adi' }
+                    }
+                }
+            } catch (e) {
+                if (e instanceof Error && e.name === 'AbortError') throw e
+            }
 
-			// B. Query LRCLib
-			try {
-				const lrclibResponse = await LyricsProvider.fetchFromLrclib(track, signal)
-				if (lrclibResponse) {
-					if (lrclibResponse.rawLyrics === 'Instrumental') {
-						const result: ServiceLyricsResult = { status: 'instrumental' }
-						await LyricsCache.set(track.id, result)
-						return result
-					}
+            // B. Query LRCMux (Secondary)
+            try {
+                const lrcmuxResponse = await LyricsProvider.fetchFromLrcmux(track, signal)
+                if (lrcmuxResponse) {
+                    if (!lrcmuxResponse.isPlainOnly) {
+                        const lyrics = LyricsParser.parse(lrcmuxResponse.rawLyrics, durationMs)
+                        const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+                        const result: ServiceLyricsResult = {
+                            status: 'found',
+                            source: 'lrcmux',
+                            lyrics,
+                            syncType: hasWordTiming ? 'karaoke' : 'line'
+                        }
+                        await LyricsCache.set(track.id, result)
+                        return result
+                    } else if (!plainLyrics) {
+                        plainLyrics = { content: lrcmuxResponse.rawLyrics, source: 'lrcmux' }
+                    }
+                }
+            } catch (e) {
+                if (e instanceof Error && e.name === 'AbortError') throw e
+            }
 
-					if (!lrclibResponse.isPlainOnly) {
-						// Found synchronized lyrics from LRCLib
-						const lyrics = LyricsParser.parse(lrclibResponse.rawLyrics, durationMs)
-						const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
-						const result: ServiceLyricsResult = {
-							status: 'found',
-							source: 'lrclib',
-							lyrics,
-							syncType: hasWordTiming ? 'karaoke' : 'line'
-						}
-						await LyricsCache.set(track.id, result)
-						return result
-					} else if (!adiPlain) {
-						// If LRCLib only has plain lyrics, and we didn't get plain from Adi, keep LRCLib plain
-						adiPlain = lrclibResponse.rawLyrics
-					}
-				}
-			} catch (e) {
-				if (e instanceof Error && e.name === 'AbortError') throw e
-				// Continue to fallback
-			}
+            // C. Query LRCLib (Tertiary)
+            try {
+                const lrclibResponse = await LyricsProvider.fetchFromLrclib(track, signal)
+                if (lrclibResponse) {
+                    if (lrclibResponse.rawLyrics === 'Instrumental') {
+                        const result: ServiceLyricsResult = { status: 'instrumental' }
+                        await LyricsCache.set(track.id, result)
+                        return result
+                    }
 
-			// C. Fall back to Plain lyrics if found
-			if (adiPlain) {
-				const lyrics = LyricsParser.parse(adiPlain, durationMs)
-				const result: ServiceLyricsResult = {
-					status: 'found',
-					source: 'plain',
-					lyrics,
-					syncType: 'plain'
-				}
-				await LyricsCache.set(track.id, result)
-				return result
-			}
+                    if (!lrclibResponse.isPlainOnly) {
+                        const lyrics = LyricsParser.parse(lrclibResponse.rawLyrics, durationMs)
+                        const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+                        const result: ServiceLyricsResult = {
+                            status: 'found',
+                            source: 'lrclib',
+                            lyrics,
+                            syncType: hasWordTiming ? 'karaoke' : 'line'
+                        }
+                        await LyricsCache.set(track.id, result)
+                        return result
+                    } else if (!plainLyrics) {
+                        plainLyrics = { content: lrclibResponse.rawLyrics, source: 'lrclib' }
+                    }
+                }
+            } catch (e) {
+                if (e instanceof Error && e.name === 'AbortError') throw e
+            }
 
-			const notFoundResult: ServiceLyricsResult = { status: 'not-found' }
-			await LyricsCache.set(track.id, notFoundResult)
-			return notFoundResult
+            // D. Fall back to Plain lyrics if found from any provider
+            if (plainLyrics) {
+                const lyrics = LyricsParser.parse(plainLyrics.content, durationMs)
+                const result: ServiceLyricsResult = {
+                    status: 'found',
+                    source: plainLyrics.source,
+                    lyrics,
+                    syncType: 'plain'
+                }
+                await LyricsCache.set(track.id, result)
+                return result
+            }
 
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return { status: 'error' }
-		}
-	}
+            const notFoundResult: ServiceLyricsResult = { status: 'not-found' }
+            await LyricsCache.set(track.id, notFoundResult)
+            return notFoundResult
+
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return { status: 'error' }
+        }
+    }
 }
