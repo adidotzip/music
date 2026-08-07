@@ -21,7 +21,7 @@ export class LyricsProvider {
         return null
     }
 
-    // --- 1. PRIMARY PROVIDER ---
+    
     static async fetchFromAdi(track: TrackData, signal?: AbortSignal): Promise<ProviderResponse | null> {
         try {
             const query = `${track.name} ${formatArtists(track.artists)}`
@@ -70,7 +70,6 @@ export class LyricsProvider {
         }
     }
 
-    // --- 2. SECONDARY PROVIDER ---
     static async fetchFromLrcmux(track: TrackData, signal?: AbortSignal): Promise<ProviderResponse | null> {
         try {
             const url = new URL('https://api.lrcmux.dev/compat/kpoe/v2/lyrics/get')
@@ -94,7 +93,7 @@ export class LyricsProvider {
         }
     }
 
-    // --- 3. TERTIARY PROVIDER ---
+
     static async fetchFromLrclib(track: TrackData, signal?: AbortSignal): Promise<ProviderResponse | null> {
         const durationSeconds = Math.round(track.duration)
         try {
