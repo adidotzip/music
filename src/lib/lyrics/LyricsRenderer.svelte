@@ -17,6 +17,7 @@
 		| (HTMLElement & {
 				lyrics: Lyric[] | null
 				source: HTMLAudioElement | string | null
+				renderer: any
 		  })
 		| undefined = $state()
 
@@ -40,6 +41,68 @@
 
 		if (el.source !== audioElement) {
 			el.source = audioElement
+		}
+	})
+
+	// Inject secondary lyrics (translations/romanizations) & artist labels
+	$effect(() => {
+		if (!el) return
+
+		const handleLoaded = async () => {
+			const { injectTranslation, injectRomanization } = await import('@braccato/core')
+			const renderer = el.renderer
+			if (!renderer || !renderer.lines || !lyrics) return
+
+			let modified = false
+			for (const [index, line] of renderer.lines.entries()) {
+				const item = lyrics[index]
+				if (!item) continue
+
+				// Set singer label
+				if (item.agent) {
+					let label = ''
+					if (item.agent === 'v1') label = 'Singer 1'
+					else if (item.agent === 'v2') label = 'Singer 2'
+					else if (item.agent === 'v3') label = 'Singer 3'
+					else if (item.agent === 'v1000') label = 'Duet'
+					else label = item.agent.toUpperCase()
+
+					line.lyricElement.setAttribute('data-agent-label', label)
+					modified = true
+				}
+
+				// Inject translation
+				if (item.translation?.text) {
+					injectTranslation(document, line.lyricElement, item.translation.text)
+					modified = true
+				}
+
+				// Inject romanization
+				if (item.romanization) {
+					injectRomanization(
+						document,
+						line.lyricElement,
+						line,
+						item.romanization,
+						item.timedRomanization
+					)
+					modified = true
+				}
+			}
+
+			if (modified) {
+				renderer.relayout()
+			}
+		}
+
+		el.addEventListener('braccato:lyrics-loaded', handleLoaded)
+		// Run once on load if already loaded
+		if (el.renderer && el.renderer.lines) {
+			void handleLoaded()
+		}
+
+		return () => {
+			el.removeEventListener('braccato:lyrics-loaded', handleLoaded)
 		}
 	})
 </script>
@@ -138,5 +201,80 @@
 	:global(.dark .blyrics--romanized),
 	:global([data-theme='dark'] .blyrics--romanized) {
 		color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
+	}
+
+	/* Multi-Singer Styling & Vocalist Labels */
+	:global(.blyrics--line[data-agent]::before) {
+		content: attr(data-agent-label);
+		display: inline-block;
+		margin-right: 0.5rem;
+		font-size: 0.55em;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 0.125rem 0.5rem;
+		border-radius: var(--radius-sm, 0.25rem);
+		vertical-align: middle;
+		opacity: 0.8;
+	}
+
+	:global(.blyrics--line[data-agent="v1"]::before) {
+		background: rgba(0, 0, 0, 0.05);
+		color: var(--blyrics-lyric-active-color);
+	}
+	:global(.dark .blyrics--line[data-agent="v1"]::before),
+	:global([data-theme='dark'] .blyrics--line[data-agent="v1"]::before) {
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	:global(.blyrics--line[data-agent="v2"]) {
+		--blyrics-lyric-active-color: #0d9488; /* teal-600 */
+	}
+	:global(.dark .blyrics--line[data-agent="v2"]),
+	:global([data-theme='dark'] .blyrics--line[data-agent="v2"]) {
+		--blyrics-lyric-active-color: #2dd4bf; /* teal-400 */
+	}
+	:global(.blyrics--line[data-agent="v2"]::before) {
+		background: rgba(13, 148, 136, 0.1);
+		color: #0d9488;
+	}
+	:global(.dark .blyrics--line[data-agent="v2"]::before),
+	:global([data-theme='dark'] .blyrics--line[data-agent="v2"]::before) {
+		background: rgba(45, 212, 191, 0.15);
+		color: #2dd4bf;
+	}
+
+	:global(.blyrics--line[data-agent="v3"]) {
+		--blyrics-lyric-active-color: #7c3aed; /* violet-600 */
+	}
+	:global(.dark .blyrics--line[data-agent="v3"]),
+	:global([data-theme='dark'] .blyrics--line[data-agent="v3"]) {
+		--blyrics-lyric-active-color: #a78bfa; /* violet-400 */
+	}
+	:global(.blyrics--line[data-agent="v3"]::before) {
+		background: rgba(124, 58, 237, 0.1);
+		color: #7c3aed;
+	}
+	:global(.dark .blyrics--line[data-agent="v3"]::before),
+	:global([data-theme='dark'] .blyrics--line[data-agent="v3"]::before) {
+		background: rgba(167, 139, 250, 0.15);
+		color: #a78bfa;
+	}
+
+	:global(.blyrics--line[data-agent="v1000"]) {
+		--blyrics-lyric-active-color: #db2777; /* pink-600 */
+	}
+	:global(.dark .blyrics--line[data-agent="v1000"]),
+	:global([data-theme='dark'] .blyrics--line[data-agent="v1000"]) {
+		--blyrics-lyric-active-color: #f472b6; /* pink-400 */
+	}
+	:global(.blyrics--line[data-agent="v1000"]::before) {
+		background: rgba(219, 39, 119, 0.1);
+		color: #db2777;
+	}
+	:global(.dark .blyrics--line[data-agent="v1000"]::before),
+	:global([data-theme='dark'] .blyrics--line[data-agent="v1000"]::before) {
+		background: rgba(244, 114, 182, 0.15);
+		color: #f472b6;
 	}
 </style>
