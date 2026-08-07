@@ -5,6 +5,7 @@ import AddToPlaylistDialog from './playlists/AddToPlaylistDialog.svelte'
 import EditPlaylistDialog from './playlists/EditPlaylistDialog.svelte'
 import NewPlaylistDialog from './playlists/NewPlaylistDialog.svelte'
 import RemoveFromLibraryDialog from './RemoveFromLibraryDialog.svelte'
+import LyricsSourceDialog from './LyricsSourceDialog.svelte'
 
 // biome-ignore lint/suspicious/noExplicitAny: needed for inference
 type ComponentWithOpenProp = Component<{ open: DialogOpenAccessor<any> }>
@@ -15,6 +16,7 @@ export const APP_DIALOGS_COMPONENTS_MAP = {
 	addToPlaylist: AddToPlaylistDialog,
 	newPlaylist: NewPlaylistDialog,
 	editPlaylist: EditPlaylistDialog,
+	lyricsSource: LyricsSourceDialog,
 } satisfies Record<string, ComponentWithOpenProp>
 
 export type AppDialogKey = keyof typeof APP_DIALOGS_COMPONENTS_MAP

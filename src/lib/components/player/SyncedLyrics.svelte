@@ -14,10 +14,21 @@
 	let { track, class: className }: Props = $props()
 	const player = usePlayer()
 	const mainStore = useMainStore()
+	const dialogs = useDialogsStore()
 
 	let result: ServiceLyricsResult | undefined = $state()
 	let loading = $state(false)
 	let reloadCount = $state(0)
+
+	$effect(() => {
+		const handleReload = () => {
+			reloadCount++
+		}
+		window.addEventListener('lyrics-reload', handleReload)
+		return () => {
+			window.removeEventListener('lyrics-reload', handleReload)
+		}
+	})
 
 	$effect(() => {
 		if (!track) {
@@ -96,13 +107,6 @@
 				audioElement={player.audioElement}
 				class="h-full w-full"
 			/>
-			{#if result.source}
-				<div
-					class="absolute bottom-4 right-4 z-20 rounded-full border border-onSurface/10 bg-surfaceContainerHighest/85 px-3 py-1 text-label-sm text-onSurfaceVariant backdrop-blur-md shadow-sm"
-				>
-					Source: {getSourceDisplayName(result.source)}
-				</div>
-			{/if}
 		</div>
 	{:else}
 		{@render emptyState(
@@ -110,6 +114,20 @@
 			'Lyrics Unavailable',
 			"We couldn't find synced lyrics for this track.",
 		)}
+	{/if}
+
+	{#if track && !loading && result}
+		<button
+			type="button"
+			class="interactable absolute bottom-4 right-4 z-30 rounded-full border border-onSurface/10 bg-surfaceContainerHighest/85 px-3 py-1 text-label-sm text-onSurfaceVariant backdrop-blur-md shadow-sm cursor-pointer select-none"
+			onclick={(e) => {
+				if (e.detail === 3) {
+					dialogs.openDialog('lyricsSource', track)
+				}
+			}}
+		>
+			Source: {result.source ? getSourceDisplayName(result.source) : 'None (Triple-click)'}
+		</button>
 	{/if}
 </section>
 
