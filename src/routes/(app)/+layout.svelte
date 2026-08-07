@@ -10,6 +10,7 @@
     import MenuRenderer, { setupGlobalMenu } from '$lib/components/menu/MenuRenderer.svelte'
     import PlayerOverlay from '$lib/components/PlayerOverlay.svelte'
     import SnackbarRenderer from '$lib/components/snackbar/SnackbarRenderer.svelte'
+    import { getFilesFromDataTransfer } from '$lib/helpers/file-utils.ts'
     import { isElementTextInput } from '$lib/helpers/input.ts'
     import { setupOverlaySnippets } from '$lib/layout-bottom-bar.svelte'
     import { DialogsStore } from '$lib/stores/dialogs/store.svelte.ts'
@@ -38,8 +39,7 @@
 
     let overlayContentHeight = $state(0)
     let bottomBarHeight = $state(0)
-    
-    // Drag and Drop state
+
     let isDraggingFiles = $state(false)
     let dragCounter = 0
 
@@ -63,15 +63,14 @@
         }
     }
 
-    function handleDrop(e: DragEvent) {
+    async function handleDrop(e: DragEvent) {
         e.preventDefault()
         isDraggingFiles = false
         dragCounter = 0
 
-        const files = Array.from(e.dataTransfer?.files ?? [])
+        const files = await getFilesFromDataTransfer(e.dataTransfer)
         if (files.length > 0) {
-            // Handle dropped files (e.g., pass to player store, file importer, or handler)
-            console.log('Dropped files:', files)
+            console.log('Supported audio files dropped:', files)
         }
     }
 
@@ -155,7 +154,7 @@
     <div
         class="pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm transition-opacity"
     >
-        <Icon type="folder" class="size-16 text-primary animate-bounce" />
+        <Icon type="folder" class="size-16 animate-bounce text-primary" />
         <p class="text-title-large font-bold text-onBackground">Drop files here to add them</p>
     </div>
 {/if}
