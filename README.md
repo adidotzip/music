@@ -48,8 +48,8 @@ Anonymous page analytics are powered by [GoatCounter](https://goatcounter.com/?u
 Lyrics are fetched from multiple providers for better coverage and synchronization quality:
 
 1. LRCLIB
-2. Lyrics+
-3. BetterLyrics
+2. LRCMUX
+3. AMLL DB
 
 ---
 
