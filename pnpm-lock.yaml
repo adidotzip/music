@@ -18,6 +18,9 @@ importers:
       '@braccato/parsers':
         specifier: ^0.2.0
         version: 0.2.0
+      '@kawarp/core':
+        specifier: ^1.2.0
+        version: 1.2.0
       '@material/material-color-utilities':
         specifier: ^0.4.0
         version: 0.4.0(patch_hash=ba9c0fd32469c32e8fbc40d212f789ab9438cca094fa57f398755793916bd133)
@@ -218,6 +221,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@kawarp/core@1.2.0':
+    resolution: {integrity: sha512-PmwhFeoDjpuKImSptQugb9INCwk/S/QHsQ5foXhKjUERpwEzZZ12Hyf5FggedhZ70SQQ9RDPKHEunys454qbqA==}
 
   '@lix-js/sdk@0.4.10':
     resolution: {integrity: sha512-0dMInAJK/67guTG5rRZaCEhvzC5cCXENOjaePA5AqMXrCE97kaY7SRor9e2vnoGsFIiGqXKlT0MCIoZj36G0gg==}
@@ -1764,6 +1770,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@kawarp/core@1.2.0': {}
 
   '@lix-js/sdk@0.4.10':
     dependencies:
