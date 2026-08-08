@@ -9,6 +9,7 @@
 	import Header from '$lib/components/Header.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
+import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 	import ListDetailsLayout from '$lib/components/ListDetailsLayout.svelte'
 	import ActiveIndicator from '$lib/components/player/buttons/ActiveIndicator.svelte'
 	import PlayerFavoriteButton from '$lib/components/player/buttons/PlayerFavoriteButton.svelte'
@@ -88,7 +89,7 @@
 			layoutMode === 'both' && 'w-100 2xl:w-[28dvw]',
 			layoutMode === 'list' && 'mx-auto w-full',
 			'player-content z-0 grow items-center gap-x-6 overflow-clip px-2 pb-2',
-			player.animatedArtworkSrc && player.animatedArtworkLoaded
+			(player.animatedArtworkSrc && player.animatedArtworkLoaded) || player.artworkSrc
 				? 'bg-transparent'
 				: 'bg-secondaryContainerVariant',
 			isCompactVertical && !isCompactHorizontal && 'player-content-horizontal',
@@ -109,7 +110,7 @@
 
 		<!-- Wrap Artwork in a relative container to handle absolute transition children -->
 		<div class="relative flex h-full w-full items-center justify-center [grid-area:artwork]">
-			{#if !isCompact || !player.animatedArtworkSrc || !player.animatedArtworkLoaded}
+			{#if !(isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded)}
 				{#key activeTrack?.id}
 					<div
 						class="absolute inset-0 m-auto flex items-center justify-center"
@@ -239,8 +240,7 @@
 		class={[
 			'flex h-dvh scroll-pt-(--app-header-height) flex-col overflow-auto contain-strict scrollbar-gutter-stable',
 			isCompact &&
-				player.animatedArtworkSrc &&
-				player.animatedArtworkLoaded &&
+				((player.animatedArtworkSrc && player.animatedArtworkLoaded) || player.artworkSrc) &&
 				'dark bg-black/60 [color-scheme:dark] backdrop-blur-3xl',
 		]}
 	>
@@ -349,20 +349,35 @@
 	</ScrollContainer>
 {/snippet}
 
-<ListDetailsLayout
-	id="full-player"
-	mode={layoutMode}
-	class={[
-		'grow active-view-player:view-name-[pl-card]',
-		layoutMode === 'both' &&
-			!(player.animatedArtworkSrc && player.animatedArtworkLoaded) &&
-			'bg-secondaryContainer',
-	]}
-	list={playerSnippet}
-	details={queueSnippet}
-	noListStableGutter
-	noPlayerOverlayPadding
-/>
+<div class="relative isolate flex grow flex-col min-h-dvh">
+	<KawarpBackground
+		imageUrl={player.artworkSrc || null}
+		warpIntensity={0.8}
+		blurPasses={8}
+		animationSpeed={0.8}
+		transitionDuration={1000}
+		saturation={1.35}
+		tintIntensity={0.15}
+		scale={1.05}
+		enabled={!(player.animatedArtworkSrc && player.animatedArtworkLoaded)}
+	/>
+
+	<ListDetailsLayout
+		id="full-player"
+		mode={layoutMode}
+		class={[
+			'grow active-view-player:view-name-[pl-card]',
+			layoutMode === 'both' &&
+				!(player.animatedArtworkSrc && player.animatedArtworkLoaded) &&
+				!player.artworkSrc &&
+				'bg-secondaryContainer',
+		]}
+		list={playerSnippet}
+		details={queueSnippet}
+		noListStableGutter
+		noPlayerOverlayPadding
+	/>
+</div>
 
 <style lang="postcss">
 	@reference '../../../app.css';

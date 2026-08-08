@@ -47,6 +47,7 @@
 	"dependencies": {
 		"@braccato/core": "^1.1.0",
 		"@braccato/parsers": "^0.2.0",
+		"@kawarp/core": "^1.2.0",
 		"@material/material-color-utilities": "^0.4.0",
 		"@tanstack/virtual-core": "^3.14.0",
 		"idb": "^8.0.3",
