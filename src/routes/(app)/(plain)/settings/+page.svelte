@@ -96,18 +96,17 @@
 		date: string
 		playlistsCount: number
 		tracksCount: number
+		zip: any
 		data: BackupData
 	} | null>(null)
 
 	const handleExport = async () => {
 		try {
-			const data = await exportBackupData()
-			const json = JSON.stringify(data, null, 2)
-			const blob = new Blob([json], { type: 'application/json' })
-			const url = URL.createObjectURL(blob)
+			const zipBlob = await exportBackupData()
+			const url = URL.createObjectURL(zipBlob)
 			const a = document.createElement('a')
 			a.href = url
-			a.download = `adi-music-backup-${new Date().toISOString().split('T')[0]}.json`
+			a.download = `adi-music-backup-${new Date().toISOString().split('T')[0]}.zip`
 			a.click()
 			URL.revokeObjectURL(url)
 			snackbar(m.settingsExportSuccess())
@@ -120,40 +119,43 @@
 	const handleFileSelect = async (e: Event) => {
 		const target = e.currentTarget as HTMLInputElement
 		const file = target.files?.[0]
-		if (!file) return
+		if (!file) { return }
 
-		const reader = new FileReader()
-		reader.onload = async (event) => {
-			try {
-				const text = event.target?.result as string
-				const data = JSON.parse(text)
-				if (!validateBackupData(data)) {
-					throw new Error('Invalid or unsupported backup file schema')
-				}
-
-				const dateStr = new Date(data.timestamp).toLocaleString()
-				const playlistsCount = data.db.playlists.length
-				const tracksCount = data.db.tracks.length
-
-				importSummary = {
-					date: dateStr,
-					playlistsCount,
-					tracksCount,
-					data,
-				}
-			} catch (error) {
-				console.error(error)
-				snackbar(m.settingsImportError({ error: error instanceof Error ? error.message : String(error) }))
-				if (fileInputEl) fileInputEl.value = ''
+		try {
+			const JSZip = (await import('jszip')).default
+			const zip = await JSZip.loadAsync(file)
+			const backupJsonFile = zip.file('backup.json')
+			if (!backupJsonFile) {
+				throw new Error('Missing backup.json inside the zip archive')
 			}
+			const text = await backupJsonFile.async('string')
+			const data = JSON.parse(text)
+			if (!validateBackupData(data)) {
+				throw new Error('Invalid or unsupported backup file schema')
+			}
+
+			const dateStr = new Date(data.timestamp).toLocaleString()
+			const playlistsCount = data.db.playlists.length
+			const tracksCount = data.db.tracks.length
+
+			importSummary = {
+				date: dateStr,
+				playlistsCount,
+				tracksCount,
+				zip,
+				data,
+			}
+		} catch (error) {
+			console.error(error)
+			snackbar(m.settingsImportError({ error: error instanceof Error ? error.message : String(error) }))
+			if (fileInputEl) { fileInputEl.value = '' }
 		}
-		reader.readAsText(file)
 	}
 
 	const handleConfirmImport = async () => {
-		if (!importSummary) return
+		if (!importSummary) { return }
 		try {
-			await importBackupData(importSummary.data)
+			await importBackupData(importSummary.zip, importSummary.data)
 			snackbar(m.settingsImportSuccess())
 			setTimeout(() => {
 				window.location.reload()
@@ -163,13 +165,13 @@
 			snackbar(m.settingsImportError({ error: error instanceof Error ? error.message : String(error) }))
 		} finally {
 			importSummary = null
-			if (fileInputEl) fileInputEl.value = ''
+			if (fileInputEl) { fileInputEl.value = '' }
 		}
 	}
 
 	const handleCancelImport = () => {
 		importSummary = null
-		if (fileInputEl) fileInputEl.value = ''
+		if (fileInputEl) { fileInputEl.value = '' }
 	}
 </script>
 
@@ -410,7 +412,7 @@
 		<input
 			bind:this={fileInputEl}
 			type="file"
-			accept=".json"
+			accept=".zip"
 			onchange={handleFileSelect}
 			class="sr-only"
 		/>
