@@ -4,6 +4,7 @@
 	import '@braccato/core/styles/lyrics.css'
 	import '@braccato/core/styles/instrumental.css'
 	import type { Lyric } from '@braccato/parsers'
+	import { getLocale } from '$paraglide/runtime'
 
 	interface Props {
 		lyrics: Lyric[] | null
@@ -17,6 +18,7 @@
 		| (HTMLElement & {
 				lyrics: Lyric[] | null
 				source: HTMLAudioElement | string | null
+				renderer: any
 		  })
 		| undefined = $state()
 
@@ -40,6 +42,62 @@
 
 		if (el.source !== audioElement) {
 			el.source = audioElement
+		}
+	})
+
+	// Inject secondary lyrics (translations/romanizations) & agent alignment tags
+	$effect(() => {
+		if (!el) return
+
+		const handleLoaded = async () => {
+			const { injectTranslation, injectRomanization } = await import('@braccato/core')
+			const renderer = el.renderer
+			if (!renderer || !renderer.lines || !lyrics) return
+
+			let modified = false
+			for (const [index, line] of renderer.lines.entries()) {
+				const item = lyrics[index]
+				if (!item) continue
+
+				// Set singer alignment attribute
+				if (item.agent) {
+					line.lyricElement.setAttribute('data-agent', item.agent)
+					modified = true
+				}
+
+				// Inject translation
+				const isChinese = getLocale().startsWith('zh')
+				if (item.translation?.text && isChinese) {
+					injectTranslation(document, line.lyricElement, item.translation.text)
+					modified = true
+				}
+
+				// Inject romanization
+				if (item.romanization) {
+					injectRomanization(
+						document,
+						line.lyricElement,
+						line,
+						item.romanization,
+						item.timedRomanization
+					)
+					modified = true
+				}
+			}
+
+			if (modified) {
+				renderer.relayout()
+			}
+		}
+
+		el.addEventListener('braccato:lyrics-loaded', handleLoaded)
+		// Run once on load if already loaded
+		if (el.renderer && el.renderer.lines) {
+			void handleLoaded()
+		}
+
+		return () => {
+			el.removeEventListener('braccato:lyrics-loaded', handleLoaded)
 		}
 	})
 </script>
@@ -138,5 +196,19 @@
 	:global(.dark .blyrics--romanized),
 	:global([data-theme='dark'] .blyrics--romanized) {
 		color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
+	}
+
+	/* Multi-Singer Alignment */
+	:global(.blyrics--line[data-agent='v1']) {
+		text-align: left;
+	}
+
+	:global(.blyrics--line[data-agent='v2']) {
+		text-align: right;
+	}
+
+	:global(.blyrics--line[data-agent='v3']),
+	:global(.blyrics--line[data-agent='v1000']) {
+		text-align: center;
 	}
 </style>

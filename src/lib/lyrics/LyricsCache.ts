@@ -1,7 +1,7 @@
 import { getDatabase } from '$lib/db/database.ts'
 import type { Lyric } from '@braccato/parsers'
 
-export const CACHE_VERSION = 12
+export const CACHE_VERSION = 14
 export const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
 
 export interface CachedLyricsResult {

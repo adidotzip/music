@@ -11,6 +11,7 @@
 	import { isDatabaseOperationPending } from '$lib/db/lock-database.ts'
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.ts'
 	import { supportsChangingAudioVolume } from '$lib/helpers/audio.ts'
+	import { type BackupData, exportBackupData, importBackupData, validateBackupData } from '$lib/helpers/backup.ts'
 	import { Debounced } from '$lib/helpers/debounced.svelte.ts'
 	import { isFileSystemAccessSupported } from '$lib/helpers/file-system.ts'
 	import { debounce } from '$lib/helpers/utils/debounce.ts'
@@ -89,6 +90,89 @@
 	// This prevents UI from flickering
 	const isDatabasePendingGetter = new Debounced(() => isDatabaseOperationPending(), 200)
 	const isDatabasePending = $derived(isDatabasePendingGetter.current)
+
+	let fileInputEl: HTMLInputElement | undefined = $state()
+	let importSummary = $state<{
+		date: string
+		playlistsCount: number
+		tracksCount: number
+		zip: any
+		data: BackupData
+	} | null>(null)
+
+	const handleExport = async () => {
+		try {
+			const zipBlob = await exportBackupData()
+			const url = URL.createObjectURL(zipBlob)
+			const a = document.createElement('a')
+			a.href = url
+			a.download = `adi-music-backup-${new Date().toISOString().split('T')[0]}.zip`
+			a.click()
+			URL.revokeObjectURL(url)
+			snackbar(m.settingsExportSuccess())
+		} catch (error) {
+			console.error(error)
+			snackbar(m.settingsExportError({ error: error instanceof Error ? error.message : String(error) }))
+		}
+	}
+
+	const handleFileSelect = async (e: Event) => {
+		const target = e.currentTarget as HTMLInputElement
+		const file = target.files?.[0]
+		if (!file) { return }
+
+		try {
+			const JSZip = (await import('jszip')).default
+			const zip = await JSZip.loadAsync(file)
+			const backupJsonFile = zip.file('backup.json')
+			if (!backupJsonFile) {
+				throw new Error('Missing backup.json inside the zip archive')
+			}
+			const text = await backupJsonFile.async('string')
+			const data = JSON.parse(text)
+			if (!validateBackupData(data)) {
+				throw new Error('Invalid or unsupported backup file schema')
+			}
+
+			const dateStr = new Date(data.timestamp).toLocaleString()
+			const playlistsCount = data.db.playlists.length
+			const tracksCount = data.db.tracks.length
+
+			importSummary = {
+				date: dateStr,
+				playlistsCount,
+				tracksCount,
+				zip,
+				data,
+			}
+		} catch (error) {
+			console.error(error)
+			snackbar(m.settingsImportError({ error: error instanceof Error ? error.message : String(error) }))
+			if (fileInputEl) { fileInputEl.value = '' }
+		}
+	}
+
+	const handleConfirmImport = async () => {
+		if (!importSummary) { return }
+		try {
+			await importBackupData(importSummary.zip, importSummary.data)
+			snackbar(m.settingsImportSuccess())
+			setTimeout(() => {
+				window.location.reload()
+			}, 1000)
+		} catch (error) {
+			console.error(error)
+			snackbar(m.settingsImportError({ error: error instanceof Error ? error.message : String(error) }))
+		} finally {
+			importSummary = null
+			if (fileInputEl) { fileInputEl.value = '' }
+		}
+	}
+
+	const handleCancelImport = () => {
+		importSummary = null
+		if (fileInputEl) { fileInputEl.value = '' }
+	}
 </script>
 
 {#snippet heading(text: string)}
@@ -305,6 +389,62 @@
 			class="w-40"
 		/>
 	</div>
+</section>
+
+<section class="card settings-max-width mx-auto mt-6 w-full text-body-lg">
+	{@render heading(m.settingsExportImport())}
+
+	<div class="px-4 py-2 text-body-md text-onSurfaceVariant">
+		{m.settingsBackupDescription()}
+	</div>
+
+	<div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+		<Button kind="toned" onclick={handleExport} class="max-sm:w-full">
+			<Icon type="cached" class="size-5 mr-1" />
+			{m.settingsExportButton()}
+		</Button>
+
+		<Button kind="outlined" onclick={() => fileInputEl?.click()} class="max-sm:w-full">
+			<Icon type="folder" class="size-5 mr-1" />
+			{m.settingsImportButton()}
+		</Button>
+
+		<input
+			bind:this={fileInputEl}
+			type="file"
+			accept=".zip"
+			onchange={handleFileSelect}
+			class="sr-only"
+		/>
+	</div>
+
+	{#if importSummary}
+		<div class="m-4 rounded-xl border border-outline/30 bg-surfaceContainerLow p-4">
+			<div class="text-title-medium font-bold text-onSurface mb-2">
+				{m.settingsImportConfirmTitle()}
+			</div>
+
+			<p class="text-body-sm text-onSurfaceVariant mb-4 leading-relaxed">
+				{m.settingsImportConfirmBody()}
+			</p>
+
+			<div class="mb-4 rounded-lg bg-surfaceContainerHighest p-3 text-body-sm flex flex-col gap-1">
+				<div class="font-bold text-onSurfaceVariant mb-1">{m.settingsImportSummary()}</div>
+				<div>{m.settingsImportDate({ date: importSummary.date })}</div>
+				<div>{m.settingsImportPlaylistsCount({ count: importSummary.playlistsCount })}</div>
+				<div>{m.settingsImportTracksCount({ count: importSummary.tracksCount })}</div>
+			</div>
+
+			<div class="flex items-center gap-2">
+				<Button kind="toned" class="bg-error hover:bg-opacity-90" onclick={handleConfirmImport}>
+					{m.settingsImportConfirmTitle()}
+				</Button>
+				<Button kind="outlined" onclick={handleCancelImport}>
+					{m.cancel()}
+				</Button>
+			</div>
+		</div>
+	{/if}
 </section>
 
 <section class="card settings-max-width mx-auto mt-6 w-full text-body-lg">

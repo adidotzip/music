@@ -95,6 +95,7 @@ const config = {
 					'https://lrclib.net',
 					'https://lyricsplus.prjktla.workers.dev',
 					'https://unison.boidu.dev',
+					'https://api.lrcmux.dev',
 
 					// JioSaavn API
 					'https://jiosaavn-apix.arcadopredator.workers.dev',

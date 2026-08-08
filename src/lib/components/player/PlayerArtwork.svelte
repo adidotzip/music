@@ -15,6 +15,7 @@
 
 <Artwork
 	src={player.artworkSrc}
+	animatedSrc={player.animatedArtworkSrc}
 	alt={player.activeTrack?.name}
 	fallbackIcon={player.activeTrack ? undefined : false}
 	noFallbackBg
