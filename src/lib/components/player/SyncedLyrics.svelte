@@ -145,7 +145,7 @@
 	.lyrics-shell {
 		/* Defaults for a light environment */
 		--lyric-inactive: rgba(0, 0, 0, 0.4);
-		--lyric-active-fill: #140c0b;
+		--lyric-active-fill: var(--color-primary);
 		--lyric-active-unfill: rgba(0, 0, 0, 0.12);
 		--lyric-translation: rgba(0, 0, 0, 0.65);
 		--lyric-romanization: rgba(0, 0, 0, 0.5);
