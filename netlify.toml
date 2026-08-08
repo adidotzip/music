@@ -13,6 +13,12 @@ status = 200
 force = true
 
 [[redirects]]
+from = "/"
+to = "https://music-land.imreallyadi.space"
+status = 301
+force = true
+
+[[redirects]]
 from = "/*"
 to = "/200.html"
 status = 200

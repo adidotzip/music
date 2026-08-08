@@ -38,6 +38,13 @@
 			]
 		}
 	],
+	"redirects": [
+		{
+			"source": "/",
+			"destination": "https://music-land.imreallyadi.space",
+			"permanent": true
+		}
+	],
 	"rewrites": [
 		{
 			"source": "/sw.js",
