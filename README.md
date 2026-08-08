@@ -50,12 +50,20 @@ Lyrics are fetched from multiple providers for better coverage and synchronizati
 1. LRCLIB
 2. LRCMUX
 3. AMLL DB
+4. Own Upload/Custom API
 
 ---
 
 ## APIs & Credits
 
 * [Apple Music Animated Artwork API](https://github.com/m8tec/apple-music-animated-artworks)
+* [BetterLyrics](https://github.com/better-lyrics) (Background And Lyrics <3)
+* [lrcmux](https://api.lrcmux.dev/)
+* [LRCLIB](https://lrclib.net/)
+* [AMLL DB](https://github.com/amll-dev/amll-ttml-db)
+* Hosted On Vercel
+
+
 
 ---
 
