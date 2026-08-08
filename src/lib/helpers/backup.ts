@@ -1,4 +1,4 @@
-import JSZip from 'jszip'
+import type JSZip from 'jszip'
 import { getDatabase } from '$lib/db/database.ts'
 
 export interface BackupData {
@@ -25,7 +25,9 @@ const getExtension = (fileName?: string) => {
 }
 
 export const exportBackupData = async (): Promise<Blob> => {
-	const zip = new JSZip()
+	const JSZipModule = await import('jszip')
+	const JSZipConstructor = typeof JSZipModule.default === 'function' ? JSZipModule.default : (JSZipModule as any).default
+	const zip = new JSZipConstructor()
 
 	// Gather localStorage items
 	const lsData: Record<string, string> = {}
@@ -167,7 +169,7 @@ export const validateBackupData = (data: unknown): data is BackupData => {
 		'lyrics',
 	]
 	for (const store of requiredStores) {
-		if (!Array.isArray(dbObj[store])) {
+		if (dbObj[store] !== undefined && !Array.isArray(dbObj[store])) {
 			return false
 		}
 	}
@@ -269,11 +271,11 @@ export const importBackupData = async (zip: JSZip, backup: BackupData): Promise<
 
 	for (const storeName of stores) {
 		const store = tx.objectStore(storeName)
-		await store.clear()
+		store.clear()
 		if (storeName !== 'directories') {
 			const items = preparedDbData[storeName] || []
 			for (const item of items) {
-				await store.add(item)
+				store.add(item)
 			}
 		}
 	}
