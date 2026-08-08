@@ -189,22 +189,28 @@ export const importBackupData = async (zip: JSZip, backup: BackupData): Promise<
 		'directories',
 	] as const
 
-	const tx = db.transaction(stores, 'readwrite')
+	// Prepare data in-memory beforehand to avoid non-IDB awaits inside active transaction
+	const preparedDbData: Record<string, any[]> = {}
 
 	for (const storeName of stores) {
-		const store = tx.objectStore(storeName)
-		await store.clear()
-		// directories is cleared, but not populated from backup
-		if (storeName !== 'directories') {
-			const items = backup.db[storeName] || []
-			for (const item of items) {
-				const cloned = { ...(item as Record<string, any>) }
+		if (storeName === 'directories') {
+			continue
+		}
+		const items = backup.db[storeName] || []
+		const preparedItems = []
 
-				if (storeName === 'tracks') {
-					const trackUuid = cloned.uuid
-					const ext = getExtension(cloned.fileName || cloned.file?.name)
-					const musicFileInZip = zip.file(`music/${trackUuid}.${ext}`)
-					if (musicFileInZip) {
+		for (const item of items) {
+			if (!item) {
+				continue
+			}
+			const cloned = { ...(item as Record<string, any>) }
+
+			if (storeName === 'tracks') {
+				const trackUuid = cloned.uuid || 'unknown'
+				const ext = getExtension(cloned.fileName || cloned.file?.name || 'mp3')
+				const musicFileInZip = zip.file(`music/${trackUuid}.${ext}`)
+				if (musicFileInZip) {
+					try {
 						const audioBlob = await musicFileInZip.async('blob')
 						const fileObject = new File(
 							[audioBlob],
@@ -215,33 +221,59 @@ export const importBackupData = async (zip: JSZip, backup: BackupData): Promise<
 						)
 						cloned.file = fileObject
 						cloned.directory = -1 // LEGACY_NO_NATIVE_DIRECTORY
+					} catch (e) {
+						console.warn(`Failed to parse music file for track ${trackUuid}`, e)
 					}
+				}
 
-					// Restore track images
-					const fullImgFile = zip.file(`images/tracks/${trackUuid}/full`)
-					const smallImgFile = zip.file(`images/tracks/${trackUuid}/small`)
-					if (fullImgFile || smallImgFile) {
-						if (!cloned.image) {
-							cloned.image = { optimized: true, small: '', full: '' }
-						}
+				// Restore track images
+				const fullImgFile = zip.file(`images/tracks/${trackUuid}/full`)
+				const smallImgFile = zip.file(`images/tracks/${trackUuid}/small`)
+				if (fullImgFile || smallImgFile) {
+					if (!cloned.image || typeof cloned.image !== 'object') {
+						cloned.image = { optimized: true, small: '', full: '' }
+					}
+					try {
 						if (fullImgFile) {
 							cloned.image.full = await fullImgFile.async('blob')
 						}
 						if (smallImgFile) {
 							cloned.image.small = await smallImgFile.async('blob')
 						}
+					} catch (e) {
+						console.warn(`Failed to parse artwork for track ${trackUuid}`, e)
 					}
 				}
+			}
 
-				if (storeName === 'albums') {
-					const albumUuid = cloned.uuid
-					const albumImgFile = zip.file(`images/albums/${albumUuid}`)
-					if (albumImgFile) {
+			if (storeName === 'albums') {
+				const albumUuid = cloned.uuid || 'unknown'
+				const albumImgFile = zip.file(`images/albums/${albumUuid}`)
+				if (albumImgFile) {
+					try {
 						cloned.image = await albumImgFile.async('blob')
+					} catch (e) {
+						console.warn(`Failed to parse artwork for album ${albumUuid}`, e)
 					}
 				}
+			}
 
-				await store.add(cloned as any)
+			preparedItems.push(cloned)
+		}
+
+		preparedDbData[storeName] = preparedItems
+	}
+
+	// Now run the IndexedDB transaction with only fast, sequential IDB operations
+	const tx = db.transaction(stores, 'readwrite')
+
+	for (const storeName of stores) {
+		const store = tx.objectStore(storeName)
+		await store.clear()
+		if (storeName !== 'directories') {
+			const items = preparedDbData[storeName] || []
+			for (const item of items) {
+				await store.add(item)
 			}
 		}
 	}
