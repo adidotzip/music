@@ -20,9 +20,6 @@
 	const isLyricsDark = $derived(
 		mainStore.isThemeDark || (isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded)
 	)
-	const showBgBlack = $derived(
-		mainStore.isThemeDark && !(player.animatedArtworkSrc && player.animatedArtworkLoaded)
-	)
 
 	let result: ServiceLyricsResult | undefined = $state()
 	let loading = $state(false)
@@ -82,9 +79,8 @@
 
 <section
 	class={[
-		'lyrics-shell relative h-full w-full overflow-hidden',
+		'lyrics-shell relative h-full w-full overflow-hidden bg-transparent',
 		isLyricsDark ? 'dark' : '',
-		showBgBlack ? 'bg-black' : '',
 		className,
 	]}
 	aria-live="polite"
