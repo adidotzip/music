@@ -44,16 +44,64 @@
 		})
 	})
 
+	const isHlsJsSupported = $derived.by(() => {
+		if (typeof window === 'undefined') {
+			return false
+		}
+		return 'MediaSource' in window
+	})
+
 	const shouldShowAnimated = $derived.by(() => {
 		if (!animatedSrc || animatedError) {
 			return false
 		}
 
 		if (animatedSrc.endsWith('.m3u8')) {
-			return canPlayHLS()
+			return canPlayHLS() || isHlsJsSupported
 		}
 
 		return true
+	})
+
+	let videoElement = $state<HTMLVideoElement>()
+
+	$effect(() => {
+		const srcVal = animatedSrc
+		const el = videoElement
+		let hlsInstance: any = null
+
+		if (srcVal && el && shouldShowAnimated && srcVal.endsWith('.m3u8') && !canPlayHLS()) {
+			import('hls.js').then(({ default: Hls }) => {
+				if (!Hls.isSupported()) {
+					animatedError = true
+					onVideoError?.()
+					return
+				}
+
+				hlsInstance = new Hls({
+					capLevelToPlayerSize: true,
+					maxBufferLength: 5,
+				})
+				hlsInstance.loadSource(srcVal)
+				hlsInstance.attachMedia(el)
+				hlsInstance.on(Hls.Events.ERROR, (_event: any, data: any) => {
+					if (data.fatal) {
+						animatedError = true
+						onVideoError?.()
+					}
+				})
+			}).catch((err) => {
+				console.error('Failed to load hls.js', err)
+				animatedError = true
+				onVideoError?.()
+			})
+		}
+
+		return () => {
+			if (hlsInstance) {
+				hlsInstance.destroy()
+			}
+		}
 	})
 </script>
 
@@ -83,25 +131,30 @@
 	{/if}
 
 	{#if shouldShowAnimated}
-		<video
-			src={animatedSrc}
-			autoplay
-			loop
-			muted
-			playsinline
-			class={[
-				'absolute inset-0 size-full object-cover transition-opacity duration-1000',
-				!videoLoaded && 'opacity-0',
-			]}
-			onerror={() => {
-				animatedError = true
-				onVideoError?.()
-			}}
-			onloadeddata={() => {
-				videoLoaded = true
-				onVideoLoad?.()
-			}}
-		></video>
+		{#key animatedSrc}
+			<video
+				bind:this={videoElement}
+				src={canPlayHLS() ? animatedSrc : undefined}
+				autoplay
+				loop
+				muted
+				playsinline
+				class={[
+					'absolute inset-0 size-full object-cover transition-opacity duration-1000',
+					!videoLoaded && 'opacity-0',
+				]}
+				onerror={() => {
+					if (canPlayHLS() || !animatedSrc?.endsWith('.m3u8')) {
+						animatedError = true
+						onVideoError?.()
+					}
+				}}
+				onloadeddata={() => {
+					videoLoaded = true
+					onVideoLoad?.()
+				}}
+			></video>
+		{/key}
 	{/if}
 
 	{#if (!src || error) && !videoLoaded && fallbackIcon !== false}

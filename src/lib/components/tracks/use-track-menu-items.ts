@@ -13,6 +13,8 @@ export type PredefinedTrackMenuItemOption =
 	| 'disableViewAlbum'
 	| 'disableViewArtist'
 	| 'enableMultiRemoveFromFavorites'
+	| 'disableEditLyrics'
+	| 'disableEditMetadata'
 
 interface PredefinedMenuItem extends MenuItem {
 	predefinedKey: PredefinedTrackMenuItemOption
@@ -104,6 +106,20 @@ export const useTrackMenuItems = (
 				label: m.trackViewArtist(),
 				action: () => {
 					void viewRelated('artists', artistName)
+				},
+			},
+			{
+				predefinedKey: 'disableEditLyrics',
+				label: m.trackEditLyrics(),
+				action: () => {
+					dialogs.openDialog('lyricsSource', track)
+				},
+			},
+			{
+				predefinedKey: 'disableEditMetadata',
+				label: m.trackMetadata(),
+				action: () => {
+					dialogs.openDialog('trackMetadata', track)
 				},
 			},
 			{
