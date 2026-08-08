@@ -57,32 +57,6 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 	)
 </script>
 
-{#if player.animatedArtworkSrc}
-	{#key activeTrack?.id}
-		<div
-			class="pointer-events-none fixed inset-0 -z-1 overflow-hidden"
-			in:fade={{ duration: 600 }}
-			out:fade={{ duration: 600 }}
-		>
-			<Artwork
-				src={player.artworkSrc}
-				animatedSrc={isCompact
-					? (player.animatedArtworkTallSrc ?? player.animatedArtworkSrc)
-					: player.animatedArtworkSrc}
-				noAspectSquare
-				onVideoLoad={() => (player.animatedArtworkLoaded = true)}
-				class={['size-full object-cover', !isCompact && 'scale-110 opacity-50 blur-3xl']}
-			/>
-			{#if isCompact && player.animatedArtworkLoaded}
-				<div
-					class="from-black/80 to-black/20 absolute inset-0 bg-gradient-to-t via-transparent"
-					transition:fade
-				></div>
-			{/if}
-		</div>
-	{/key}
-{/if}
-
 {#snippet playerSnippet()}
 	<div
 		class={[
@@ -359,14 +333,38 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 		saturation={1.35}
 		tintIntensity={0.15}
 		scale={1.05}
-		enabled={!(player.animatedArtworkSrc && player.animatedArtworkLoaded)}
+		enabled={true}
 	/>
+
+	{#if isCompact && layoutMode === 'list' && player.animatedArtworkSrc}
+		{#key activeTrack?.id}
+			<div
+				class="pointer-events-none absolute inset-0 z-10 overflow-hidden"
+				in:fade={{ duration: 600 }}
+				out:fade={{ duration: 600 }}
+			>
+				<Artwork
+					src={undefined}
+					animatedSrc={player.animatedArtworkTallSrc ?? player.animatedArtworkSrc}
+					noAspectSquare
+					onVideoLoad={() => (player.animatedArtworkLoaded = true)}
+					class="size-full object-cover"
+				/>
+				{#if player.animatedArtworkLoaded}
+					<div
+						class="from-black/80 to-black/20 absolute inset-0 bg-gradient-to-t via-transparent"
+						transition:fade
+					></div>
+				{/if}
+			</div>
+		{/key}
+	{/if}
 
 	<ListDetailsLayout
 		id="full-player"
 		mode={layoutMode}
 		class={[
-			'grow active-view-player:view-name-[pl-card]',
+			'grow active-view-player:view-name-[pl-card] relative z-20',
 			layoutMode === 'both' &&
 				!(player.animatedArtworkSrc && player.animatedArtworkLoaded) &&
 				!player.artworkSrc &&
