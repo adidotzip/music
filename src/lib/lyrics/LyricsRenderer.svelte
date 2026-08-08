@@ -198,17 +198,23 @@
 		color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
 	}
 
-	/* Multi-Singer Alignment */
-	:global(.blyrics--line[data-agent='v1']) {
+	/* Multi-Singer Alignment (Left / Right only) */
+	:global(.blyrics--line) {
 		text-align: left;
 	}
 
-	:global(.blyrics--line[data-agent='v2']) {
-		text-align: right;
+	:global(.blyrics--line[data-agent='v1']) {
+		text-align: left;
+		margin-left: 0;
+		margin-right: auto;
 	}
 
+	/* All secondary singers (v2, v3, background/duet v1000) mapped to right */
+	:global(.blyrics--line[data-agent='v2']),
 	:global(.blyrics--line[data-agent='v3']),
 	:global(.blyrics--line[data-agent='v1000']) {
-		text-align: center;
+		text-align: right;
+		margin-left: auto;
+		margin-right: 0;
 	}
 </style>

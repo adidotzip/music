@@ -2,7 +2,7 @@
 beta 1.5
 fork of **[snae player](https://snaeplayer.com)**
 
-🎵 **[Adi Music](https://music.imreallyadi.space)** is a modern local music player that runs entirely in your browser.
+🎵 **[Adi Music](https://music-land.imreallyadi.space)** is a modern local music player that runs entirely in your browser.
 Play audio files directly from your device with support for playlists, queue management, favorites, synchronized lyrics, playback speed controls, equalizer presets, and dynamic artwork-based theming that adapts to your music.
 
 Built for people who want a clean, fast, and private listening experience without installing a heavyweight desktop app ✨

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state'
-	import { APP_DESCRIPTION_EN, APP_NAME_EN } from '$lib/app-metadata.ts'
+	import { APP_DESCRIPTION_EN, APP_NAME_EN, APP_URL } from '$lib/app-metadata.ts'
 	import Button from '$lib/components/Button.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
@@ -13,6 +13,7 @@
 
 	const seoTitle = `${APP_NAME_EN} - Private offline local music player in your browser`
 	const seoDescription = APP_DESCRIPTION_EN
+	const canonicalUrl = `${APP_URL}${page.url.pathname}`
 
 	const trackOpenPlayerClick = (location: 'header' | 'hero' | 'getting-started') => {
 		window.goatcounter?.count({
@@ -34,14 +35,14 @@
 					operatingSystem: 'Any',
 					browserRequirements: 'Requires a modern web browser',
 					description: seoDescription,
-					url: page.url.href,
-					image: `${page.url.origin}${heroImg.src}`,
+					url: canonicalUrl,
+					image: `${APP_URL}${heroImg.src}`,
 					offers: {
 						'@type': 'Offer',
 						price: '0',
 						priceCurrency: 'USD',
 					},
-					sameAs: ['https://github.com/adidotzip/adi-music'],
+					sameAs: ['https://github.com/adidotzip/music'],
 					featureList: [
 						'Play music stored on your device',
 						'Works in modern browsers on Android and iOS, plus Chromebooks, Windows PCs, and Macs',
@@ -70,15 +71,15 @@
 	<meta property="og:type" content="website" />
 	<meta property="og:title" content={seoTitle} />
 	<meta property="og:description" content={seoDescription} />
-	<meta property="og:url" content={page.url.href} />
-	<meta property="og:image" content={`${page.url.origin}${heroImg.src}`} />
+	<meta property="og:url" content={canonicalUrl} />
+	<meta property="og:image" content={`${APP_URL}${heroImg.src}`} />
 	<meta property="og:image:alt" content="Adi Music showing the library and player interface" />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={seoTitle} />
 	<meta name="twitter:description" content={seoDescription} />
 	<meta name="twitter:image" content={`${page.url.origin}${heroImg.src}`} />
 
-	<link rel="canonical" href={`${page.url.origin}${page.url.pathname}`} />
+	<link rel="canonical" href={canonicalUrl} />
 
 	{@html `<script type="application/ld+json">${schemaJson}</script>`}
 </svelte:head>
@@ -93,7 +94,7 @@
 
 	<IconButton
 		as="a"
-		href="https://github.com/adidotzip/adi-music"
+		href="https://github.com/adidotzip/music"
 		target="_blank"
 		kind="flat"
 		tooltip="View source code on GitHub"
@@ -139,7 +140,7 @@
 
 		<div class="flex items-center gap-6 text-body-md">
 			<a
-				href="https://github.com/adidotzip/adi-music"
+				href="https://github.com/adidotzip/music"
 				rel="noopener noreferrer"
 				target="_blank"
 				class="flex items-center gap-1.5 text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface"
@@ -149,7 +150,7 @@
 			</a>
 
 			<a
-				href="https://github.com/adidotzip/adi-music#privacy"
+				href="https://github.com/adidotzip/music#privacy"
 				rel="noopener noreferrer"
 				target="_blank"
 				class="text-onSurfaceVariant transition-colors duration-200 hover:text-onSurface"
