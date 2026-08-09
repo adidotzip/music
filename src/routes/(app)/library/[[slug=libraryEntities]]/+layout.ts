@@ -7,7 +7,7 @@ import {
 	createLibraryItemKeysPageQuery,
 	type PageQueryResult,
 } from '$lib/library/get/ids-queries.ts'
-import { setLibraryValueInCache } from '$lib/library/get/value.ts'
+import { setLibraryValueInCache, registerRemoteId } from '$lib/library/get/value.ts'
 import { createTracksCountPageQuery } from '$lib/library/tracks-queries.ts'
 import { FAVORITE_PLAYLIST_ID, type LibraryStoreName } from '$lib/library/types.ts'
 import {

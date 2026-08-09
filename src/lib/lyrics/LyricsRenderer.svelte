@@ -29,29 +29,32 @@
 	}
 
 	$effect(() => {
-		if (!el) return
+		const currentEl = el
+		if (!currentEl) return
 
 		if (lyrics !== previousLyrics) {
 			previousLyrics = lyrics
-			el.lyrics = lyrics
+			currentEl.lyrics = lyrics
 		}
 	})
 
 	$effect(() => {
-		if (!el) return
+		const currentEl = el
+		if (!currentEl) return
 
-		if (el.source !== audioElement) {
-			el.source = audioElement
+		if (currentEl.source !== audioElement) {
+			currentEl.source = audioElement
 		}
 	})
 
 	// Inject secondary lyrics (translations/romanizations) & agent alignment tags
 	$effect(() => {
-		if (!el) return
+		const currentEl = el
+		if (!currentEl) return
 
 		const handleLoaded = async () => {
 			const { injectTranslation, injectRomanization } = await import('@braccato/core')
-			const renderer = el.renderer
+			const renderer = currentEl.renderer
 			if (!renderer || !renderer.lines || !lyrics) return
 
 			let modified = false
@@ -90,19 +93,19 @@
 			}
 		}
 
-		el.addEventListener('braccato:lyrics-loaded', handleLoaded)
+		currentEl.addEventListener('braccato:lyrics-loaded', handleLoaded)
 		// Run once on load if already loaded
-		if (el.renderer && el.renderer.lines) {
+		if (currentEl.renderer && currentEl.renderer.lines) {
 			void handleLoaded()
 		}
 
 		return () => {
-			el.removeEventListener('braccato:lyrics-loaded', handleLoaded)
+			currentEl.removeEventListener('braccato:lyrics-loaded', handleLoaded)
 		}
 	})
 </script>
 
-<braccato-lyrics bind:this={el} class={className} />
+<braccato-lyrics bind:this={el} class={className}></braccato-lyrics>
 
 <style lang="postcss">
 	@reference "../../app.css";
