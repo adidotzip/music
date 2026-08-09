@@ -75,11 +75,11 @@ describe('backup and restore', () => {
 		// Verify database after import
 		const restoredArtists = await db.getAll('artists')
 		expect(restoredArtists).toHaveLength(1)
-		expect(restoredArtists[0].name).toBe('Test Artist')
+		expect(restoredArtists[0]?.name).toBe('Test Artist')
 
 		const restoredTracks = await db.getAll('tracks')
 		expect(restoredTracks).toHaveLength(1)
-		expect(restoredTracks[0].name).toBe('Test Track')
+		expect(restoredTracks[0]?.name).toBe('Test Track')
 	})
 
 	it('handles validation and loading of older/incomplete backups gracefully', async () => {

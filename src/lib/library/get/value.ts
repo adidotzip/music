@@ -3,6 +3,7 @@ import { type DbKey, getDatabase } from '$lib/db/database.ts'
 import { type DatabaseChangeDetails, onDatabaseChange } from '$lib/db/events.ts'
 import type { Album, Artist, Playlist, Track } from '$lib/library/types.ts'
 import { FAVORITE_PLAYLIST_ID, FAVORITE_PLAYLIST_UUID, type LibraryStoreName } from '../types.ts'
+import { getSongDetails } from '$lib/services/jiosaavn.ts'
 
 const idToUuidMap = new Map<number, string>()
 

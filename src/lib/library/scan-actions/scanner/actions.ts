@@ -155,7 +155,7 @@ const findTrackByMixedFileEntity = async (handle: FileEntity, tracks: Track[]) =
 	for (const track of tracks) {
 		const existingFile = track.file
 		// If file name is changed we can be sure it's not the same file anymore
-		if (existingFile.name !== handle.name) {
+		if (!existingFile || existingFile.name !== handle.name) {
 			continue
 		}
 

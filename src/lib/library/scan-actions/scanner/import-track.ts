@@ -28,14 +28,14 @@ const dbImportAlbum = async (tx: ImportTrackTx, track: Track) => {
 					(artist) => artist !== UNKNOWN_ITEM,
 				),
 				year: existingAlbum.year ?? track.year,
-				image: existingAlbum.image ?? track.image?.full,
+				image: (existingAlbum.image ?? track.image?.full) as Blob | undefined,
 			}
 		: {
 				uuid: crypto.randomUUID(),
 				name: albumName,
 				artists: track.artists,
 				year: track.year,
-				image: track.image?.full,
+				image: track.image?.full as Blob | undefined,
 			}
 
 	const albumId = await store.put(updatedAlbum as Album)
