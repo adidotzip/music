@@ -15,7 +15,7 @@
 		target?: string
 		disabled?: boolean
 		href?: ButtonHref<As>
-		class?: string
+		class?: any
 		tabindex?: number
 		ariaLabel?: string
 		tooltip?: string
@@ -60,10 +60,9 @@
 	{@attach ripple({ stopPropagation: true })}
 	{@attach tooltip(tooltipMessage)}
 	{...restProps}
-	{type}
 	aria-label={ariaLabel}
-	{href}
-	disabled={disabled || undefined}
+	{...((disabled || as === 'button') ? { type, disabled: disabled || undefined } : {})}
+	{...(!disabled && as === 'a' ? { href } : {})}
 	class={[
 		'm3-button-base',
 		KIND_CLASS_MAP[kind],
