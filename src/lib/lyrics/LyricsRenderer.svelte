@@ -55,7 +55,7 @@
 		const handleLoaded = async () => {
 			const { injectTranslation, injectRomanization } = await import('@braccato/core')
 			const renderer = currentEl.renderer
-			if (!renderer || !renderer.lines || !lyrics) return
+			if (!((renderer && renderer.lines ) && lyrics)) return
 
 			let needsRelayout = false
 
@@ -169,11 +169,13 @@
 		--blyrics-glow-color: var(--lyric-active-unfill, rgba(255, 255, 255, 0.22));
 	}
 
-	/* Removed will-change: transform to let Braccato handle composite steps */
 	:global(.blyrics--line) {
 		font-weight: 800;
 		letter-spacing: -0.025em;
 		transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease, filter var(--blyrics-scale-transition-duration, 0.166s) ease;
+		will-change: transform, translate, opacity, filter;
+		backface-visibility: hidden;
+		transform-style: preserve-3d;
 	}
 
 	:global(.blyrics--translated) {
