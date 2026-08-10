@@ -38,6 +38,17 @@ export class PlayerStore {
 	playbackRate: number = $state(1)
 	preservePitch: boolean = $state(true)
 
+	vocalMode: 'original' | 'instrumental' | 'reduced' = $state('original')
+
+	cycleVocalMode = (): void => {
+		const modes: ('original' | 'instrumental' | 'reduced')[] = ['original', 'instrumental', 'reduced']
+		const index = modes.indexOf(this.vocalMode)
+		const nextMode = modes[(index + 1) % modes.length]
+		if (nextMode) {
+			this.vocalMode = nextMode
+		}
+	}
+
 	get shuffle(): boolean {
 		return this.#queue.shuffle
 	}
@@ -85,7 +96,7 @@ export class PlayerStore {
 	animatedArtworkLoaded: boolean = $state(false)
 
 	constructor() {
-		persist('player', this, ['volume', 'repeat', 'muted', 'playbackRate', 'preservePitch'])
+		persist('player', this, ['volume', 'repeat', 'muted', 'playbackRate', 'preservePitch', 'vocalMode'])
 		persist('player', this.#queue, ['shuffle'])
 
 		this.equalizer.init()
@@ -130,7 +141,7 @@ export class PlayerStore {
 			this.currentTime = 0
 			this.duration = 0
 
-			void this.#audioLoader.load(track.directory, track.file, track.url).then((result) => {
+			void this.#audioLoader.load(track.directory, track.file, track.url, track.id, track.scannedAt).then((result) => {
 				if (result.status === 'failed') {
 					const name = truncate(track.name, 30)
 					const errorMap = {
@@ -184,6 +195,34 @@ export class PlayerStore {
 				this.animatedArtworkTallSrc = undefined
 				this.animatedArtworkLoaded = false
 			}
+		})
+
+		let prevVocalMode = this.vocalMode
+		$effect(() => {
+			const mode = this.vocalMode
+			const track = this.activeTrack
+			if (mode === prevVocalMode) {
+				return
+			}
+			prevVocalMode = mode
+
+			if (!track) return
+
+			untrack(() => {
+				const wasPlaying = this.playing
+				const time = this.currentTime
+
+				void this.#audioLoader
+					.load(track.directory, track.file, track.url, track.id, track.scannedAt)
+					.then((result) => {
+						if (result.status === 'loaded') {
+							this.seek(time)
+							if (wasPlaying) {
+								this.togglePlay(true)
+							}
+						}
+					})
+			})
 		})
 
 		// Guarded by loading: prevents play() on an empty/stale src during file fetch.

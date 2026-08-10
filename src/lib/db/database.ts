@@ -101,6 +101,21 @@ export interface AppDB extends DBSchema {
 			}
 		}
 	}
+	karaoke: {
+		key: number
+		value: {
+			trackId: number
+			instrumentalBlob: Blob
+			vocalBlob: Blob
+			scannedAt: number
+			processedAt: number
+		}
+		meta: {
+			operations: {
+				storeName: 'karaoke'
+			}
+		}
+	}
 }
 
 export type AppStoreNames = StoreNames<AppDB>
@@ -126,7 +141,7 @@ const createStore = <DBTypes extends DBSchema | unknown, Name extends StoreNames
 	})
 
 const openAppDatabase = () =>
-	openDB<AppDB>('snae-app-data', 4, {
+	openDB<AppDB>('snae-app-data', 5, {
 		async upgrade(db, oldVersion, _newVersion, tx) {
 			const { objectStoreNames } = db
 
@@ -228,6 +243,12 @@ const openAppDatabase = () =>
 
 			if (!objectStoreNames.contains('lyrics')) {
 				db.createObjectStore('lyrics', {
+					keyPath: 'trackId',
+				})
+			}
+
+			if (!objectStoreNames.contains('karaoke')) {
+				db.createObjectStore('karaoke', {
 					keyPath: 'trackId',
 				})
 			}

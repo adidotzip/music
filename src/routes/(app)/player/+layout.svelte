@@ -178,6 +178,19 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 						<ActiveIndicator active={player.equalizer.enabled} />
 					</IconButton>
 
+					{#if mainStore.localKaraokeProcessingEnabled}
+						<IconButton
+							tooltip="Vocal Mode: {player.vocalMode === 'original' ? 'Original' : player.vocalMode === 'instrumental' ? 'Karaoke' : 'Reduced Vocal'}"
+							onclick={() => {
+								player.cycleVocalMode()
+							}}
+						>
+							<Icon type="microphone" />
+
+							<ActiveIndicator active={player.vocalMode !== 'original'} />
+						</IconButton>
+					{/if}
+
 					{#if layoutMode === 'list'}
 						<IconButton
 							tooltip={m.playerOpenLyrics()}

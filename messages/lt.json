@@ -233,5 +233,7 @@
 	"validationMaxLength": "Leidžiama daugiausiai {max} simbolių",
 	"validationMinLength": "Reikalinga bent {min} simbolių",
 	"validationRequired": "Laukas yra privalomas",
-	"year": "Metai"
+	"year": "Metai",
+	"settingsDanger": "Pavojus",
+	"settingsLocalKaraokeProcessing": "Vietinis karaoke apdorojimas"
 }

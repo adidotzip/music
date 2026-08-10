@@ -233,5 +233,7 @@
 	"validationMaxLength": "अधिकतम {max} अक्षर अनुमत हैं",
 	"validationMinLength": "कम से कम {min} अक्षर आवश्यक हैं",
 	"validationRequired": "यह फ़ील्ड आवश्यक है",
-	"year": "वर्ष"
+	"year": "वर्ष",
+	"settingsDanger": "खतरा",
+	"settingsLocalKaraokeProcessing": "स्थानीय कराओके प्रसंस्करण"
 }

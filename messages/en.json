@@ -233,5 +233,7 @@
 	"validationMaxLength": "At most {max} characters are allowed",
 	"validationMinLength": "At least {min} characters are required",
 	"validationRequired": "Field is required",
-	"year": "Year"
+	"year": "Year",
+	"settingsDanger": "Danger",
+	"settingsLocalKaraokeProcessing": "Local Karaoke Processing"
 }

@@ -192,6 +192,7 @@ export const importBackupData = async (zip: JSZip, backup: BackupData): Promise<
 		'playHistory',
 		'lyrics',
 		'directories',
+		'karaoke',
 	] as const
 
 	// Prepare data in-memory beforehand to avoid non-IDB awaits inside active transaction
@@ -201,7 +202,7 @@ export const importBackupData = async (zip: JSZip, backup: BackupData): Promise<
 		if (storeName === 'directories') {
 			continue
 		}
-		const items = backup.db[storeName] || []
+		const items = (backup.db as any)[storeName] || []
 		const preparedItems = []
 
 		for (const item of items) {

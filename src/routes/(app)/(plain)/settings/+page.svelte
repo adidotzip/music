@@ -448,6 +448,16 @@
 </section>
 
 <section class="card settings-max-width mx-auto mt-6 w-full text-body-lg">
+	{@render heading(m.settingsDanger())}
+
+	<div class="flex items-center justify-between p-4">
+		<div>{m.settingsLocalKaraokeProcessing()}</div>
+
+		<Switch bind:checked={mainStore.localKaraokeProcessingEnabled} />
+	</div>
+</section>
+
+<section class="card settings-max-width mx-auto mt-6 w-full text-body-lg">
 	<div class="flex items-center justify-between p-4">
 		<div>{m.about()}</div>
 

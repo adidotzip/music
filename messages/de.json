@@ -233,5 +233,7 @@
 	"validationMaxLength": "Es sind maximal {max} Zeichen erlaubt",
 	"validationMinLength": "Es sind mindestens {min} Zeichen erforderlich",
 	"validationRequired": "Eingabe erforderlich",
-	"year": "Jahr"
+	"year": "Jahr",
+	"settingsDanger": "Gefahr",
+	"settingsLocalKaraokeProcessing": "Lokale Karaoke-Verarbeitung"
 }

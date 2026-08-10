@@ -233,5 +233,7 @@
 	"validationMaxLength": "{max} caractères maximum autorisés",
 	"validationMinLength": "{min} caractères minimum requis",
 	"validationRequired": "Champ obligatoire",
-	"year": "Année"
+	"year": "Année",
+	"settingsDanger": "Danger",
+	"settingsLocalKaraokeProcessing": "Traitement karaoké local"
 }

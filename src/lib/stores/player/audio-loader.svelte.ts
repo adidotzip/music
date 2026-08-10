@@ -79,6 +79,24 @@ const getTrackFile = async (directoryId: number, entity: FileEntity) => {
 	}
 }
 
+import { KaraokeService, blendStems } from '$lib/services/karaoke'
+
+const getMainStore = () => {
+	try {
+		return useMainStore()
+	} catch {
+		return (globalThis as any).mainStore
+	}
+}
+
+const getPlayer = () => {
+	try {
+		return usePlayer()
+	} catch {
+		return (globalThis as any).player
+	}
+}
+
 export class AudioLoader {
 	loading: boolean = $state(false)
 
@@ -90,16 +108,33 @@ export class AudioLoader {
 		this.#onSrc = onSrc
 	}
 
-	load = async (directoryId: number | undefined, file: FileEntity | undefined, url?: string) => {
+	load = async (
+		directoryId: number | undefined,
+		file: FileEntity | undefined,
+		url?: string,
+		trackId?: number,
+		scannedAt?: number,
+	) => {
 		this.#current += 1
 		const gen = this.#current
 		this.loading = true
 		this.#clearSrc()
+		KaraokeService.cancel()
 
 		if (url) {
 			if (!url.startsWith('http')) {
 				this.loading = false
 				return { status: 'failed', reason: 'error' } as const
+			}
+
+			const mainStore = getMainStore()
+			const player = getPlayer()
+			if (mainStore?.localKaraokeProcessingEnabled && player?.vocalMode !== 'original') {
+				snackbar({
+					message: 'Karaoke processing is not supported for URL-based streams.',
+					id: 'karaoke-url-unsupported',
+					duration: 4000,
+				})
 			}
 
 			this.#onSrc(url)
@@ -121,6 +156,75 @@ export class AudioLoader {
 			this.loading = false
 
 			return { status: 'failed', reason: trackStatus } as const
+		}
+
+		// Check if local karaoke processing is enabled and active
+		const mainStore = getMainStore()
+		const player = getPlayer()
+
+		if (
+			mainStore?.localKaraokeProcessingEnabled &&
+			player?.vocalMode !== 'original' &&
+			trackId !== undefined
+		) {
+			try {
+				const db = await getDatabase()
+				let cached = await db.get('karaoke', trackId)
+
+				if (this.#current !== gen) {
+					return { status: 'superseded' } as const
+				}
+
+				if (!cached || cached.scannedAt !== scannedAt) {
+					snackbar({
+						message: 'Processing local AI karaoke (separating vocals)...',
+						id: 'karaoke-processing',
+						duration: 8000,
+					})
+
+					const stems = await KaraokeService.process(trackFile)
+					if (this.#current !== gen) {
+						return { status: 'superseded' } as const
+					}
+
+					cached = {
+						trackId,
+						instrumentalBlob: stems.instrumentalBlob,
+						vocalBlob: stems.vocalBlob,
+						scannedAt: scannedAt ?? 0,
+						processedAt: Date.now(),
+					}
+
+					await db.put('karaoke', cached)
+					if (this.#current !== gen) {
+						return { status: 'superseded' } as const
+					}
+				}
+
+				let playBlob = cached.instrumentalBlob
+				if (player.vocalMode === 'reduced') {
+					playBlob = await blendStems(cached.instrumentalBlob, cached.vocalBlob)
+					if (this.#current !== gen) {
+						return { status: 'superseded' } as const
+					}
+				}
+
+				this.#currentSrc = URL.createObjectURL(playBlob)
+				this.#onSrc(this.#currentSrc)
+				this.loading = false
+				return { status: 'loaded' } as const
+			} catch (err: any) {
+				console.error('Local karaoke processing failed:', err)
+				if (err?.name === 'AbortError' || this.#current !== gen) {
+					return { status: 'superseded' } as const
+				}
+
+				snackbar({
+					message: 'AI processing failed. Falling back to original audio.',
+					id: 'karaoke-failed',
+					duration: 4000,
+				})
+			}
 		}
 
 		this.#currentSrc = URL.createObjectURL(trackFile)
