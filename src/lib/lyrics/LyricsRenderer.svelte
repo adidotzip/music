@@ -173,6 +173,7 @@
 	:global(.blyrics--line) {
 		font-weight: 800;
 		letter-spacing: -0.025em;
+		transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease, filter var(--blyrics-scale-transition-duration, 0.166s) ease;
 	}
 
 	:global(.blyrics--translated) {
