@@ -1,475 +1,356 @@
-<script lang="ts" module>
-    import Button from '$lib/components/Button.svelte'
-    import Dialog, { type DialogOpenAccessor } from '$lib/components/dialog/Dialog.svelte'
-    import TextField from '$lib/components/TextField.svelte'
-    import Icon from '$lib/components/icon/Icon.svelte'
-    import Spinner from '$lib/components/Spinner.svelte'
-    import Tabs from '$lib/components/Tabs.svelte'
-    import type { TrackData } from '$lib/library/get/value.ts'
-    import { LyricsCache, type CachedLyricsResult } from '$lib/lyrics/LyricsCache.ts'
-    import { LyricsParser } from '$lib/lyrics/LyricsParser.ts'
-    import { LyricsProvider } from '$lib/lyrics/LyricsProvider.ts'
-
-    export interface LyricsSourceDialogProps {
-        open: DialogOpenAccessor<TrackData>
-    }
-
-    interface CustomSource {
-        id: string
-        name: string
-        url: string
-    }
-</script>
-
 <script lang="ts">
+    import Button from '$lib/components/Button.svelte'
+    import CommonDialog from '$lib/components/dialog/CommonDialog.svelte'
+    import type { DialogOpenAccessor } from '$lib/components/dialog/Dialog.svelte'
+    import Icon from '$lib/components/Icon.svelte'
+    import TextField from '$lib/components/TextField.svelte'
+    import { UNKNOWN_ITEM } from '$lib/library/types.ts'
+    import { LyricsCache, type LyricsCacheItem } from '$lib/lyrics/LyricsCache.ts'
+    import { LyricsParser } from '$lib/lyrics/LyricsParser.ts'
+    import * as m from '$lib/paraglide/messages.js'
+
+    interface LyricsSourceDialogProps {
+        open: DialogOpenAccessor<{
+            trackId: string
+            trackName: string
+            artistName: string
+            durationMs: number
+        }>
+    }
+
     let { open }: LyricsSourceDialogProps = $props()
 
-    const track = $derived(open.get())
+    const data = $derived(open.get())
 
-    const tabs = ['sources', 'upload', 'custom-apis'] as const
-    let selectedTabIndex = $state(0)
-    const currentTab = $derived(tabs[selectedTabIndex])
-
-    let customSources: CustomSource[] = $state([])
-    let newSourceName = $state('')
-    let newSourceUrl = $state('')
-    let fetching = $state(false)
-    let activeFetchingSource = $state<string | null>(null)
+    let isFetching = $state(false)
+    let searchArtist = $state('')
+    let searchTitle = $state('')
+    let searchResults = $state<any[]>([])
+    let selectedResultIndex = $state<number | null>(null)
+    let manualLyricsText = $state('')
     let isDraggingOver = $state(false)
+    let fileInputEl = $state<HTMLInputElement>()
+
+    let activeTab = $state<'online' | 'manual' | 'file'>('online')
 
     $effect(() => {
-        if (typeof window !== 'undefined') {
-            const raw = localStorage.getItem('snaeplayer-custom-lyrics-sources')
-            if (raw) {
-                try {
-                    customSources = JSON.parse(raw)
-                } catch {}
-            }
+        if (data) {
+            searchArtist = data.artistName === UNKNOWN_ITEM ? '' : data.artistName
+            searchTitle = data.trackName === UNKNOWN_ITEM ? '' : data.trackName
+            searchResults = []
+            selectedResultIndex = null
+            manualLyricsText = ''
+
+            // Pre-load current cached lyrics if available
+            LyricsCache.get(data.trackId).then((cached) => {
+                if (cached?.lyrics) {
+                    manualLyricsText = cached.lyrics
+                        .map((l) => (l.isInstrumental ? '[empty]' : l.words))
+                        .join('\n')
+                }
+            })
         }
     })
 
-    function saveCustomSources() {
-        localStorage.setItem('snaeplayer-custom-lyrics-sources', JSON.stringify(customSources))
-    }
-
-    function addCustomSource() {
-        if (!newSourceName.trim() || !newSourceUrl.trim()) {
-            snackbar('Please fill out both Name and URL')
-            return
-        }
-        const newSource: CustomSource = {
-            id: crypto.randomUUID(),
-            name: newSourceName.trim(),
-            url: newSourceUrl.trim(),
-        }
-        customSources = [...customSources, newSource]
-        saveCustomSources()
-        newSourceName = ''
-        newSourceUrl = ''
-        snackbar('Custom source added successfully')
-    }
-
-    function deleteCustomSource(id: string) {
-        customSources = customSources.filter((cs) => cs.id !== id)
-        saveCustomSources()
-        snackbar('Custom source deleted')
-    }
-
-    async function selectSource(sourceId: 'adi' | 'lrcmux' | 'lrclib' | string) {
-        if (!track) return
-        fetching = true
-        activeFetchingSource = sourceId
+    const handleSearch = async () => {
+        if (!searchTitle.trim()) return
+        isFetching = true
+        searchResults = []
+        selectedResultIndex = null
 
         try {
-            let result: CachedLyricsResult | null = null
-            const durationMs = Math.round(track.duration) * 1000
-
-            if (sourceId === 'adi') {
-                const resp = await LyricsProvider.fetchFromAdi(track)
-                if (resp) {
-                    const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-                    result = {
-                        status: 'found',
-                        source: 'adi',
-                        lyrics,
-                        syncType: resp.isPlainOnly ? 'plain' : 'karaoke',
-                    }
-                }
-            } else if (sourceId === 'lrcmux') {
-                const resp = await LyricsProvider.fetchFromLrcmux(track)
-                if (resp) {
-                    const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-                    const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
-                    result = {
-                        status: 'found',
-                        source: 'lrcmux',
-                        lyrics,
-                        syncType: hasWordTiming ? 'karaoke' : 'line',
-                    }
-                }
-            } else if (sourceId === 'lrclib') {
-                const resp = await LyricsProvider.fetchFromLrclib(track)
-                if (resp) {
-                    if (resp.rawLyrics === 'Instrumental') {
-                        result = { status: 'instrumental' }
-                    } else {
-                        const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-                        const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
-                        result = {
-                            status: 'found',
-                            source: 'lrclib',
-                            lyrics,
-                            syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
-                        }
-                    }
-                }
-            } else {
-                const custom = customSources.find((cs) => cs.id === sourceId)
-                if (custom) {
-                    const resp = await LyricsProvider.fetchFromCustomSource(track, custom)
-                    if (resp) {
-                        const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-                        result = {
-                            status: 'found',
-                            source: custom.name,
-                            lyrics,
-                            syncType: resp.isPlainOnly ? 'plain' : 'line',
-                        }
-                    }
-                }
-            }
-
-            if (result) {
-                await LyricsCache.set(track.id, result)
-                window.dispatchEvent(new CustomEvent('lyrics-reload'))
-                snackbar('Lyrics loaded successfully')
-                open.close()
-            } else {
-                snackbar('Failed to fetch lyrics from this source')
+            const query = encodeURIComponent(`${searchArtist} ${searchTitle}`.trim())
+            const res = await fetch(`https://lrclib.net/api/search?q=${query}`)
+            if (res.ok) {
+                searchResults = await res.json()
             }
         } catch (e) {
-            console.error(e)
-            snackbar('An error occurred while fetching lyrics')
+            console.error('Failed to fetch lyrics:', e)
         } finally {
-            fetching = false
-            activeFetchingSource = null
+            isFetching = false
         }
     }
 
-    async function resetToDefault() {
-        if (!track) return
-        try {
-            const db = await (await import('$lib/db/database.ts')).getDatabase()
-            await db.delete('lyrics', track.id)
-            window.dispatchEvent(new CustomEvent('lyrics-reload'))
-            snackbar('Lyrics reset to default search')
-            open.close()
-        } catch (e) {
-            console.error(e)
-            snackbar('Failed to reset lyrics')
-        }
+    const saveLyrics = async (lyricsData: LyricsCacheItem) => {
+        if (!data) return
+        await LyricsCache.set(data.trackId, lyricsData)
+        window.dispatchEvent(new CustomEvent('lyrics-reload'))
+        open.close()
     }
 
-    function processLyricsText(text: string) {
-        if (!track) return
-        try {
-            const durationMs = Math.round(track.duration) * 1000
-            const lyrics = LyricsParser.parse(text, durationMs)
-            const isPlainOnly = !text.includes('[') && !text.includes('<tt')
-            const result: CachedLyricsResult = {
-                status: 'found',
-                source: 'uploaded',
-                lyrics,
-                syncType: isPlainOnly ? 'plain' : 'line',
-            }
-            LyricsCache.set(track.id, result).then(() => {
-                window.dispatchEvent(new CustomEvent('lyrics-reload'))
-                snackbar('Lyrics uploaded successfully')
-                open.close()
-            })
-        } catch (err) {
-            console.error(err)
-            snackbar('Failed to parse uploaded lyrics file')
-        }
+    const handleSaveOnlineSelected = async () => {
+        if (selectedResultIndex === null || !searchResults[selectedResultIndex]) return
+        const item = searchResults[selectedResultIndex]
+        const duration = data?.durationMs ?? 0
+
+        const rawText = item.syncedLyrics || item.plainLyrics || ''
+        const parsed = LyricsParser.parse(rawText, duration)
+
+        await saveLyrics({
+            status: 'found',
+            source: 'lrclib',
+            lyrics: parsed,
+            syncType: item.syncedLyrics ? 'line' : 'plain',
+        })
     }
 
-    function handleFileUpload(event: Event) {
-        const target = event.target as HTMLInputElement
-        const file = target.files?.[0]
+    const handleSaveManual = async () => {
+        if (!manualLyricsText.trim() || !data) return
+        const parsed = LyricsParser.parse(manualLyricsText, data.durationMs)
+        const isPlainOnly = !(manualLyricsText.includes('[') || manualLyricsText.includes('<tt'))
+
+        await saveLyrics({
+            status: 'found',
+            source: 'local',
+            lyrics: parsed,
+            syncType: isPlainOnly ? 'plain' : 'line',
+        })
+    }
+
+    const handleFileContent = async (text: string) => {
+        if (!data || !text.trim()) return
+        const parsed = LyricsParser.parse(text, data.durationMs)
+        const isPlainOnly = !(text.includes('[') || text.includes('<tt'))
+
+        await saveLyrics({
+            status: 'found',
+            source: 'local',
+            lyrics: parsed,
+            syncType: isPlainOnly ? 'plain' : 'line',
+        })
+    }
+
+    const handleFileUpload = (e: Event) => {
+        const input = e.target as HTMLInputElement
+        const file = input.files?.[0]
         if (!file) return
 
         const reader = new FileReader()
-        reader.onload = (e) => {
-            const text = e.target?.result as string
-            if (text) processLyricsText(text)
-            else snackbar('Failed to read file')
+        reader.onload = (evt) => {
+            const content = evt.target?.result as string
+            if (content) {
+                handleFileContent(content)
+            }
         }
         reader.readAsText(file)
     }
 
-    function handleDrop(event: DragEvent) {
-        event.preventDefault()
+    const handleDrop = (e: DragEvent) => {
+        e.preventDefault()
         isDraggingOver = false
-        const file = event.dataTransfer?.files?.[0]
+        const file = e.dataTransfer?.files?.[0]
         if (!file) return
 
         const reader = new FileReader()
-        reader.onload = (e) => {
-            const text = e.target?.result as string
-            if (text) processLyricsText(text)
-            else snackbar('Failed to read file')
+        reader.onload = (evt) => {
+            const content = evt.target?.result as string
+            if (content) {
+                handleFileContent(content)
+            }
         }
         reader.readAsText(file)
     }
 </script>
 
-<Dialog {open} class="[--dialog-width:--spacing(140)]">
-    {#snippet header()}
-        <header data-dialog-header class="flex items-center justify-between px-6 pt-6 pb-2">
-            <div class="flex items-center gap-3">
-                <div class="flex size-10 items-center justify-center rounded-full bg-primaryContainer text-onPrimaryContainer">
-                    <Icon type="musicNote" class="size-5" />
-                </div>
-                <div>
-                    <h2 class="text-title-large font-bold text-onSurface">Lyrics Settings</h2>
-                    <p class="text-body-small text-onSurfaceVariant">Select provider or upload synchronized lyrics</p>
-                </div>
-            </div>
-        </header>
-    {/snippet}
+<CommonDialog
+    {open}
+    icon="text"
+    title={m.lyricsDialogTitle?.() ?? 'Lyrics Source'}
+    class="[--dialog-width:--spacing(160)]"
+    buttons={[
+        {
+            title: m.libraryCancel?.() ?? 'Cancel',
+        },
+        ...(activeTab === 'online'
+            ? [
+                  {
+                      title: m.librarySave?.() ?? 'Save',
+                      type: 'submit' as const,
+                      disabled: selectedResultIndex === null,
+                  },
+              ]
+            : []),
+        ...(activeTab === 'manual'
+            ? [
+                  {
+                      title: m.librarySave?.() ?? 'Save',
+                      type: 'submit' as const,
+                      disabled: !manualLyricsText.trim(),
+                  },
+              ]
+            : []),
+    ]}
+    onsubmit={() => {
+        if (activeTab === 'online') handleSaveOnlineSelected()
+        if (activeTab === 'manual') handleSaveManual()
+    }}
+>
+    <div class="flex flex-col gap-4 max-h-[70vh] min-h-0 shrink overflow-y-auto pr-1 overscroll-contain text-body-md">
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-outlineVariant gap-2">
+            <button
+                type="button"
+                class={[
+                    'flex items-center gap-2 border-b-2 px-4 py-2 font-medium text-label-lg transition-colors',
+                    activeTab === 'online'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-onSurfaceVariant hover:text-onSurface'
+                ]}
+                onclick={() => (activeTab = 'online')}
+            >
+                <Icon name="search" class="size-4" />
+                Online Search
+            </button>
+            <button
+                type="button"
+                class={[
+                    'flex items-center gap-2 border-b-2 px-4 py-2 font-medium text-label-lg transition-colors',
+                    activeTab === 'manual'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-onSurfaceVariant hover:text-onSurface'
+                ]}
+                onclick={() => (activeTab = 'manual')}
+            >
+                <Icon name="pencil" class="size-4" />
+                Manual Input
+            </button>
+            <button
+                type="button"
+                class={[
+                    'flex items-center gap-2 border-b-2 px-4 py-2 font-medium text-label-lg transition-colors',
+                    activeTab === 'file'
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-onSurfaceVariant hover:text-onSurface'
+                ]}
+                onclick={() => (activeTab = 'file')}
+            >
+                <Icon name="fileDocument" class="size-4" />
+                Import File
+            </button>
+        </div>
 
-    {#snippet children({ close })}
-        {#if track}
-            <div data-dialog-content class="flex flex-col overflow-hidden">
-                <!-- Track Context Card -->
-                <div class="mx-6 my-3 flex items-center justify-between gap-4 rounded-2xl bg-surfaceContainerLow p-3 px-4 border border-outlineVariant/40">
-                    <div class="flex flex-col min-w-0">
-                        <span class="text-title-small font-bold text-onSurface truncate">{track.name}</span>
-                        <span class="text-body-small text-onSurfaceVariant truncate">
-                            {Array.isArray(track.artists) ? track.artists.join(', ') : track.artists}
-                        </span>
+        {#if activeTab === 'online'}
+            <form
+                class="flex flex-col gap-3"
+                onsubmit={(e) => {
+                    e.preventDefault()
+                    handleSearch()
+                }}
+            >
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-label-md text-onSurfaceVariant">Track Title</span>
+                        <TextField bind:value={searchTitle} name="title" required />
                     </div>
-                    <Button kind="outlined" size="small" disabled={fetching} onclick={resetToDefault}>
-                        Reset Default
+                    <div class="flex flex-col gap-1">
+                        <span class="text-label-md text-onSurfaceVariant">Artist</span>
+                        <TextField bind:value={searchArtist} name="artist" />
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <Button kind="filled" type="submit" disabled={isFetching}>
+                        {#if isFetching}
+                            Searching...
+                        {:else}
+                            Search LRCLIB
+                        {/if}
                     </Button>
                 </div>
+            </form>
 
-                <!-- Navigation Tabs -->
-                <div class="px-6 border-b border-outlineVariant/30">
-                    <Tabs
-                        selectedIndex={selectedTabIndex}
-                        items={tabs}
-                        onchange={(_, idx) => {
-                            selectedTabIndex = idx
-                        }}
-                        class="w-full"
-                    >
-                        {#snippet text(tab)}
-                            <span class="text-label-medium capitalize">
-                                {tab === 'custom-apis' ? 'Custom APIs' : tab}
-                            </span>
-                        {/snippet}
-                    </Tabs>
-                </div>
-
-                <!-- Tab Body Window -->
-                <div class="grow overflow-y-auto px-6 py-4 max-h-[60vh] min-h-[280px]">
-                    {#if currentTab === 'sources'}
-                        <div class="flex flex-col gap-2.5">
-                            <span class="text-label-medium font-semibold text-onSurfaceVariant px-1 mb-1">
-                                Built-in Providers
-                            </span>
-
-                            <!-- Provider Buttons -->
+            <div class="flex flex-col gap-2 mt-2">
+                {#if searchResults.length > 0}
+                    <span class="text-label-md text-onSurfaceVariant">Search Results</span>
+                    <div class="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
+                        {#each searchResults as result, idx}
                             <button
                                 type="button"
-                                disabled={fetching}
-                                class="group flex items-center justify-between rounded-2xl bg-surfaceContainerLow p-3.5 px-4 text-left transition-all hover:bg-surfaceContainer hover:shadow-xs active:scale-[0.99] disabled:opacity-50"
-                                onclick={() => selectSource('adi')}
+                                class={[
+                                    'flex items-center justify-between rounded-xl border p-3 text-left transition-all',
+                                    selectedResultIndex === idx
+                                        ? 'border-primary bg-primaryContainer/30 text-onSurface'
+                                        : 'border-outlineVariant bg-surfaceContainerLow hover:bg-surfaceContainer'
+                                ]}
+                                onclick={() => (selectedResultIndex = idx)}
                             >
-                                <div class="flex items-center gap-3">
-                                    <div class="flex size-9 items-center justify-center rounded-xl bg-surfaceContainerHigh group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        <Icon type="musicNote" class="size-4" />
-                                    </div>
-                                    <div class="flex flex-col">
-                                        <span class="text-body-medium font-semibold text-onSurface">Adi Lyrics</span>
-                                        <span class="text-body-small text-onSurfaceVariant">Primary Provider</span>
-                                    </div>
-                                </div>
-                                {#if fetching && activeFetchingSource === 'adi'}
-                                    <Spinner class="size-5 text-primary" />
-                                {:else}
-                                    <Icon type="chevronRight" class="text-onSurfaceVariant/60 size-5 transition-transform group-hover:translate-x-0.5" />
-                                {/if}
-                            </button>
-
-                            <button
-                                type="button"
-                                disabled={fetching}
-                                class="group flex items-center justify-between rounded-2xl bg-surfaceContainerLow p-3.5 px-4 text-left transition-all hover:bg-surfaceContainer hover:shadow-xs active:scale-[0.99] disabled:opacity-50"
-                                onclick={() => selectSource('lrcmux')}
-                            >
-                                <div class="flex items-center gap-3">
-                                    <div class="flex size-9 items-center justify-center rounded-xl bg-surfaceContainerHigh group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        <Icon type="musicNote" class="size-4" />
-                                    </div>
-                                    <div class="flex flex-col">
-                                        <span class="text-body-medium font-semibold text-onSurface">LRC Mux</span>
-                                        <span class="text-body-small text-onSurfaceVariant">Secondary Provider</span>
-                                    </div>
-                                </div>
-                                {#if fetching && activeFetchingSource === 'lrcmux'}
-                                    <Spinner class="size-5 text-primary" />
-                                {:else}
-                                    <Icon type="chevronRight" class="text-onSurfaceVariant/60 size-5 transition-transform group-hover:translate-x-0.5" />
-                                {/if}
-                            </button>
-
-                            <button
-                                type="button"
-                                disabled={fetching}
-                                class="group flex items-center justify-between rounded-2xl bg-surfaceContainerLow p-3.5 px-4 text-left transition-all hover:bg-surfaceContainer hover:shadow-xs active:scale-[0.99] disabled:opacity-50"
-                                onclick={() => selectSource('lrclib')}
-                            >
-                                <div class="flex items-center gap-3">
-                                    <div class="flex size-9 items-center justify-center rounded-xl bg-surfaceContainerHigh group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        <Icon type="musicNote" class="size-4" />
-                                    </div>
-                                    <div class="flex flex-col">
-                                        <span class="text-body-medium font-semibold text-onSurface">LRCLIB</span>
-                                        <span class="text-body-small text-onSurfaceVariant">Tertiary Provider</span>
-                                    </div>
-                                </div>
-                                {#if fetching && activeFetchingSource === 'lrclib'}
-                                    <Spinner class="size-5 text-primary" />
-                                {:else}
-                                    <Icon type="chevronRight" class="text-onSurfaceVariant/60 size-5 transition-transform group-hover:translate-x-0.5" />
-                                {/if}
-                            </button>
-
-                            <!-- Custom Sources Section -->
-                            {#if customSources.length > 0}
-                                <span class="text-label-medium font-semibold text-onSurfaceVariant px-1 mt-4 mb-1">
-                                    Saved Custom APIs
-                                </span>
-                                {#each customSources as source}
-                                    <button
-                                        type="button"
-                                        disabled={fetching}
-                                        class="group flex items-center justify-between rounded-2xl bg-surfaceContainerLow p-3.5 px-4 text-left transition-all hover:bg-surfaceContainer hover:shadow-xs active:scale-[0.99] disabled:opacity-50"
-                                        onclick={() => selectSource(source.id)}
-                                    >
-                                        <div class="flex flex-col min-w-0 pr-2">
-                                            <span class="text-body-medium font-semibold text-onSurface truncate">{source.name}</span>
-                                            <span class="text-body-small text-onSurfaceVariant truncate font-mono">
-                                                {source.url}
-                                            </span>
-                                        </div>
-                                        {#if fetching && activeFetchingSource === source.id}
-                                            <Spinner class="size-5 text-primary" />
-                                        {:else}
-                                            <Icon type="chevronRight" class="text-onSurfaceVariant/60 size-5 transition-transform group-hover:translate-x-0.5" />
-                                        {/if}
-                                    </button>
-                                {/each}
-                            {/if}
-                        </div>
-                    {:else if currentTab === 'upload'}
-                        <!-- Dropzone area -->
-                        <div
-                            class="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-outlineVariant p-8 text-center transition-all bg-surfaceContainerLowest hover:bg-surfaceContainerLow/50"
-                            class:border-primary={isDraggingOver}
-                            class:bg-primary/5={isDraggingOver}
-                            ondragover={(e) => { e.preventDefault(); isDraggingOver = true }}
-                            ondragleave={() => { isDraggingOver = false }}
-                            ondrop={handleDrop}
-                            role="region"
-                            aria-label="File upload drop area"
-                        >
-                            <div class="flex size-14 items-center justify-center rounded-2xl bg-primaryContainer text-onPrimaryContainer mb-3">
-                                <Icon type="folder" class="size-7" />
-                            </div>
-                            <div class="text-title-medium font-bold text-onSurface mb-1">Upload Lyrics File</div>
-                            <p class="text-body-small text-onSurfaceVariant max-w-64 mb-5">
-                                Drag and drop an <code class="text-primary font-mono">.lrc</code>, <code class="text-primary font-mono">.ttml</code>, or <code class="text-primary font-mono">.txt</code> file here.
-                            </p>
-
-                            <label class="interactable flex h-10 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-5 text-label-large font-semibold text-onPrimary shadow-xs transition-all hover:bg-opacity-90 active:scale-95">
-                                <Icon type="plus" class="size-4" />
-                                Browse Files
-                                <input
-                                    type="file"
-                                    accept=".lrc,.ttml,.txt"
-                                    class="hidden"
-                                    onchange={handleFileUpload}
-                                />
-                            </label>
-                        </div>
-                    {:else if currentTab === 'custom-apis'}
-                        <div class="flex flex-col gap-5">
-                            <div class="flex flex-col gap-3 rounded-2xl bg-surfaceContainerLow p-4 border border-outlineVariant/30">
-                                <span class="text-title-small font-bold text-onSurface">Add New Endpoint</span>
-
-                                <TextField
-                                    name="sourceName"
-                                    placeholder="Source Name (e.g. Personal Server)"
-                                    bind:value={newSourceName}
-                                    required
-                                />
-
-                                <TextField
-                                    name="sourceUrl"
-                                    placeholder="API URL Template"
-                                    bind:value={newSourceUrl}
-                                    required
-                                />
-
-                                <div class="rounded-xl bg-surfaceContainerHigh/60 p-3 text-body-small text-onSurfaceVariant leading-relaxed">
-                                    <span class="font-semibold block mb-1">URL Placeholders:</span>
-                                    <div class="flex flex-wrap gap-1.5 font-mono text-primary">
-                                        <span class="bg-surfaceContainer px-1.5 py-0.5 rounded border border-outlineVariant/40">{`{title}`}</span>
-                                        <span class="bg-surfaceContainer px-1.5 py-0.5 rounded border border-outlineVariant/40">{`{artist}`}</span>
-                                        <span class="bg-surfaceContainer px-1.5 py-0.5 rounded border border-outlineVariant/40">{`{album}`}</span>
-                                        <span class="bg-surfaceContainer px-1.5 py-0.5 rounded border border-outlineVariant/40">{`{duration}`}</span>
-                                    </div>
-                                </div>
-
-                                <Button kind="filled" class="mt-1" onclick={addCustomSource}>
-                                    Save Endpoint
-                                </Button>
-                            </div>
-
-                            {#if customSources.length > 0}
-                                <div class="flex flex-col gap-2">
-                                    <span class="text-label-medium font-semibold text-onSurfaceVariant px-1">
-                                        Existing Endpoints ({customSources.length})
+                                <div class="flex flex-col gap-0.5 overflow-hidden">
+                                    <span class="font-medium truncate">{result.trackName}</span>
+                                    <span class="text-body-sm text-onSurfaceVariant truncate">
+                                        {result.artistName} — {result.albumName || 'Single'}
                                     </span>
-                                    {#each customSources as source}
-                                        <div class="flex items-center justify-between rounded-xl bg-surfaceContainerLow p-3 px-4 border border-outlineVariant/30">
-                                            <div class="flex flex-col min-w-0 pr-3">
-                                                <span class="text-body-medium font-bold text-onSurface truncate">{source.name}</span>
-                                                <span class="text-body-small text-onSurfaceVariant truncate font-mono">{source.url}</span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                class="interactable flex size-9 shrink-0 items-center justify-center rounded-full text-error hover:bg-error/10 transition-colors"
-                                                onclick={() => deleteCustomSource(source.id)}
-                                            >
-                                                <Icon type="trashOutline" class="size-4" />
-                                            </button>
-                                        </div>
-                                    {/each}
                                 </div>
-                            {/if}
-                        </div>
-                    {/if}
-                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    {#if result.syncedLyrics}
+                                        <span class="rounded bg-primary/10 px-2 py-0.5 text-label-sm text-primary font-semibold">
+                                            Synced
+                                        </span>
+                                    {:else if result.plainLyrics}
+                                        <span class="rounded bg-surfaceVariant px-2 py-0.5 text-label-sm text-onSurfaceVariant">
+                                            Plain
+                                        </span>
+                                    {/if}
+                                </div>
+                            </button>
+                        {/each}
+                    </div>
+                {:else if !isFetching && searchTitle}
+                    <div class="flex flex-col items-center justify-center p-8 text-center text-onSurfaceVariant">
+                        <Icon name="textSearch" class="size-8 mb-2 opacity-50" />
+                        <span>No lyrics found. Try refining your search query.</span>
+                    </div>
+                {/if}
+            </div>
+        {/if}
 
-                <!-- Footer -->
-                <div data-dialog-footer class="flex items-center justify-end px-6 py-3.5 bg-surfaceContainerLow border-t border-outlineVariant/30">
-                    <Button kind="flat" onclick={close}>Close</Button>
+        {#if activeTab === 'manual'}
+            <div class="flex flex-col gap-2">
+                <span class="text-label-md text-onSurfaceVariant">
+                    Paste raw text or LRC formatted lyrics ([00:12.34] lyric text)
+                </span>
+                <textarea
+                    bind:value={manualLyricsText}
+                    rows="10"
+                    class="w-full rounded-xl border border-outlineVariant bg-surfaceContainerLow p-3 text-body-md text-onSurface outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                    placeholder="[00:00.00] Enter lyrics here..."
+                ></textarea>
+            </div>
+        {/if}
+
+        {#if activeTab === 'file'}
+            <div class="flex flex-col gap-4 py-4">
+                <input
+                    type="file"
+                    accept=".lrc,.txt"
+                    class="hidden"
+                    bind:this={fileInputEl}
+                    onchange={handleFileUpload}
+                />
+                <div
+                    class={[
+                        'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-outlineVariant p-8 text-center transition-all bg-surfaceContainerLowest hover:bg-surfaceContainerLow/50',
+                        isDraggingOver && 'border-primary bg-primary/5'
+                    ]}
+                    ondragover={(e) => {
+                        e.preventDefault()
+                        isDraggingOver = true
+                    }}
+                    ondragleave={() => {
+                        isDraggingOver = false
+                    }}
+                    ondrop={handleDrop}
+                >
+                    <Icon name="fileUpload" class="size-10 text-primary mb-3" />
+                    <span class="font-medium text-onSurface">Drag & drop your .lrc or .txt file here</span>
+                    <span class="text-body-sm text-onSurfaceVariant mt-1">or browse from your device</span>
+                    <Button
+                        kind="outlined"
+                        class="mt-4"
+                        onclick={() => fileInputEl?.click()}
+                    >
+                        Browse Files
+                    </Button>
                 </div>
             </div>
         {/if}
-    {/snippet}
-</Dialog>
+    </div>
+</CommonDialog>
