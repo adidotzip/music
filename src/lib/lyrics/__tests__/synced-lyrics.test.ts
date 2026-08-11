@@ -98,6 +98,7 @@ describe('Braccato Lyrics System', () => {
 				}),
 			) // Adi search returns no match
 			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRC Mux fetch returns 404
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // Unison fetch returns 404
 			.mockResolvedValueOnce(
 				jsonResponse({
 					syncedLyrics: '[00:01.00]LRCLib Line 1\n[00:02.00]LRCLib Line 2',
@@ -134,6 +135,7 @@ describe('Braccato Lyrics System', () => {
 				}),
 			) // Adi returns plain lyrics
 			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRC Mux exact returns 404
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // Unison fetch returns 404
 			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRCLib exact returns 404
 			.mockResolvedValueOnce(jsonResponse([])) // LRCLib search returns empty
 
@@ -164,7 +166,9 @@ describe('Braccato Lyrics System', () => {
 				data: {
 					status: 'found',
 					source: 'uploaded',
-					lyrics: [{ startTimeMs: 0, durationMs: 5000, words: 'Uploaded lyric text' } as any],
+					lyrics: [
+						{ startTimeMs: 0, durationMs: 5000, words: 'Uploaded lyric text' } as any,
+					],
 					syncType: 'line',
 				},
 				version: 14,

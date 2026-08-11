@@ -1,13 +1,13 @@
 <script lang="ts" module>
 	import Button from '$lib/components/Button.svelte'
 	import Dialog, { type DialogOpenAccessor } from '$lib/components/dialog/Dialog.svelte'
-	import Separator from '$lib/components/Separator.svelte'
-	import TextField from '$lib/components/TextField.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
+	import Separator from '$lib/components/Separator.svelte'
 	import Spinner from '$lib/components/Spinner.svelte'
 	import Tabs from '$lib/components/Tabs.svelte'
+	import TextField from '$lib/components/TextField.svelte'
 	import type { TrackData } from '$lib/library/get/value.ts'
-	import { LyricsCache, type CachedLyricsResult } from '$lib/lyrics/LyricsCache.ts'
+	import { type CachedLyricsResult, LyricsCache } from '$lib/lyrics/LyricsCache.ts'
 	import { LyricsParser } from '$lib/lyrics/LyricsParser.ts'
 	import { LyricsProvider } from '$lib/lyrics/LyricsProvider.ts'
 
@@ -53,7 +53,7 @@
 	}
 
 	function addCustomSource() {
-		if (!newSourceName.trim() || !newSourceUrl.trim()) {
+		if (!(newSourceName.trim() && newSourceUrl.trim())) {
 			snackbar('Please fill out both Name and URL')
 			return
 		}
@@ -75,8 +75,8 @@
 		snackbar('Custom source deleted')
 	}
 
-	async function selectSource(sourceId: 'adi' | 'lrcmux' | 'lrclib' | string) {
-		if (!track) return
+	async function selectSource(sourceId: 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string) {
+		if (!track) { return }
 		fetching = true
 		activeFetchingSource = sourceId
 
@@ -105,6 +105,18 @@
 						source: 'lrcmux',
 						lyrics,
 						syncType: hasWordTiming ? 'karaoke' : 'line',
+					}
+				}
+			} else if (sourceId === 'unison') {
+				const resp = await LyricsProvider.fetchFromUnison(track)
+				if (resp) {
+					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
+					const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+					result = {
+						status: 'found',
+						source: 'unison',
+						lyrics,
+						syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
 					}
 				}
 			} else if (sourceId === 'lrclib') {
@@ -158,7 +170,7 @@
 	}
 
 	async function resetToDefault() {
-		if (!track) return
+		if (!track) { return }
 		try {
 			// Clear cache entry to trigger standard priority searching chain
 			const db = await (await import('$lib/db/database.ts')).getDatabase()
@@ -173,10 +185,10 @@
 	}
 
 	function handleFileUpload(event: Event) {
-		if (!track) return
+		if (!track) { return }
 		const target = event.target as HTMLInputElement
 		const file = target.files?.[0]
-		if (!file) return
+		if (!file) { return }
 
 		const reader = new FileReader()
 		reader.onload = async (e) => {
@@ -189,7 +201,7 @@
 			try {
 				const durationMs = Math.round(track.duration) * 1000
 				const lyrics = LyricsParser.parse(text, durationMs)
-				const isPlainOnly = !text.includes('[') && !text.includes('<tt')
+				const isPlainOnly = !(text.includes('[') || text.includes('<tt'))
 				const result: CachedLyricsResult = {
 					status: 'found',
 					source: 'uploaded',
@@ -296,6 +308,24 @@
 								{/if}
 							</button>
 
+							<!-- Unison -->
+							<button
+								type="button"
+								disabled={fetching}
+								class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer"
+								onclick={() => selectSource('unison')}
+							>
+								<div class="flex flex-col">
+									<span class="text-body-large font-bold">Unison</span>
+									<span class="text-body-small text-onSurfaceVariant">Tertiary Provider</span>
+								</div>
+								{#if fetching && activeFetchingSource === 'unison'}
+									<Spinner class="size-5" />
+								{:else}
+									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
+								{/if}
+							</button>
+
 							<!-- LRCLIB -->
 							<button
 								type="button"
@@ -305,7 +335,7 @@
 							>
 								<div class="flex flex-col">
 									<span class="text-body-large font-bold">LRCLIB</span>
-									<span class="text-body-small text-onSurfaceVariant">Tertiary Provider</span>
+									<span class="text-body-small text-onSurfaceVariant">Last Fallback Provider</span>
 								</div>
 								{#if fetching && activeFetchingSource === 'lrclib'}
 									<Spinner class="size-5" />
@@ -392,16 +422,16 @@
 								<p class="text-body-small text-onSurfaceVariant px-1 leading-relaxed">
 									Use placeholders in your URL Template:
 									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
-										{`{title}`}
+										{'{title}'}
 									</code>,
 									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
-										{`{artist}`}
+										{'{artist}'}
 									</code>,
 									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
-										{`{album}`}
+										{'{album}'}
 									</code>, or
 									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
-										{`{duration}`}
+										{'{duration}'}
 									</code> (seconds).
 								</p>
 

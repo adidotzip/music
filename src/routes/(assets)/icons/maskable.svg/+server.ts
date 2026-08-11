@@ -1,4 +1,4 @@
-import { getAppIcon } from '../icon.server.js'
+import { getAppIcon } from '../icon.server.js.ts'
 
 export const prerender = true
 

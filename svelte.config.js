@@ -42,9 +42,7 @@ const config = {
 					'blob:',
 					'data:',
 
-					env.PUBLIC_GOAT_COUNTER_URL
-						? `${env.PUBLIC_GOAT_COUNTER_URL}/count`
-						: '',
+					env.PUBLIC_GOAT_COUNTER_URL ? `${env.PUBLIC_GOAT_COUNTER_URL}/count` : '',
 
 					// JioSaavn
 					'https://*.jiosaavncdn.com',

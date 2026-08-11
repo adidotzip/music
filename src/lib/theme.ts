@@ -1,8 +1,8 @@
 import {
 	argbFromHex,
 	Hct,
-	SchemeVibrant,
 	hexFromArgb,
+	SchemeVibrant,
 	// biome-ignore lint/style/noRestrictedImports: Main module for theme utilities
 } from '@material/material-color-utilities'
 

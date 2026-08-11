@@ -52,7 +52,7 @@
 				}
 			})
 			.catch((error: unknown) => {
-				if (error instanceof Error && error.name === 'AbortError') return
+				if (error instanceof Error && error.name === 'AbortError') { return }
 				result = { status: 'error' }
 			})
 			.finally(() => {

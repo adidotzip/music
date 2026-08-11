@@ -84,7 +84,7 @@ const mapJioSaavnSongToTrack = (song: JioSaavnSong): Track => {
 			small: images[1]?.url ?? images[0]?.url ?? '',
 			full: images[2]?.url ?? images[0]?.url ?? '',
 		},
-		url: downloadUrls[downloadUrls.length - 1]?.url ?? '',
+		url: downloadUrls.at(-1)?.url ?? '',
 		source: 'jiosaavn',
 	} as Track
 }
@@ -180,7 +180,7 @@ export const searchPlaylists = async (query: string): Promise<Playlist[]> => {
 export const getSongDetails = async (id: string): Promise<Track | undefined> => {
 	const response = await fetch(`${API_BASE_URL}/songs/${id}`)
 	const json = await response.json()
-	if (json.success && json.data && json.data[0]) {
+	if (json.success && json.data?.[0]) {
 		return mapJioSaavnSongToTrack(json.data[0])
 	}
 	return undefined

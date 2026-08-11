@@ -15,7 +15,7 @@ const getStorageKey = (artist: string) => `snaeplayer-artist-artwork.${artist}`
 // Types
 // --------------------
 
-type AudioDBArtist = {
+interface AudioDBArtist {
 	idArtist?: string
 	strArtist?: string
 	strArtistThumb?: string
@@ -26,7 +26,7 @@ type AudioDBArtist = {
 	strArtistBanner?: string
 }
 
-type AudioDBResponse = {
+interface AudioDBResponse {
 	artists: AudioDBArtist[] | null
 }
 
@@ -50,7 +50,9 @@ const safeGetStorage = (key: string): CachedArtwork | null => {
 	try {
 		const raw = localStorage.getItem(key)
 
-		if (!raw) return null
+		if (!raw) {
+			return null
+		}
 
 		return JSON.parse(raw) as CachedArtwork
 	} catch {
