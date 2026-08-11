@@ -25,7 +25,8 @@
 		return `[${pad(mins)}:${pad(secs)}.${pad(centis)}]`
 	}
 
-	const serializeLyrics = (lyrics: any[]): string => lyrics
+	const serializeLyrics = (lyrics: any[]): string =>
+		lyrics
 			.map((line) => {
 				if (line.isInstrumental) {
 					return '[empty]'
@@ -128,8 +129,14 @@
 				return
 			}
 
-			const artistsArray = artistVal.split(',').map(s => s.trim()).filter(Boolean)
-			const genreArray = genreVal.split(',').map(s => s.trim()).filter(Boolean)
+			const artistsArray = artistVal
+				.split(',')
+				.map((s) => s.trim())
+				.filter(Boolean)
+			const genreArray = genreVal
+				.split(',')
+				.map((s) => s.trim())
+				.filter(Boolean)
 
 			const updatedTrack = {
 				...originalTrack,
@@ -143,7 +150,7 @@
 				trackOf: Number.parseInt(trackOfVal) || 0,
 				discNo: Number.parseInt(discNoVal) || 0,
 				discOf: Number.parseInt(discOfVal) || 0,
-				composer: composerVal.trim() || undefined,
+				composer: composerVal.trim() || undefined
 			}
 
 			if (artworkBlob !== undefined) {
@@ -170,23 +177,23 @@
 					? {
 							...existingAlbum,
 							artists: [...new Set([...existingAlbum.artists, ...updatedTrack.artists])].filter(
-								(artist) => artist !== UNKNOWN_ITEM,
+								(artist) => artist !== UNKNOWN_ITEM
 							),
 							year: existingAlbum.year || updatedTrack.year,
-							image: existingAlbum.image || updatedTrack.image?.full,
+							image: existingAlbum.image || updatedTrack.image?.full
 						}
 					: {
 							uuid: crypto.randomUUID(),
 							name: updatedTrack.album,
 							artists: updatedTrack.artists,
 							year: updatedTrack.year,
-							image: updatedTrack.image?.full,
+							image: updatedTrack.image?.full
 						}
 				const albumId = await albumsStore.put(updatedAlbum as any)
 				albumChange = {
 					storeName: 'albums',
 					key: albumId,
-					operation: existingAlbum ? 'update' : 'add',
+					operation: existingAlbum ? 'update' : 'add'
 				}
 			}
 
@@ -199,13 +206,13 @@
 				if (!existingArtist) {
 					const newArtist = {
 						name: artistName,
-						uuid: crypto.randomUUID(),
+						uuid: crypto.randomUUID()
 					}
 					const artistId = await artistsStore.put(newArtist as any)
 					artistsChanges.push({
 						storeName: 'artists',
 						key: artistId,
-						operation: 'add',
+						operation: 'add'
 					})
 				}
 			}
@@ -222,7 +229,7 @@
 						status: 'found',
 						source: 'local',
 						lyrics: parsedLyrics,
-						syncType: isPlainOnly ? 'plain' : 'line',
+						syncType: isPlainOnly ? 'plain' : 'line'
 					})
 				} else {
 					const localDb = await getDatabase()
@@ -231,15 +238,17 @@
 				window.dispatchEvent(new CustomEvent('lyrics-reload'))
 			}
 
-			dispatchDatabaseChangedEvent([
-				{
-					storeName: 'tracks',
-					key: track.id,
-					operation: 'update',
-				},
-				albumChange,
-				...artistsChanges,
-			].filter(Boolean))
+			dispatchDatabaseChangedEvent(
+				[
+					{
+						storeName: 'tracks',
+						key: track.id,
+						operation: 'update'
+					},
+					albumChange,
+					...artistsChanges
+				].filter(Boolean)
+			)
 
 			snackbar('Track metadata updated successfully')
 			open.close()
@@ -254,24 +263,26 @@
 	{open}
 	icon="playlistMusic"
 	title={m.trackMetadataEditor()}
-	class="[--dialog-width:--spacing(150)]"
+	class="[--dialog-width:--spacing(150)] max-h-[85vh] flex flex-col"
 	buttons={[
 		{
-			title: m.libraryCancel(),
+			title: m.libraryCancel()
 		},
 		{
 			title: m.librarySave(),
-			type: 'submit',
-		},
+			type: 'submit'
+		}
 	]}
 	onsubmit={saveMetadata}
 >
-	<div class="flex flex-col gap-4 overflow-y-auto max-h-[60vh] pr-2 text-body-md">
-		<div class="text-sm font-medium text-primary bg-primaryContainer/30 p-3 rounded-lg border border-primaryContainer mb-2">
+	<div class="flex flex-col gap-4 overflow-y-auto min-h-0 flex-1 pr-2 text-body-md">
+		<div
+			class="text-sm font-medium text-primary bg-primaryContainer/30 p-3 rounded-lg border border-primaryContainer mb-2 shrink-0"
+		>
 			{m.metadataLocalLibraryExplanation()}
 		</div>
 
-		<div class="flex flex-col md:flex-row gap-6 items-center md:items-start mb-4">
+		<div class="flex flex-col md:flex-row gap-6 items-center md:items-start mb-4 shrink-0">
 			<div class="flex flex-col items-center gap-2">
 				<Artwork
 					src={artworkSrcToShow}
@@ -294,23 +305,31 @@
 						}
 					}}
 				/>
-				<Button kind="outlined" class="interactable mt-2 text-label-md" onclick={() => fileInputEl?.click()}>
+				<Button
+					kind="outlined"
+					class="interactable mt-2 text-label-md"
+					onclick={() => fileInputEl?.click()}
+				>
 					{m.metadataUploadArtwork()}
 				</Button>
 				{#if artworkSrcToShow}
-					<Button kind="outlined" class="interactable text-label-md text-error" onclick={() => {
-						artworkBlob = null
-						if (previewArtworkUrl) {
-							URL.revokeObjectURL(previewArtworkUrl)
-							previewArtworkUrl = undefined
-						}
-					}}>
+					<Button
+						kind="outlined"
+						class="interactable text-label-md text-error"
+						onclick={() => {
+							artworkBlob = null
+							if (previewArtworkUrl) {
+								URL.revokeObjectURL(previewArtworkUrl)
+								previewArtworkUrl = undefined
+							}
+						}}
+					>
 						{m.metadataRemoveArtwork()}
 					</Button>
 				{/if}
 			</div>
 
-			<div class="flex flex-col gap-4 grow w-full">
+			<div class="flex flex-col gap-4 grow w-full min-w-0">
 				<div class="flex flex-col gap-1">
 					<span class="text-label-md text-onSurfaceVariant">{m.metadataTitle()}</span>
 					<TextField bind:value={titleVal} name="title" required />
@@ -328,7 +347,7 @@
 			</div>
 		</div>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
 			<div class="flex flex-col gap-1">
 				<span class="text-label-md text-onSurfaceVariant">{m.metadataAlbumArtist()}</span>
 				<TextField bind:value={albumArtistVal} name="albumArtist" />
@@ -350,7 +369,7 @@
 			</div>
 		</div>
 
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
 			<div class="flex flex-col gap-1">
 				<span class="text-label-md text-onSurfaceVariant">{m.metadataTrackNumber()}</span>
 				<TextField bind:value={trackNoVal} name="trackNo" />
@@ -372,9 +391,11 @@
 			</div>
 		</div>
 
-		<div class="flex flex-col gap-1">
+		<div class="flex flex-col gap-1 shrink-0">
 			<span class="text-label-md text-onSurfaceVariant">{m.metadataLyrics()}</span>
-			<div class="flex flex-col rounded-md border border-outline p-px text-onSurface focus-within:border-2 focus-within:border-primary focus-within:p-0">
+			<div
+				class="flex flex-col rounded-md border border-outline p-px text-onSurface focus-within:border-2 focus-within:border-primary focus-within:p-0"
+			>
 				<textarea
 					bind:value={lyricsVal}
 					name="lyrics"
@@ -386,23 +407,33 @@
 		</div>
 
 		{#if track}
-			<div class="border-t border-outline/30 pt-4 mt-2">
+			<div class="border-t border-outline/30 pt-4 mt-2 shrink-0">
 				<div class="text-title-sm text-onSurfaceVariant mb-2">{m.metadataReadOnlyInfo()}</div>
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-body-sm text-onSurfaceVariant bg-surfaceContainer/50 p-4 rounded-xl">
-					<div class="flex justify-between md:justify-start gap-4">
-						<span class="font-medium text-onSurface/70">{m.metadataDuration()}:</span>
-						<span>{Math.floor(track.duration / 60)}:{(Math.round(track.duration % 60)).toString().padStart(2, '0')}</span>
+				<div
+					class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-body-sm text-onSurfaceVariant bg-surfaceContainer/50 p-4 rounded-xl"
+				>
+					<div class="flex justify-between md:justify-start gap-4 min-w-0">
+						<span class="font-medium text-onSurface/70 shrink-0">{m.metadataDuration()}:</span>
+						<span>
+							{Math.floor(track.duration / 60)}:{(Math.round(track.duration % 60))
+								.toString()
+								.padStart(2, '0')}
+						</span>
 					</div>
-					<div class="flex justify-between md:justify-start gap-4 overflow-hidden">
+					<div class="flex justify-between md:justify-start gap-4 min-w-0 overflow-hidden">
 						<span class="font-medium text-onSurface/70 shrink-0">{m.metadataFileName()}:</span>
-						<span class="truncate" title={track.fileName || track.file?.name}>{track.fileName || track.file?.name || 'Unknown'}</span>
+						<span class="truncate" title={track.fileName || track.file?.name}>
+							{track.fileName || track.file?.name || 'Unknown'}
+						</span>
 					</div>
-					<div class="flex justify-between md:justify-start gap-4">
-						<span class="font-medium text-onSurface/70">{m.metadataFileSize()}:</span>
-						<span>{(track.file as any)?.size ? formatSize((track.file as any).size) : 'Unknown'}</span>
+					<div class="flex justify-between md:justify-start gap-4 min-w-0">
+						<span class="font-medium text-onSurface/70 shrink-0">{m.metadataFileSize()}:</span>
+						<span>
+							{(track.file as any)?.size ? formatSize((track.file as any).size) : 'Unknown'}
+						</span>
 					</div>
-					<div class="flex justify-between md:justify-start gap-4">
-						<span class="font-medium text-onSurface/70">{m.metadataScannedAt()}:</span>
+					<div class="flex justify-between md:justify-start gap-4 min-w-0">
+						<span class="font-medium text-onSurface/70 shrink-0">{m.metadataScannedAt()}:</span>
 						<span>{new Date(track.scannedAt).toLocaleString()}</span>
 					</div>
 				</div>
