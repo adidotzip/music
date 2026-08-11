@@ -169,13 +169,17 @@
 		--blyrics-glow-color: var(--lyric-active-unfill, rgba(255, 255, 255, 0.22));
 	}
 
+	:global(.blyrics-container > div),
 	:global(.blyrics--line) {
-		font-weight: 800;
-		letter-spacing: -0.025em;
-		transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease, filter var(--blyrics-scale-transition-duration, 0.166s) ease;
+		transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease, filter var(--blyrics-scale-transition-duration, 0.166s) ease !important;
 		will-change: transform, translate, opacity, filter;
 		backface-visibility: hidden;
 		transform-style: preserve-3d;
+	}
+
+	:global(.blyrics--line) {
+		font-weight: 800;
+		letter-spacing: -0.025em;
 	}
 
 	:global(.blyrics--translated) {
