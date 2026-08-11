@@ -117,6 +117,7 @@
 		overflow-y: auto;
 		scrollbar-width: none;
 		-webkit-overflow-scrolling: touch;
+		scroll-behavior: auto !important;
 	}
 
 	braccato-lyrics::-webkit-scrollbar {
@@ -146,6 +147,8 @@
 
 		/* Avoid paint containment on scrolling composite surfaces */
 		contain: layout;
+
+		transition: none !important;
 	}
 
 	@media (width >= 640px) {
@@ -171,7 +174,7 @@
 
 	:global(.blyrics-container > div),
 	:global(.blyrics--line) {
-		transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease, filter var(--blyrics-scale-transition-duration, 0.166s) ease !important;
+		transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease, filter var(--blyrics-scale-transition-duration, 0.166s) ease, transform 0s, translate 0s !important;
 		will-change: transform, translate, opacity, filter;
 		backface-visibility: hidden;
 		transform-style: preserve-3d;
