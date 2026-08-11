@@ -2,7 +2,6 @@
     import Button from '$lib/components/Button.svelte'
     import CommonDialog from '$lib/components/dialog/CommonDialog.svelte'
     import type { DialogOpenAccessor } from '$lib/components/dialog/Dialog.svelte'
-    import Icon from '$lib/components/Icon.svelte'
     import TextField from '$lib/components/TextField.svelte'
     import { UNKNOWN_ITEM } from '$lib/library/types.ts'
     import { LyricsCache, type LyricsCacheItem } from '$lib/lyrics/LyricsCache.ts'
@@ -41,7 +40,6 @@
             selectedResultIndex = null
             manualLyricsText = ''
 
-            // Pre-load current cached lyrics if available
             LyricsCache.get(data.trackId).then((cached) => {
                 if (cached?.lyrics) {
                     manualLyricsText = cached.lyrics
@@ -66,7 +64,7 @@
             }
         } catch (e) {
             console.error('Failed to fetch lyrics:', e)
-        } finally {
+        } throwing: {
             isFetching = false
         }
     }
@@ -198,7 +196,6 @@
                 ]}
                 onclick={() => (activeTab = 'online')}
             >
-                <Icon name="search" class="size-4" />
                 Online Search
             </button>
             <button
@@ -211,7 +208,6 @@
                 ]}
                 onclick={() => (activeTab = 'manual')}
             >
-                <Icon name="pencil" class="size-4" />
                 Manual Input
             </button>
             <button
@@ -224,7 +220,6 @@
                 ]}
                 onclick={() => (activeTab = 'file')}
             >
-                <Icon name="fileDocument" class="size-4" />
                 Import File
             </button>
         </div>
@@ -295,7 +290,6 @@
                     </div>
                 {:else if !isFetching && searchTitle}
                     <div class="flex flex-col items-center justify-center p-8 text-center text-onSurfaceVariant">
-                        <Icon name="textSearch" class="size-8 mb-2 opacity-50" />
                         <span>No lyrics found. Try refining your search query.</span>
                     </div>
                 {/if}
@@ -339,7 +333,6 @@
                     }}
                     ondrop={handleDrop}
                 >
-                    <Icon name="fileUpload" class="size-10 text-primary mb-3" />
                     <span class="font-medium text-onSurface">Drag & drop your .lrc or .txt file here</span>
                     <span class="text-body-sm text-onSurfaceVariant mt-1">or browse from your device</span>
                     <Button
