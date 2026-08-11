@@ -95,7 +95,7 @@ describe('backup and restore', () => {
 		const backupJsonFile = zip.file('backup.json')
 		expect(backupJsonFile).not.toBeNull()
 
-		const text = await backupJsonFile?.async('string')
+		const text = await backupJsonFile!.async('string')
 		const backupData = JSON.parse(text)
 
 		expect(validateBackupData(backupData)).toBe(true)

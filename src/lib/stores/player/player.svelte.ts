@@ -9,9 +9,9 @@ import { throttle } from '$lib/helpers/utils/throttle.ts'
 import { createTrackQuery, type TrackData } from '$lib/library/get/value-queries.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-import { AudioLoader } from './audio-loader.svelte.js.ts'
-import { EqualizerStore } from './equalizer.svelte.js.ts'
-import { type PlayTrackOptions, QueueStore } from './queue.svelte.js.ts'
+import { AudioLoader } from './audio-loader.svelte.js'
+import { EqualizerStore } from './equalizer.svelte.js'
+import { type PlayTrackOptions, QueueStore } from './queue.svelte.js'
 
 export type { PlayTrackOptions }
 

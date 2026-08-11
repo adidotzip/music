@@ -1,7 +1,7 @@
 import { type DatabaseChangeDetailsList, onDatabaseChange } from '../events.ts'
-import type { QueryKey } from './base-query.svelte.js.ts'
+import type { QueryKey } from './base-query.svelte.js'
 
-export type { QueryKey, QueryResult } from './base-query.svelte.js.ts'
+export type { QueryKey, QueryResult } from './base-query.svelte.js'
 
 export interface InlineQueryOptions<K extends QueryKey, Result> {
 	key: K | (() => K)

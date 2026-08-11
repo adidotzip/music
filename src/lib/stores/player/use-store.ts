@@ -1,4 +1,4 @@
 import { createContext } from 'svelte'
-import type { PlayerStore } from './player.svelte.js.ts'
+import type { PlayerStore } from './player.svelte.js'
 
 export const [usePlayer, setPlayerStoreContext] = createContext<PlayerStore>()

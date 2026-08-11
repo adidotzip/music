@@ -49,7 +49,7 @@
 	let animationFrameId: number | null = null
 
 	const runAudioReaction = () => {
-		if (!(enabled && kawarpInstance)) {
+		if (!enabled || !kawarpInstance) {
 			if (animationFrameId) {
 				cancelAnimationFrame(animationFrameId)
 				animationFrameId = null
@@ -85,15 +85,15 @@
 			const targetScale = scale + normBass * 0.05
 
 			const ease = 0.1
-			kawarpInstance.warpIntensity += (targetWarpIntensity - kawarpInstance.warpIntensity) * ease
-			kawarpInstance.animationSpeed += (targetAnimationSpeed - kawarpInstance.animationSpeed) * ease
-			kawarpInstance.scale += (targetScale - kawarpInstance.scale) * ease
+			kawarpInstance.warpIntensity = kawarpInstance.warpIntensity + (targetWarpIntensity - kawarpInstance.warpIntensity) * ease
+			kawarpInstance.animationSpeed = kawarpInstance.animationSpeed + (targetAnimationSpeed - kawarpInstance.animationSpeed) * ease
+			kawarpInstance.scale = kawarpInstance.scale + (targetScale - kawarpInstance.scale) * ease
 		} else {
 			// Fade back to defaults
 			const ease = 0.05
-			kawarpInstance.warpIntensity += (warpIntensity - kawarpInstance.warpIntensity) * ease
-			kawarpInstance.animationSpeed += (activeAnimationSpeed - kawarpInstance.animationSpeed) * ease
-			kawarpInstance.scale += (scale - kawarpInstance.scale) * ease
+			kawarpInstance.warpIntensity = kawarpInstance.warpIntensity + (warpIntensity - kawarpInstance.warpIntensity) * ease
+			kawarpInstance.animationSpeed = kawarpInstance.animationSpeed + (activeAnimationSpeed - kawarpInstance.animationSpeed) * ease
+			kawarpInstance.scale = kawarpInstance.scale + (scale - kawarpInstance.scale) * ease
 		}
 
 		animationFrameId = requestAnimationFrame(runAudioReaction)
@@ -190,10 +190,12 @@
 			if (!animationFrameId) {
 				runAudioReaction()
 			}
-		} else if (animationFrameId) {
+		} else {
+			if (animationFrameId) {
 				cancelAnimationFrame(animationFrameId)
 				animationFrameId = null
 			}
+		}
 
 		return () => {
 			if (animationFrameId) {

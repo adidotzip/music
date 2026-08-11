@@ -36,9 +36,7 @@ const safeSetStorage = (key: string, value: CachedArtwork) => {
 const safeGetStorage = (key: string): CachedArtwork | null => {
 	try {
 		const raw = localStorage.getItem(key)
-		if (!raw) {
-			return null
-		}
+		if (!raw) return null
 		return JSON.parse(raw) as CachedArtwork
 	} catch {
 		return null

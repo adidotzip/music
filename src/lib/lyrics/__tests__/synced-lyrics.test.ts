@@ -166,9 +166,7 @@ describe('Braccato Lyrics System', () => {
 				data: {
 					status: 'found',
 					source: 'uploaded',
-					lyrics: [
-						{ startTimeMs: 0, durationMs: 5000, words: 'Uploaded lyric text' } as any,
-					],
+					lyrics: [{ startTimeMs: 0, durationMs: 5000, words: 'Uploaded lyric text' } as any],
 					syncType: 'line',
 				},
 				version: 14,

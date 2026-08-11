@@ -103,7 +103,7 @@
     })
 
     const formatSize = (bytes: number) => {
-        if (!bytes) { return '0 B' }
+        if (!bytes) return '0 B'
         const k = 1024
         const sizes = ['B', 'KB', 'MB', 'GB']
         const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -111,7 +111,7 @@
     }
 
     const saveMetadata = async () => {
-        if (!track) { return }
+        if (!track) return
 
         if (!titleVal.trim()) {
             snackbar('Title is required')
@@ -139,10 +139,10 @@
                 albumArtist: albumArtistVal.trim() || undefined,
                 genre: genreArray,
                 year: yearVal.trim() || UNKNOWN_ITEM,
-                trackNo: Number.parseInt(trackNoVal, 10) || 0,
-                trackOf: Number.parseInt(trackOfVal, 10) || 0,
-                discNo: Number.parseInt(discNoVal, 10) || 0,
-                discOf: Number.parseInt(discOfVal, 10) || 0,
+                trackNo: Number.parseInt(trackNoVal) || 0,
+                trackOf: Number.parseInt(trackOfVal) || 0,
+                discNo: Number.parseInt(discNoVal) || 0,
+                discOf: Number.parseInt(discOfVal) || 0,
                 composer: composerVal.trim() || undefined,
             }
 
@@ -194,7 +194,7 @@
             const artistsStore = tx.objectStore('artists')
             const artistsChanges = []
             for (const artistName of updatedTrack.artists) {
-                if (artistName === UNKNOWN_ITEM) { continue }
+                if (artistName === UNKNOWN_ITEM) continue
                 const existingArtist = await artistsStore.index('name').get(artistName)
                 if (!existingArtist) {
                     const newArtist = {

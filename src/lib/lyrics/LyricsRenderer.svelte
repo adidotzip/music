@@ -30,7 +30,7 @@
 
 	$effect(() => {
 		const currentEl = el
-		if (!currentEl) { return }
+		if (!currentEl) return
 
 		if (lyrics !== previousLyrics) {
 			previousLyrics = lyrics
@@ -40,7 +40,7 @@
 
 	$effect(() => {
 		const currentEl = el
-		if (!currentEl) { return }
+		if (!currentEl) return
 
 		if (currentEl.source !== audioElement) {
 			currentEl.source = audioElement
@@ -50,18 +50,18 @@
 	// Inject secondary lyrics (translations/romanizations) & agent alignment tags
 	$effect(() => {
 		const currentEl = el
-		if (!currentEl) { return }
+		if (!currentEl) return
 
 		const handleLoaded = async () => {
 			const { injectTranslation, injectRomanization } = await import('@braccato/core')
 			const renderer = currentEl.renderer
-			if (!((renderer?.lines ) && lyrics)) { return }
+			if (!((renderer && renderer.lines ) && lyrics)) return
 
 			let needsRelayout = false
 
 			for (const [index, line] of renderer.lines.entries()) {
 				const item = lyrics[index]
-				if (!item) { continue }
+				if (!item) continue
 
 				// Attribute changes do not shift element height, so don't trigger relayout
 				if (item.agent) {
@@ -95,7 +95,7 @@
 
 		currentEl.addEventListener('braccato:lyrics-loaded', handleLoaded)
 
-		if (currentEl.renderer?.lines) {
+		if (currentEl.renderer && currentEl.renderer.lines) {
 			void handleLoaded()
 		}
 

@@ -1,9 +1,6 @@
 import { detectParser, type Lyric } from '@braccato/parsers'
 
-export function parseSecondaryLine(words: string): {
-	type: 'translation' | 'romanization' | null
-	cleaned: string
-} {
+export function parseSecondaryLine(words: string): { type: 'translation' | 'romanization' | null; cleaned: string } {
 	const text = words.trim()
 	if (text.startsWith('#')) {
 		return { type: 'translation', cleaned: text.replace(/^#\s*/, '') }
@@ -40,13 +37,11 @@ export function alignSecondaryLines(lyrics: Lyric[]): Lyric[] {
 		}
 
 		const lastPrimary = [...result].reverse().find((l) => !l.isInstrumental)
-		if (
-			lastPrimary &&
-			Math.abs(lastPrimary.startTimeMs - curr.startTimeMs) <= 150 &&
-			(!curr.agent || curr.agent === lastPrimary.agent)
-		) {
-			lastPrimary.translation = { text: curr.words.trim(), lang: 'secondary' }
-			continue
+		if (lastPrimary && Math.abs(lastPrimary.startTimeMs - curr.startTimeMs) <= 150) {
+			if (!curr.agent || curr.agent === lastPrimary.agent) {
+				lastPrimary.translation = { text: curr.words.trim(), lang: 'secondary' }
+				continue
+			}
 		}
 
 		result.push(curr)
@@ -59,9 +54,7 @@ export class LyricsParser {
 		let processedLyrics = rawLyrics
 		const translationMap = new Map<string, { text: string; lang: string }>()
 
-		const isTTML =
-			rawLyrics.trim().startsWith('<tt') ||
-			rawLyrics.includes('xmlns="http://www.w3.org/ns/ttml"')
+		const isTTML = rawLyrics.trim().startsWith('<tt') || rawLyrics.includes('xmlns="http://www.w3.org/ns/ttml"')
 
 		if (isTTML && typeof DOMParser !== 'undefined') {
 			try {
@@ -70,10 +63,7 @@ export class LyricsParser {
 				const ps = doc.querySelectorAll('p')
 
 				ps.forEach((p, index) => {
-					const itunesKey =
-						p.getAttribute('itunes:key') ||
-						p.getAttribute('id') ||
-						p.getAttribute('xml:id')
+					const itunesKey = p.getAttribute('itunes:key') || p.getAttribute('id') || p.getAttribute('xml:id')
 					const key = itunesKey || String(index)
 
 					const spans = Array.from(p.querySelectorAll('span'))
@@ -83,10 +73,7 @@ export class LyricsParser {
 						if (role === 'x-translation') {
 							const translationText = span.textContent?.trim() || ''
 							if (translationText) {
-								translationMap.set(key, {
-									text: translationText,
-									lang: lang || 'zh-CN',
-								})
+								translationMap.set(key, { text: translationText, lang: lang || 'zh-CN' })
 							}
 							span.parentNode?.removeChild(span)
 						}
@@ -106,9 +93,7 @@ export class LyricsParser {
 
 		if (translationMap.size > 0) {
 			for (const line of aligned) {
-				if (line.isInstrumental) {
-					continue
-				}
+				if (line.isInstrumental) continue
 				if (line.key && translationMap.has(line.key)) {
 					const trans = translationMap.get(line.key)!
 					line.translation = { text: trans.text, lang: trans.lang }
