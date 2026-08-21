@@ -11,6 +11,8 @@
     import { UNKNOWN_ITEM } from '$lib/library/types.ts'
     import { LyricsCache } from '$lib/lyrics/LyricsCache.ts'
     import { LyricsParser } from '$lib/lyrics/LyricsParser.ts'
+    import { LyricsService } from '$lib/lyrics/LyricsService.ts'
+    import { fetchAutoMetadata, downloadArtworkBlob } from '$lib/services/auto-metadata.ts'
     import Artwork from '../Artwork.svelte'
 
     export interface TrackMetadataDialogProps {
@@ -59,6 +61,7 @@
     let fileInputEl = $state<HTMLInputElement>()
     let artworkBlob = $state<Blob | null | undefined>(undefined)
     let previewArtworkUrl = $state<string | undefined>(undefined)
+    let isAutoFetching = $state(false)
 
     const trackImageSrc = createManagedArtwork(() => track?.image?.full)
 
@@ -101,6 +104,70 @@
             }
         }
     })
+
+    const handleAutoFetchMetadata = async () => {
+        if (!track) return
+        isAutoFetching = true
+        try {
+            const query = titleVal.trim() || track.fileName || track.name
+            const artistHint = artistVal.trim() && artistVal !== UNKNOWN_ITEM ? artistVal.trim() : undefined
+            const results = await fetchAutoMetadata(query, artistHint)
+
+            if (!results || results.length === 0) {
+                snackbar(m.metadataAutoNotFound())
+                return
+            }
+
+            const best = results[0]
+            if (!best) {
+                snackbar(m.metadataAutoNotFound())
+                return
+            }
+            if (best.title) titleVal = best.title
+            if (best.artist) artistVal = best.artist
+            if (best.album) albumVal = best.album
+            if (best.albumArtist) albumArtistVal = best.albumArtist
+            if (best.genre) genreVal = best.genre
+            if (best.year) yearVal = best.year
+            if (best.trackNo !== undefined && best.trackNo > 0) trackNoVal = String(best.trackNo)
+            if (best.trackOf !== undefined && best.trackOf > 0) trackOfVal = String(best.trackOf)
+            if (best.discNo !== undefined && best.discNo > 0) discNoVal = String(best.discNo)
+            if (best.discOf !== undefined && best.discOf > 0) discOfVal = String(best.discOf)
+
+            if (best.artworkUrl) {
+                const blob = await downloadArtworkBlob(best.artworkUrl)
+                if (blob) {
+                    artworkBlob = blob
+                    if (previewArtworkUrl) {
+                        URL.revokeObjectURL(previewArtworkUrl)
+                    }
+                    previewArtworkUrl = URL.createObjectURL(blob)
+                }
+            }
+
+            try {
+                const tempTrack = {
+                    ...track,
+                    name: titleVal,
+                    artists: artistVal.split(',').map(s => s.trim()).filter(Boolean),
+                    album: albumVal,
+                }
+                const lyricsResult = await LyricsService.fetchLyrics(tempTrack as any)
+                if (lyricsResult && lyricsResult.status === 'found' && lyricsResult.lyrics) {
+                    lyricsVal = serializeLyrics(lyricsResult.lyrics)
+                }
+            } catch (e) {
+                console.error('Failed to fetch auto lyrics:', e)
+            }
+
+            snackbar(m.metadataAutoSuccess())
+        } catch (error) {
+            console.error('Error auto-fetching metadata:', error)
+            snackbar(m.metadataAutoNotFound())
+        } finally {
+            isAutoFetching = false
+        }
+    }
 
     const formatSize = (bytes: number) => {
         if (!bytes) return '0 B'
@@ -297,6 +364,18 @@
                 />
                 <Button kind="outlined" class="interactable mt-2 text-label-md" onclick={() => fileInputEl?.click()}>
                     {m.metadataUploadArtwork()}
+                </Button>
+                <Button
+                    kind="outlined"
+                    class="interactable text-label-md text-primary"
+                    disabled={isAutoFetching}
+                    onclick={handleAutoFetchMetadata}
+                >
+                    {#if isAutoFetching}
+                        {m.metadataAutoFetching()}
+                    {:else}
+                        {m.metadataAutoFetch()}
+                    {/if}
                 </Button>
                 {#if artworkSrcToShow}
                     <Button kind="outlined" class="interactable text-label-md text-error" onclick={() => {
