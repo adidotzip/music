@@ -33,8 +33,7 @@
     const mainStore = useMainStore()
     const player = usePlayer()
 
-    // 1. Desktop Check: Skip initialization on Mobile/iOS/Android to preserve background playback
-    let isDesktop = $state(false)
+    let isDesktop = $state(true)
 
     const activeTintColor = $derived<[number, number, number]>(
         tintColor === undefined
@@ -54,7 +53,7 @@
     // Beat Detection state trackers
     let bassEnergy = 0
     let beatCutoff = 0
-    let beatDecay = 0.98 // Decay rate for peak threshold
+    let beatDecay = 0.98
 
     const runAudioReaction = () => {
         if (!enabled || !kawarpInstance || !isDesktop) {
@@ -65,14 +64,14 @@
             return
         }
 
-        const analyser = player.equalizer.analyser
+        const analyser = player.equalizer?.analyser
         if (analyser && player.playing) {
             const bufferLength = analyser.frequencyBinCount
             const dataArray = new Uint8Array(bufferLength)
             analyser.getByteFrequencyData(dataArray)
 
-            // 2. Focused Bass Spectrum (20Hz - 150Hz range instead of first 15%)
-            const sampleRate = analyser.context.sampleRate || 44100
+            // Dynamic frequency band isolator (20Hz - 150Hz)
+            const sampleRate = analyser.context?.sampleRate || 44100
             const nyquist = sampleRate / 2
             const binHz = nyquist / bufferLength
             
@@ -85,30 +84,27 @@
                 bassSum += dataArray[i] ?? 0
             }
             
-            const rawBass = bassSum / count / 255 // Normalized 0-1
+            const rawBass = bassSum / count / 255
 
-            // Dynamic peak-threshold beat detection algorithm
+            // Dynamic peak-threshold beat detection
             if (rawBass > beatCutoff && rawBass > 0.3) {
-                bassEnergy = rawBass // Trigger beat punch instantly
-                beatCutoff = rawBass * 1.15 // Elevate threshold above current hit
+                bassEnergy = rawBass
+                beatCutoff = rawBass * 1.15
             } else {
-                bassEnergy *= 0.88 // Fast drop for snappy decay on beats
-                beatCutoff *= beatDecay // Gradually drop threshold over time
+                bassEnergy *= 0.88
+                beatCutoff *= beatDecay
             }
 
-            // Smooth updates targeting beat punch
             const targetWarpIntensity = warpIntensity + bassEnergy * 0.9
             const targetAnimationSpeed = activeAnimationSpeed + bassEnergy * 2.0
             const targetScale = scale + bassEnergy * 0.08
 
-            // Immediate reaction on attack, smooth on fall
             const ease = bassEnergy > 0.4 ? 0.4 : 0.12
             
             kawarpInstance.warpIntensity += (targetWarpIntensity - kawarpInstance.warpIntensity) * ease
             kawarpInstance.animationSpeed += (targetAnimationSpeed - kawarpInstance.animationSpeed) * ease
             kawarpInstance.scale += (targetScale - kawarpInstance.scale) * ease
         } else {
-            // Smoothly ease back to standard state when paused
             kawarpInstance.warpIntensity += (warpIntensity - kawarpInstance.warpIntensity) * 0.05
             kawarpInstance.animationSpeed += (activeAnimationSpeed - kawarpInstance.animationSpeed) * 0.05
             kawarpInstance.scale += (scale - kawarpInstance.scale) * 0.05
@@ -118,9 +114,10 @@
     }
 
     onMount(() => {
-        // Detect desktop platforms (Excludes iOS & Android user agents)
-        const ua = navigator.userAgent
-        isDesktop = !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+        // Detect desktop platforms safely
+        const ua = navigator.userAgent || ''
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+        isDesktop = !isMobile
 
         if (!isDesktop) return
 
@@ -252,15 +249,13 @@
     })
 </script>
 
-{#if isDesktop}
-    <div
-        class="kawarp-background"
-        style="opacity: {isLoaded && enabled ? 1 : 0};"
-    >
-        <canvas bind:this={canvasElement}></canvas>
-        <div class="kawarp-overlay"></div>
-    </div>
-{/if}
+<div
+    class="kawarp-background"
+    style="opacity: {isLoaded && enabled && isDesktop ? 1 : 0};"
+>
+    <canvas bind:this={canvasElement}></canvas>
+    <div class="kawarp-overlay"></div>
+</div>
 
 <style lang="postcss">
     @reference '../../app.css';
