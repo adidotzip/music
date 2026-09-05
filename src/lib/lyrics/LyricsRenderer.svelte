@@ -59,7 +59,7 @@
 
             let needsRelayout = false
 
-            // Batch DOM modifications to prevent layout thrashing during playback tick
+            // Batch DOM modifications and use double rAF to prevent layout thrashing and jitter
             requestAnimationFrame(() => {
                 for (const [index, line] of renderer.lines.entries()) {
                     const item = lyrics[index]
@@ -90,8 +90,11 @@
                     }
                 }
 
+                // Allow DOM updates to settle before triggering relayout computation
                 if (needsRelayout) {
-                    renderer.relayout()
+                    requestAnimationFrame(() => {
+                        renderer.relayout()
+                    })
                 }
             })
         }
@@ -140,9 +143,9 @@
         --blyrics-line-height: 1.35;
         --blyrics-padding: 1.25rem;
 
-        /* Subtle scale parameters to prevent rasterization stutter */
-        --blyrics-scale: 0.985;
-        --blyrics-active-scale: 1.01;
+        /* Keep scales normalized to 1 to eliminate layout boundary shifts and jitter */
+        --blyrics-scale: 1;
+        --blyrics-active-scale: 1;
         --blyrics-lyric-scroll-duration: 700ms;
 
         /* Colors */
@@ -179,16 +182,11 @@
 
     :global(.blyrics-container > div),
     :global(.blyrics--line) {
-        transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease,
-            filter var(--blyrics-scale-transition-duration, 0.166s) ease !important;
+        /* Filter transitions removed to prevent expensive dynamic repaints on active toggle */
+        transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease !important;
         backface-visibility: hidden;
-        transform-style: preserve-3d;
-    }
-
-    /* Target GPU promotion exclusively to the active lyric line to avoid memory overload */
-    :global(.blyrics--line.active),
-    :global(.blyrics--line[data-active='true']) {
-        will-change: transform, opacity;
+        /* Promote layer upfront to avoid layer destruction flashes during state updates */
+        will-change: transform;
     }
 
     :global(.blyrics--line) {
