@@ -47,7 +47,6 @@
         }
     })
 
-    // Inject secondary lyrics (translations/romanizations) & agent alignment tags
     $effect(() => {
         const currentEl = el
         if (!currentEl) return
@@ -59,25 +58,23 @@
 
             let needsRelayout = false
 
-            // Batch DOM modifications and use double rAF to prevent layout thrashing and jitter
+            // Mutate DOM in frame 1
             requestAnimationFrame(() => {
+                const isChinese = getLocale().startsWith('zh')
+
                 for (const [index, line] of renderer.lines.entries()) {
                     const item = lyrics[index]
                     if (!item) continue
 
-                    // Attribute changes do not shift element height, so don't trigger relayout
                     if (item.agent) {
                         line.lyricElement.setAttribute('data-agent', item.agent)
                     }
 
-                    // Inject translation
-                    const isChinese = getLocale().startsWith('zh')
                     if (item.translation?.text && isChinese) {
                         injectTranslation(document, line.lyricElement, item.translation.text)
                         needsRelayout = true
                     }
 
-                    // Inject romanization
                     if (item.romanization) {
                         injectRomanization(
                             document,
@@ -90,10 +87,10 @@
                     }
                 }
 
-                // Allow DOM updates to settle before triggering relayout computation
+                // Batch forced layout calculation in frame 2
                 if (needsRelayout) {
                     requestAnimationFrame(() => {
-                        renderer.relayout()
+                        renderer.relayout?.()
                     })
                 }
             })
@@ -123,8 +120,10 @@
         overflow-y: auto;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
+        /* Prevent browser/JS scroll interpolation conflicts */
         scroll-behavior: auto !important;
-        /* Hardware accelerate scroll wrapper */
+        /* Single GPU layer for the entire component container */
+        will-change: scroll-position;
         transform: translateZ(0);
     }
 
@@ -143,20 +142,17 @@
         --blyrics-line-height: 1.35;
         --blyrics-padding: 1.25rem;
 
-        /* Keep scales normalized to 1 to eliminate layout boundary shifts and jitter */
         --blyrics-scale: 1;
         --blyrics-active-scale: 1;
         --blyrics-lyric-scroll-duration: 700ms;
 
-        /* Colors */
         --blyrics-lyric-inactive-color: var(--lyric-inactive, rgba(0, 0, 0, 0.45));
         --blyrics-lyric-active-color: var(--lyric-active-fill, #140c0b);
         --blyrics-glow-color: var(--lyric-active-unfill, rgba(0, 0, 0, 0.12));
 
-        /* Avoid paint containment on scrolling composite surfaces */
-        contain: layout;
-
-        transition: none !important;
+        /* Strict layout boundary prevents child changes from re-rendering whole document */
+        contain: layout paint;
+        scroll-behavior: auto !important;
     }
 
     @media (width >= 640px) {
@@ -180,13 +176,10 @@
         --blyrics-glow-color: var(--lyric-active-unfill, rgba(255, 255, 255, 0.22));
     }
 
+    /* REMOVED backface-visibility & will-change from line level to prevent layer churn */
     :global(.blyrics-container > div),
     :global(.blyrics--line) {
-        /* Filter transitions removed to prevent expensive dynamic repaints on active toggle */
         transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease !important;
-        backface-visibility: hidden;
-        /* Promote layer upfront to avoid layer destruction flashes during state updates */
-        will-change: transform;
     }
 
     :global(.blyrics--line) {
@@ -220,7 +213,6 @@
         color: var(--lyric-romanization, rgba(255, 255, 255, 0.65));
     }
 
-    /* Multi-Singer Alignment */
     :global(.blyrics--line) {
         text-align: left;
     }
