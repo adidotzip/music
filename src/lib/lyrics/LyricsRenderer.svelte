@@ -58,7 +58,6 @@
 
             let needsRelayout = false
 
-            // Mutate DOM in frame 1
             requestAnimationFrame(() => {
                 const isChinese = getLocale().startsWith('zh')
 
@@ -87,7 +86,6 @@
                     }
                 }
 
-                // Batch forced layout calculation in frame 2
                 if (needsRelayout) {
                     requestAnimationFrame(() => {
                         renderer.relayout?.()
@@ -120,10 +118,7 @@
         overflow-y: auto;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
-        /* Prevent browser/JS scroll interpolation conflicts */
         scroll-behavior: auto !important;
-        /* Single GPU layer for the entire component container */
-        will-change: scroll-position;
         transform: translateZ(0);
     }
 
@@ -150,7 +145,6 @@
         --blyrics-lyric-active-color: var(--lyric-active-fill, #140c0b);
         --blyrics-glow-color: var(--lyric-active-unfill, rgba(0, 0, 0, 0.12));
 
-        /* Strict layout boundary prevents child changes from re-rendering whole document */
         contain: layout paint;
         scroll-behavior: auto !important;
     }
@@ -176,7 +170,6 @@
         --blyrics-glow-color: var(--lyric-active-unfill, rgba(255, 255, 255, 0.22));
     }
 
-    /* REMOVED backface-visibility & will-change from line level to prevent layer churn */
     :global(.blyrics-container > div),
     :global(.blyrics--line) {
         transition: opacity var(--blyrics-scale-transition-duration, 0.166s) ease !important;
