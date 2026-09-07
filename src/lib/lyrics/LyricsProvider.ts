@@ -3,7 +3,7 @@ import type { TrackData } from '$lib/library/get/value-queries.ts'
 
 export interface ProviderResponse {
     rawLyrics: string
-    source: 'adi' | 'lrcmux' | 'unison' | 'lrclib'
+    source: 'adi' | 'am-lyrics' | 'lrcmux' | 'unison' | 'lrclib' | string
     isPlainOnly?: boolean
 }
 
@@ -12,7 +12,7 @@ export class LyricsProvider {
         const primary = await LyricsProvider.fetchFromAdi(track, signal)
         if (primary) return primary
 
-        const secondary = await LyricsProvider.fetchFromLrcmux(track, signal)
+        const secondary = await LyricsProvider.fetchFromAmLyrics(track, signal)
         if (secondary) return secondary
 
         const tertiary = await LyricsProvider.fetchFromUnison(track, signal)
@@ -23,7 +23,6 @@ export class LyricsProvider {
 
         return null
     }
-
 
     static async fetchFromAdi(track: TrackData, signal?: AbortSignal): Promise<ProviderResponse | null> {
         try {
@@ -73,6 +72,55 @@ export class LyricsProvider {
         }
     }
 
+    static async fetchFromAmLyrics(track: TrackData, signal?: AbortSignal): Promise<ProviderResponse | null> {
+        try {
+            const title = track.name
+            const artist = formatArtists(track.artists)
+
+            // 1. Try BiniLyrics / AM Lyrics Cache API
+            const biniUrl = new URL('https://lyrics-api.binimum.org/')
+            biniUrl.searchParams.set('track', title)
+            biniUrl.searchParams.set('artist', artist)
+            if (track.album) biniUrl.searchParams.set('album', track.album)
+            if (track.duration > 0) biniUrl.searchParams.set('duration', String(Math.round(track.duration)))
+
+            const biniRes = await fetch(biniUrl, { signal })
+            if (biniRes.ok) {
+                const biniData = await biniRes.json()
+                if (biniData && Array.isArray(biniData.results) && biniData.results.length > 0) {
+                    const best = biniData.results[0]
+                    if (best.lyricsUrl) {
+                        const ttmlRes = await fetch(best.lyricsUrl, { signal })
+                        if (ttmlRes.ok) {
+                            const rawLyrics = await ttmlRes.text()
+                            if (rawLyrics.trim().length > 0) {
+                                return {
+                                    rawLyrics,
+                                    source: 'am-lyrics',
+                                    isPlainOnly: false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Fallback to LRC Mux / LyricsPlus API
+            const lrcmuxRes = await LyricsProvider.fetchFromLrcmux(track, signal)
+            if (lrcmuxRes) {
+                return {
+                    ...lrcmuxRes,
+                    source: 'am-lyrics'
+                }
+            }
+
+            return null
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
     static async fetchFromCustomSource(
         track: TrackData,
         customSource: { url: string; name: string },
@@ -97,7 +145,7 @@ export class LyricsProvider {
                     const isPlainOnly = !rawLyrics.includes('[') && !rawLyrics.includes('<tt')
                     return {
                         rawLyrics,
-                        source: 'custom' as any,
+                        source: customSource.name,
                         isPlainOnly
                     }
                 }
@@ -107,7 +155,7 @@ export class LyricsProvider {
                     const isPlainOnly = !rawLyrics.includes('[') && !rawLyrics.includes('<tt')
                     return {
                         rawLyrics,
-                        source: 'custom' as any,
+                        source: customSource.name,
                         isPlainOnly
                     }
                 }
@@ -134,7 +182,6 @@ export class LyricsProvider {
             const data = resData.data
             if (!data.lyrics) return null
 
-            // Validate that the title and artist 100% match (case-insensitive)
             const matchTitle = track.name.trim().toLowerCase()
             const matchArtist = formatArtists(track.artists).trim().toLowerCase()
             const responseTitle = (data.song || '').trim().toLowerCase()
@@ -208,11 +255,9 @@ export class LyricsProvider {
         }
     }
 
-
     static async fetchFromLrclib(track: TrackData, signal?: AbortSignal): Promise<ProviderResponse | null> {
         const durationSeconds = Math.round(track.duration)
         try {
-            // Exact lookup
             const exactUrl = new URL('https://lrclib.net/api/get')
             exactUrl.searchParams.set('track_name', track.name)
             exactUrl.searchParams.set('artist_name', formatArtists(track.artists))
@@ -245,7 +290,6 @@ export class LyricsProvider {
                 }
             }
 
-            // Fallback search
             const searchUrl = new URL('https://lrclib.net/api/search')
             searchUrl.searchParams.set('track_name', track.name)
             searchUrl.searchParams.set('artist_name', formatArtists(track.artists))

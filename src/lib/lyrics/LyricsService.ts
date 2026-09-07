@@ -9,6 +9,7 @@ export function getSourceDisplayName(source?: string): string {
     if (!source) return 'Unknown'
     const s = source.toLowerCase()
     if (s === 'adi') return 'Adi Lyrics'
+    if (s === 'am-lyrics' || s === 'am' || s === 'binimum' || s === 'bini') return 'AM Lyrics'
     if (s === 'lrcmux') return 'LRC Mux'
     if (s === 'lrclib') return 'LRCLIB'
     if (s === 'plain') return 'Lyrics+'
@@ -35,11 +36,11 @@ export class LyricsService {
                 const adiResponse = await LyricsProvider.fetchFromAdi(track, signal)
                 if (adiResponse) {
                     if (!adiResponse.isPlainOnly) {
-                        const lyrics = LyricsParser.parse(adiResponse.rawLyrics, durationMs)
+                        const ttml = LyricsParser.toTTML(adiResponse.rawLyrics, durationMs)
                         const result: ServiceLyricsResult = {
                             status: 'found',
                             source: 'adi',
-                            lyrics,
+                            ttml,
                             syncType: 'karaoke'
                         }
                         await LyricsCache.set(track.id, result)
@@ -52,23 +53,23 @@ export class LyricsService {
                 if (e instanceof Error && e.name === 'AbortError') throw e
             }
 
-            // B. Query LRCMux (Secondary)
+            // B. Query AM Lyrics / LyricsPlus (Secondary)
             try {
-                const lrcmuxResponse = await LyricsProvider.fetchFromLrcmux(track, signal)
-                if (lrcmuxResponse) {
-                    if (!lrcmuxResponse.isPlainOnly) {
-                        const lyrics = LyricsParser.parse(lrcmuxResponse.rawLyrics, durationMs)
-                        const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+                const amResponse = await LyricsProvider.fetchFromAmLyrics(track, signal)
+                if (amResponse) {
+                    if (!amResponse.isPlainOnly) {
+                        const ttml = LyricsParser.toTTML(amResponse.rawLyrics, durationMs)
+                        const hasWordTiming = ttml.includes('<span')
                         const result: ServiceLyricsResult = {
                             status: 'found',
-                            source: 'lrcmux',
-                            lyrics,
+                            source: amResponse.source || 'am-lyrics',
+                            ttml,
                             syncType: hasWordTiming ? 'karaoke' : 'line'
                         }
                         await LyricsCache.set(track.id, result)
                         return result
                     } else if (!plainLyrics) {
-                        plainLyrics = { content: lrcmuxResponse.rawLyrics, source: 'lrcmux' }
+                        plainLyrics = { content: amResponse.rawLyrics, source: amResponse.source || 'am-lyrics' }
                     }
                 }
             } catch (e) {
@@ -80,12 +81,12 @@ export class LyricsService {
                 const unisonResponse = await LyricsProvider.fetchFromUnison(track, signal)
                 if (unisonResponse) {
                     if (!unisonResponse.isPlainOnly) {
-                        const lyrics = LyricsParser.parse(unisonResponse.rawLyrics, durationMs)
-                        const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+                        const ttml = LyricsParser.toTTML(unisonResponse.rawLyrics, durationMs)
+                        const hasWordTiming = ttml.includes('<span')
                         const result: ServiceLyricsResult = {
                             status: 'found',
                             source: 'unison',
-                            lyrics,
+                            ttml,
                             syncType: hasWordTiming ? 'karaoke' : 'line'
                         }
                         await LyricsCache.set(track.id, result)
@@ -109,12 +110,12 @@ export class LyricsService {
                     }
 
                     if (!lrclibResponse.isPlainOnly) {
-                        const lyrics = LyricsParser.parse(lrclibResponse.rawLyrics, durationMs)
-                        const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+                        const ttml = LyricsParser.toTTML(lrclibResponse.rawLyrics, durationMs)
+                        const hasWordTiming = ttml.includes('<span')
                         const result: ServiceLyricsResult = {
                             status: 'found',
                             source: 'lrclib',
-                            lyrics,
+                            ttml,
                             syncType: hasWordTiming ? 'karaoke' : 'line'
                         }
                         await LyricsCache.set(track.id, result)
@@ -129,11 +130,11 @@ export class LyricsService {
 
             // E. Fall back to Plain lyrics if found from any provider
             if (plainLyrics) {
-                const lyrics = LyricsParser.parse(plainLyrics.content, durationMs)
+                const ttml = LyricsParser.toTTML(plainLyrics.content, durationMs)
                 const result: ServiceLyricsResult = {
                     status: 'found',
                     source: plainLyrics.source,
-                    lyrics,
+                    ttml,
                     syncType: 'plain'
                 }
                 await LyricsCache.set(track.id, result)

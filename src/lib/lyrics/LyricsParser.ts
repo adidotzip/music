@@ -1,132 +1,178 @@
-import { detectParser, type Lyric } from '@braccato/parsers'
-
-export function parseSecondaryLine(words: string): { type: 'translation' | 'romanization' | null; cleaned: string } {
-    const text = words.trim()
-    if (text.startsWith('#')) {
-        return { type: 'translation', cleaned: text.replace(/^#\s*/, '') }
-    }
-    if (text.startsWith('&')) {
-        return { type: 'romanization', cleaned: text.replace(/^&\s*/, '') }
-    }
-    const tMatch = text.match(/^\[t(?::[^\]]*)?\]\s*(.*)$/i)
-    if (tMatch) {
-        return { type: 'translation', cleaned: tMatch[1] ?? '' }
-    }
-    return { type: null, cleaned: words }
+function escapeXml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;')
 }
 
-export function alignSecondaryLines(lyrics: Lyric[]): Lyric[] {
-    const result: Lyric[] = []
+function formatTTMLTime(ms: number): string {
+    const safeMs = Math.max(0, Math.floor(ms))
+    const totalSeconds = Math.floor(safeMs / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    const msec = safeMs % 1000
 
-    for (const curr of lyrics) {
-        if (curr.isInstrumental) {
-            result.push({ ...curr })
-            continue
-        }
+    const mStr = String(minutes).padStart(2, '0')
+    const sStr = String(seconds).padStart(2, '0')
+    const msStr = String(msec).padStart(3, '0')
+    return `${mStr}:${sStr}.${msStr}`
+}
 
-        // Fast reverse lookup without array cloning O(1) tail check
-        let lastPrimaryIdx = -1
-        for (let i = result.length - 1; i >= 0; i--) {
-            if (!result[i].isInstrumental) {
-                lastPrimaryIdx = i
-                break
-            }
-        }
-
-        const lastPrimary = lastPrimaryIdx !== -1 ? result[lastPrimaryIdx] : null
-        const isTimeMatch = lastPrimary && Math.abs(lastPrimary.startTimeMs - curr.startTimeMs) <= 150
-
-        const sec = parseSecondaryLine(curr.words)
-        
-        if (sec.type && isTimeMatch && lastPrimary) {
-            if (sec.type === 'translation') {
-                lastPrimary.translation = { text: sec.cleaned, lang: 'secondary' }
-            } else {
-                lastPrimary.romanization = sec.cleaned
-            }
-            continue
-        }
-
-        // Fallback alignment for implicit secondary lines (e.g. duplicate timestamped lines)
-        if (!sec.type && isTimeMatch && lastPrimary) {
-            if (!curr.agent || curr.agent === lastPrimary.agent) {
-                if (!lastPrimary.translation) {
-                    lastPrimary.translation = { text: curr.words.trim(), lang: 'secondary' }
-                    continue
-                } else if (!lastPrimary.romanization) {
-                    lastPrimary.romanization = curr.words.trim()
-                    continue
-                }
-            }
-        }
-
-        result.push({ ...curr })
-    }
-
-    return result
+function parseCentiseconds(str?: string): number {
+    if (!str) return 0
+    if (str.length === 3) return parseInt(str, 10)
+    if (str.length === 2) return parseInt(str, 10) * 10
+    if (str.length === 1) return parseInt(str, 10) * 100
+    return 0
 }
 
 export class LyricsParser {
-    static parse(rawLyrics: string, durationMs: number): Lyric[] {
-        let processedLyrics = rawLyrics
-        const translationMap = new Map<string, { text: string; lang: string }>()
-        const indexedTranslations: Array<{ text: string; lang: string }> = []
-
-        const isTTML = rawLyrics.trim().startsWith('<tt') || rawLyrics.includes('xmlns="http://www.w3.org/ns/ttml"')
-
-        if (isTTML && typeof DOMParser !== 'undefined') {
-            try {
-                const parser = new DOMParser()
-                const doc = parser.parseFromString(rawLyrics, 'text/xml')
-                const ps = doc.querySelectorAll('p')
-
-                ps.forEach((p, index) => {
-                    const key = p.getAttribute('itunes:key') || p.getAttribute('id') || p.getAttribute('xml:id')
-                    const spans = Array.from(p.querySelectorAll('span'))
-
-                    for (const span of spans) {
-                        const role = span.getAttribute('ttm:role') || span.getAttribute('role')
-                        const lang = span.getAttribute('xml:lang') || span.getAttribute('lang') || 'zh-CN'
-
-                        if (role === 'x-translation') {
-                            const translationText = span.textContent?.trim() || ''
-                            if (translationText) {
-                                const entry = { text: translationText, lang }
-                                if (key) translationMap.set(key, entry)
-                                indexedTranslations[index] = entry
-                            }
-                            span.parentNode?.removeChild(span)
-                        }
-                    }
-                })
-
-                const serializer = new XMLSerializer()
-                processedLyrics = serializer.serializeToString(doc)
-            } catch (e) {
-                console.error('Error pre-processing TTML translations:', e)
-            }
+    static toTTML(rawLyrics: string, durationMs: number): string {
+        const trimmed = rawLyrics.trim()
+        if (!trimmed) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyrics">
+  <body>
+    <div></div>
+  </body>
+</tt>`
         }
 
-        const parser = detectParser(processedLyrics)
-        const parsed = parser.parse(processedLyrics, durationMs)
-        const aligned = alignSecondaryLines(parsed)
+        if (trimmed.startsWith('<tt') || trimmed.startsWith('<?xml') || trimmed.includes('xmlns="http://www.w3.org/ns/ttml"')) {
+            return trimmed
+        }
 
-        // Apply translations using Key first, falling back to line index sequence
-        if (translationMap.size > 0 || indexedTranslations.length > 0) {
-            let nonInstrumentalIndex = 0
-            for (const line of aligned) {
-                if (line.isInstrumental) continue
+        const lines = trimmed.split(/\r?\n/)
+        const parsedLines: Array<{
+            startMs: number
+            endMs?: number
+            text: string
+            spans?: Array<{ startMs: number; endMs: number; text: string }>
+        }> = []
 
-                if (line.key && translationMap.has(line.key)) {
-                    line.translation = translationMap.get(line.key)!
-                } else if (indexedTranslations[nonInstrumentalIndex]) {
-                    line.translation = indexedTranslations[nonInstrumentalIndex]
+        for (const line of lines) {
+            const l = line.trim()
+            if (!l) continue
+
+            // Check QRC / LRC Mux format: [startMs,durMs]word(start,dur)...
+            const qrcMatch = l.match(/^\[(\d+),(\d+)\](.*)$/)
+            if (qrcMatch) {
+                const lineStartMs = parseInt(qrcMatch[1]!, 10)
+                const lineDurMs = parseInt(qrcMatch[2]!, 10)
+                const lineEndMs = lineStartMs + lineDurMs
+                const rest = qrcMatch[3] ?? ''
+
+                const spans: Array<{ startMs: number; endMs: number; text: string }> = []
+                const wordRegex = /([^(]+)\((\d+),(\d+)\)/g
+                let match: RegExpExecArray | null
+                let fullText = ''
+
+                while ((match = wordRegex.exec(rest)) !== null) {
+                    const wText = match[1]!
+                    const wStart = parseInt(match[2]!, 10)
+                    const wDur = parseInt(match[3]!, 10)
+                    spans.push({
+                        startMs: wStart,
+                        endMs: wStart + wDur,
+                        text: wText,
+                    })
+                    fullText += wText
                 }
-                
-                nonInstrumentalIndex++
+
+                if (spans.length > 0) {
+                    parsedLines.push({
+                        startMs: lineStartMs,
+                        endMs: lineEndMs,
+                        text: fullText,
+                        spans,
+                    })
+                } else {
+                    parsedLines.push({
+                        startMs: lineStartMs,
+                        endMs: lineEndMs,
+                        text: rest,
+                    })
+                }
+                continue
+            }
+
+            // Standard LRC timestamp: [mm:ss.xx] text or [mm:ss:xx] text
+            const lrcMatch = l.match(/^\[(\d{1,3}):(\d{2})(?:[.:](\d{2,3}))?\]\s*(.*)$/)
+            if (lrcMatch) {
+                const min = parseInt(lrcMatch[1]!, 10)
+                const sec = parseInt(lrcMatch[2]!, 10)
+                const ms = parseCentiseconds(lrcMatch[3])
+                const startMs = min * 60000 + sec * 1000 + ms
+                const text = lrcMatch[4] ?? ''
+
+                parsedLines.push({
+                    startMs,
+                    text,
+                })
+                continue
+            }
+
+            // Unsynced plain text line
+            if (l) {
+                parsedLines.push({
+                    startMs: 0,
+                    text: l,
+                })
             }
         }
 
-        return aligned
+        if (parsedLines.length === 0) {
+            return `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyrics">
+  <body>
+    <div></div>
+  </body>
+</tt>`
+        }
+
+        // Fix end times for lines that don't specify duration
+        for (let i = 0; i < parsedLines.length; i++) {
+            const current = parsedLines[i]!
+            if (current.endMs === undefined) {
+                const next = parsedLines[i + 1]
+                if (next && next.startMs > current.startMs) {
+                    current.endMs = next.startMs
+                } else {
+                    current.endMs = current.startMs + 4000
+                }
+            }
+        }
+
+        let pXml = ''
+        for (const line of parsedLines) {
+            const beginAttr = formatTTMLTime(line.startMs)
+            const endAttr = formatTTMLTime(line.endMs ?? line.startMs + 4000)
+
+            if (line.spans && line.spans.length > 0) {
+                let spansStr = ''
+                for (const s of line.spans) {
+                    const sb = formatTTMLTime(s.startMs)
+                    const se = formatTTMLTime(s.endMs)
+                    spansStr += `<span begin="${sb}" end="${se}">${escapeXml(s.text)}</span>`
+                }
+                pXml += `        <p begin="${beginAttr}" end="${endAttr}">${spansStr}</p>\n`
+            } else {
+                pXml += `        <p begin="${beginAttr}" end="${endAttr}">${escapeXml(line.text)}</p>\n`
+            }
+        }
+
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:itunes="http://music.apple.com/lyrics">
+  <body>
+    <div>
+${pXml}    </div>
+  </body>
+</tt>`
+    }
+
+    static parse(rawLyrics: string, durationMs: number): string {
+        return LyricsParser.toTTML(rawLyrics, durationMs)
     }
 }
