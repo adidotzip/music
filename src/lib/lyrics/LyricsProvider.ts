@@ -1,5 +1,6 @@
 import { formatArtists } from '$lib/helpers/utils/text.ts'
 import type { TrackData } from '$lib/library/get/value-queries.ts'
+import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
 export interface ProviderResponse {
     rawLyrics: string
@@ -144,7 +145,9 @@ export class LyricsProvider {
             const exactUrl = new URL('https://lrclib.net/api/get')
             exactUrl.searchParams.set('track_name', track.name)
             exactUrl.searchParams.set('artist_name', formatArtists(track.artists))
-            exactUrl.searchParams.set('album_name', track.album)
+            if (track.album && track.album !== UNKNOWN_ITEM) {
+                exactUrl.searchParams.set('album_name', track.album)
+            }
             exactUrl.searchParams.set('duration', String(durationSeconds))
 
             const exactResponse = await fetch(exactUrl, { signal })
@@ -228,7 +231,7 @@ export class LyricsProvider {
             biniUrl.searchParams.set('track', title)
             biniUrl.searchParams.set('artist', artist)
 
-            if (track.album) {
+            if (track.album && track.album !== UNKNOWN_ITEM) {
                 biniUrl.searchParams.set('album', track.album)
             }
 
@@ -322,7 +325,7 @@ export class LyricsProvider {
 
             urlStr = urlStr.replace('{title}', encodeURIComponent(track.name))
             urlStr = urlStr.replace('{artist}', encodeURIComponent(formatArtists(track.artists)))
-            urlStr = urlStr.replace('{album}', encodeURIComponent(track.album))
+            urlStr = urlStr.replace('{album}', encodeURIComponent(track.album && track.album !== UNKNOWN_ITEM ? track.album : ''))
             urlStr = urlStr.replace(
                 '{duration}',
                 encodeURIComponent(String(Math.round(track.duration)))

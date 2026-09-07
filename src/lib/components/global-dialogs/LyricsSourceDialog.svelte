@@ -75,7 +75,7 @@
 		snackbar('Custom source deleted')
 	}
 
-	async function selectSource(sourceId: 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string) {
+	async function selectSource(sourceId: 'adi' | 'lrcmux' | 'am-lyrics' | 'unison' | 'lrclib' | string) {
 		if (!track) return
 		fetching = true
 		activeFetchingSource = sourceId
@@ -84,70 +84,45 @@
 			let result: CachedLyricsResult | null = null
 			const durationMs = Math.round(track.duration) * 1000
 
+			let resp = null
+			let sourceName = sourceId
+
 			if (sourceId === 'adi') {
-				const resp = await LyricsProvider.fetchFromAdi(track)
-				if (resp) {
-					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-					result = {
-						status: 'found',
-						source: 'adi',
-						lyrics,
-						syncType: resp.isPlainOnly ? 'plain' : 'karaoke',
-					}
-				}
+				resp = await LyricsProvider.fetchFromAdi(track)
 			} else if (sourceId === 'lrcmux') {
-				const resp = await LyricsProvider.fetchFromLrcmux(track)
-				if (resp) {
-					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-					const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
-					result = {
-						status: 'found',
-						source: 'lrcmux',
-						lyrics,
-						syncType: hasWordTiming ? 'karaoke' : 'line',
-					}
-				}
+				resp = await LyricsProvider.fetchFromLrcmux(track)
+			} else if (sourceId === 'am-lyrics') {
+				resp = await LyricsProvider.fetchFromAmLyrics(track)
 			} else if (sourceId === 'unison') {
-				const resp = await LyricsProvider.fetchFromUnison(track)
-				if (resp) {
-					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-					const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
-					result = {
-						status: 'found',
-						source: 'unison',
-						lyrics,
-						syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
-					}
-				}
+				resp = await LyricsProvider.fetchFromUnison(track)
 			} else if (sourceId === 'lrclib') {
-				const resp = await LyricsProvider.fetchFromLrclib(track)
-				if (resp) {
-					if (resp.rawLyrics === 'Instrumental') {
-						result = { status: 'instrumental' }
-					} else {
-						const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-						const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
-						result = {
-							status: 'found',
-							source: 'lrclib',
-							lyrics,
-							syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
-						}
-					}
-				}
+				resp = await LyricsProvider.fetchFromLrclib(track)
 			} else {
 				// Custom source
 				const custom = customSources.find((cs) => cs.id === sourceId)
 				if (custom) {
-					const resp = await LyricsProvider.fetchFromCustomSource(track, custom)
+					resp = await LyricsProvider.fetchFromCustomSource(track, custom)
 					if (resp) {
-						const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-						result = {
-							status: 'found',
-							source: custom.name,
-							lyrics,
-							syncType: resp.isPlainOnly ? 'plain' : 'line',
-						}
+						sourceName = custom.name
+					}
+				}
+			}
+
+			if (resp) {
+				if (resp.rawLyrics === 'Instrumental') {
+					result = { status: 'instrumental' }
+				} else {
+					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
+					const syncType = resp.isPlainOnly
+						? 'plain'
+						: ttml.includes('<span')
+							? 'karaoke'
+							: 'line'
+					result = {
+						status: 'found',
+						source: resp.source || sourceName,
+						ttml,
+						syncType,
 					}
 				}
 			}
@@ -200,13 +175,13 @@
 
 			try {
 				const durationMs = Math.round(track.duration) * 1000
-				const lyrics = LyricsParser.parse(text, durationMs)
+				const ttml = LyricsParser.toTTML(text, durationMs)
 				const isPlainOnly = !text.includes('[') && !text.includes('<tt')
 				const result: CachedLyricsResult = {
 					status: 'found',
 					source: 'uploaded',
-					lyrics,
-					syncType: isPlainOnly ? 'plain' : 'line',
+					ttml,
+					syncType: isPlainOnly ? 'plain' : ttml.includes('<span') ? 'karaoke' : 'line',
 				}
 				await LyricsCache.set(track.id, result)
 				window.dispatchEvent(new CustomEvent('lyrics-reload'))
@@ -302,6 +277,24 @@
 									<span class="text-body-small text-onSurfaceVariant">Secondary Provider</span>
 								</div>
 								{#if fetching && activeFetchingSource === 'lrcmux'}
+									<Spinner class="size-5" />
+								{:else}
+									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
+								{/if}
+							</button>
+
+							<!-- AM Lyrics -->
+							<button
+								type="button"
+								disabled={fetching}
+								class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer"
+								onclick={() => selectSource('am-lyrics')}
+							>
+								<div class="flex flex-col">
+									<span class="text-body-large font-bold">AM Lyrics</span>
+									<span class="text-body-small text-onSurfaceVariant">Apple Music Provider</span>
+								</div>
+								{#if fetching && activeFetchingSource === 'am-lyrics'}
 									<Spinner class="size-5" />
 								{:else}
 									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />

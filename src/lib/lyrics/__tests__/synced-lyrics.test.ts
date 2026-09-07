@@ -137,6 +137,36 @@ describe('AM Lyrics System', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2)
 	})
 
+	it('fetches from AM Lyrics when higher priority providers return nothing', async () => {
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(jsonResponse({ ok: true, results: [] })) // Adi
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRCMux
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRCLib exact
+			.mockResolvedValueOnce(jsonResponse([])) // LRCLib search
+			.mockResolvedValueOnce(
+				jsonResponse({
+					results: [{ lyricsUrl: 'https://lyrics-api.binimum.org/ttml' }],
+				}),
+			) // AM Lyrics search
+			.mockResolvedValueOnce(
+				new Response(
+					'<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:01.000" end="00:05.000">AM Lyrics Line</p></div></body></tt>',
+					{ status: 200 },
+				),
+			) // AM Lyrics TTML fetch
+
+		vi.stubGlobal('fetch', fetchMock)
+
+		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal)
+
+		expect(result.status).toBe('found')
+		expect(result.source).toBe('am-lyrics')
+		if (result.status === 'found') {
+			expect(result.ttml).toContain('AM Lyrics Line')
+		}
+	})
+
 	it('only includes Adi Chinese translations for Chinese locales', () => {
 		const rawTtml = '<tt><body><p><span>Original</span><span ttm:role="x-translation" xml:lang="zh-CN">中文</span></p></body></tt>'
 
