@@ -4,7 +4,7 @@ import { getDatabase } from '$lib/db/database.ts'
 import { clearDatabaseStores } from '$lib/helpers/test-helpers.ts'
 import type { TrackData } from '$lib/library/get/value-queries.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-import { LyricsCache } from '../LyricsCache.ts'
+import { LyricsCache, CACHE_VERSION } from '../LyricsCache.ts'
 import { LyricsParser } from '../LyricsParser.ts'
 import { LyricsService } from '../LyricsService.ts'
 
@@ -37,7 +37,7 @@ const jsonResponse = (body: unknown, init?: ResponseInit): Response =>
 		...init,
 	})
 
-describe('Braccato Lyrics System', () => {
+describe('AM Lyrics System', () => {
 	beforeEach(async () => {
 		await clearDatabaseStores()
 	})
@@ -46,13 +46,15 @@ describe('Braccato Lyrics System', () => {
 		vi.unstubAllGlobals()
 	})
 
-	it('should parse lyrics correctly using Braccato detectParser', () => {
+	it('should parse LRC lyrics into TTML correctly', () => {
 		const rawLyrics = '[00:01.00]Hello\n[00:02.00]World'
-		const lyrics = LyricsParser.parse(rawLyrics, 10_000)
+		const ttml = LyricsParser.toTTML(rawLyrics, 10_000)
 
-		expect(lyrics).toBeDefined()
-		expect(lyrics.length).toBeGreaterThan(0)
-		expect(lyrics[0]?.words).toBe('Hello')
+		expect(ttml).toBeDefined()
+		expect(ttml).toContain('<tt')
+		expect(ttml).toContain('Hello')
+		expect(ttml).toContain('World')
+		expect(ttml).toContain('begin="00:01.000"')
 	})
 
 	it('prefers Adi Lyrics QRC when available', async () => {
@@ -70,7 +72,7 @@ describe('Braccato Lyrics System', () => {
 					lyric: {
 						format: 'qrc',
 						rawContent:
-							'[1000,1000]First(1000,500) (0,0)line(1500,500)\n[2000,1000]Second(2000,500) (0,0)line(2500,500)',
+							'[1000,1000]First(1000,500) line(1500,500)\n[2000,1000]Second(2000,500) line(2500,500)',
 					},
 				}),
 			)
@@ -80,15 +82,15 @@ describe('Braccato Lyrics System', () => {
 		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal)
 
 		expect(result.status).toBe('found')
-		if (result.status !== 'found' || !result.lyrics) {
-			throw new Error('Expected found with lyrics')
+		if (result.status !== 'found' || !result.ttml) {
+			throw new Error('Expected found with TTML lyrics')
 		}
 		expect(result.source).toBe('adi')
 		expect(result.syncType).toBe('karaoke')
-		expect(result.lyrics[0]?.words).toBe('First line')
+		expect(result.ttml).toContain('First')
 	})
 
-	it('falls back to LRCLIB when Adi Lyrics fails or has no match', async () => {
+	it('falls back to LRCLIB when Adi and AM Lyrics fail or have no match', async () => {
 		const fetchMock = vi
 			.fn<typeof fetch>()
 			.mockResolvedValueOnce(
@@ -97,7 +99,8 @@ describe('Braccato Lyrics System', () => {
 					results: [],
 				}),
 			) // Adi search returns no match
-			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRC Mux fetch returns 404
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // AM Lyrics BiniCache returns 404
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // AM Lyrics LRCMux returns 404
 			.mockResolvedValueOnce(new Response(null, { status: 404 })) // Unison fetch returns 404
 			.mockResolvedValueOnce(
 				jsonResponse({
@@ -110,11 +113,11 @@ describe('Braccato Lyrics System', () => {
 		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal)
 
 		expect(result.status).toBe('found')
-		if (result.status !== 'found' || !result.lyrics) {
-			throw new Error('Expected found with lyrics')
+		if (result.status !== 'found' || !result.ttml) {
+			throw new Error('Expected found with TTML lyrics')
 		}
 		expect(result.source).toBe('lrclib')
-		expect(result.lyrics[0]?.words).toBe('LRCLib Line 1')
+		expect(result.ttml).toContain('LRCLib Line 1')
 	})
 
 	it('falls back to plain lyrics when no synchronized lyrics are found', async () => {
@@ -134,7 +137,8 @@ describe('Braccato Lyrics System', () => {
 					},
 				}),
 			) // Adi returns plain lyrics
-			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRC Mux exact returns 404
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // AM Lyrics BiniCache returns 404
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // AM Lyrics LRCMux returns 404
 			.mockResolvedValueOnce(new Response(null, { status: 404 })) // Unison fetch returns 404
 			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRCLib exact returns 404
 			.mockResolvedValueOnce(jsonResponse([])) // LRCLib search returns empty
@@ -144,12 +148,12 @@ describe('Braccato Lyrics System', () => {
 		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal)
 
 		expect(result.status).toBe('found')
-		if (result.status !== 'found' || !result.lyrics) {
-			throw new Error('Expected found with lyrics')
+		if (result.status !== 'found' || !result.ttml) {
+			throw new Error('Expected found with TTML lyrics')
 		}
 		expect(result.source).toBe('adi')
 		expect(result.syncType).toBe('plain')
-		expect(result.lyrics[0]?.words).toBe('Plain lyric line 1')
+		expect(result.ttml).toContain('Plain lyric line 1')
 	})
 
 	describe('LyricsCache expiration logic', () => {
@@ -166,10 +170,10 @@ describe('Braccato Lyrics System', () => {
 				data: {
 					status: 'found',
 					source: 'uploaded',
-					lyrics: [{ startTimeMs: 0, durationMs: 5000, words: 'Uploaded lyric text' } as any],
+					ttml: '<tt>Uploaded lyric text</tt>',
 					syncType: 'line',
 				},
-				version: 14,
+				version: CACHE_VERSION,
 				cachedAt: Date.now() - 1000 * 60 * 60 * 24 * 10, // 10 days old
 			} as any)
 
@@ -179,10 +183,10 @@ describe('Braccato Lyrics System', () => {
 				data: {
 					status: 'found',
 					source: 'adi',
-					lyrics: [{ startTimeMs: 0, durationMs: 5000, words: 'Adi lyric text' } as any],
+					ttml: '<tt>Adi lyric text</tt>',
 					syncType: 'line',
 				},
-				version: 14,
+				version: CACHE_VERSION,
 				cachedAt: Date.now() - 1000 * 60 * 60 * 24 * 10, // 10 days old
 			} as any)
 
@@ -190,7 +194,7 @@ describe('Braccato Lyrics System', () => {
 			const uploadedResult = await LyricsCache.get(10)
 			expect(uploadedResult).toBeDefined()
 			expect(uploadedResult?.source).toBe('uploaded')
-			expect(uploadedResult?.lyrics?.[0]?.words).toBe('Uploaded lyric text')
+			expect(uploadedResult?.ttml).toContain('Uploaded lyric text')
 
 			// 4. Retrieve regular lyric (should be expired)
 			const adiResult = await LyricsCache.get(20)

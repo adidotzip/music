@@ -1,13 +1,12 @@
-import type { Lyric } from '@braccato/parsers'
 import { getDatabase } from '$lib/db/database.ts'
 
-export const CACHE_VERSION = 14
+export const CACHE_VERSION = 15
 export const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
 
 export interface CachedLyricsResult {
 	status: 'found' | 'not-found' | 'instrumental' | 'error'
 	source?: string
-	lyrics?: Lyric[]
+	ttml?: string
 	syncType?: 'karaoke' | 'line' | 'plain'
 }
 

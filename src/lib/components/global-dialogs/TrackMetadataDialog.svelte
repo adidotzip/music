@@ -18,26 +18,6 @@
     export interface TrackMetadataDialogProps {
         open: DialogOpenAccessor<TrackData>
     }
-
-    const formatLyricTime = (ms: number): string => {
-        const mins = Math.floor(ms / 60_000)
-        const secs = Math.floor((ms % 60_000) / 1000)
-        const centis = Math.floor((ms % 1000) / 10)
-        const pad = (n: number) => String(n).padStart(2, '0')
-        return `[${pad(mins)}:${pad(secs)}.${pad(centis)}]`
-    }
-
-    const serializeLyrics = (lyrics: any[]): string => lyrics
-        .map((line) => {
-            if (line.isInstrumental) {
-                return '[empty]'
-            }
-            if (line.startTimeMs !== undefined && line.startTimeMs >= 0) {
-                return `${formatLyricTime(line.startTimeMs)}${line.words}`
-            }
-            return line.words
-        })
-        .join('\n')
 </script>
 
 <script lang="ts">
@@ -92,8 +72,8 @@
             // Load cached lyrics
             lyricsVal = ''
             LyricsCache.get(track.id).then((cached) => {
-                if (cached?.lyrics) {
-                    lyricsVal = serializeLyrics(cached.lyrics)
+                if (cached?.ttml) {
+                    lyricsVal = cached.ttml
                 }
             })
 
@@ -153,8 +133,8 @@
                     album: albumVal,
                 }
                 const lyricsResult = await LyricsService.fetchLyrics(tempTrack as any)
-                if (lyricsResult && lyricsResult.status === 'found' && lyricsResult.lyrics) {
-                    lyricsVal = serializeLyrics(lyricsResult.lyrics)
+                if (lyricsResult && lyricsResult.status === 'found' && lyricsResult.ttml) {
+                    lyricsVal = lyricsResult.ttml
                 }
             } catch (e) {
                 console.error('Failed to fetch auto lyrics:', e)
@@ -283,12 +263,12 @@
             if (lyricsVal !== undefined) {
                 const durationMs = Math.round(updatedTrack.duration) * 1000
                 if (lyricsVal.trim()) {
-                    const parsedLyrics = LyricsParser.parse(lyricsVal, durationMs)
+                    const ttml = LyricsParser.toTTML(lyricsVal, durationMs)
                     const isPlainOnly = !(lyricsVal.includes('[') || lyricsVal.includes('<tt'))
                     await LyricsCache.set(track.id, {
                         status: 'found',
                         source: 'local',
-                        lyrics: parsedLyrics,
+                        ttml,
                         syncType: isPlainOnly ? 'plain' : 'line',
                     })
                 } else {

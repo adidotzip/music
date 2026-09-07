@@ -75,7 +75,7 @@
 		snackbar('Custom source deleted')
 	}
 
-	async function selectSource(sourceId: 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string) {
+	async function selectSource(sourceId: 'adi' | 'am-lyrics' | 'unison' | 'lrclib' | string) {
 		if (!track) return
 		fetching = true
 		activeFetchingSource = sourceId
@@ -87,35 +87,35 @@
 			if (sourceId === 'adi') {
 				const resp = await LyricsProvider.fetchFromAdi(track)
 				if (resp) {
-					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
+					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
 					result = {
 						status: 'found',
 						source: 'adi',
-						lyrics,
+						ttml,
 						syncType: resp.isPlainOnly ? 'plain' : 'karaoke',
 					}
 				}
-			} else if (sourceId === 'lrcmux') {
-				const resp = await LyricsProvider.fetchFromLrcmux(track)
+			} else if (sourceId === 'am-lyrics') {
+				const resp = await LyricsProvider.fetchFromAmLyrics(track)
 				if (resp) {
-					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-					const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
+					const hasWordTiming = ttml.includes('<span')
 					result = {
 						status: 'found',
-						source: 'lrcmux',
-						lyrics,
-						syncType: hasWordTiming ? 'karaoke' : 'line',
+						source: resp.source || 'am-lyrics',
+						ttml,
+						syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
 					}
 				}
 			} else if (sourceId === 'unison') {
 				const resp = await LyricsProvider.fetchFromUnison(track)
 				if (resp) {
-					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-					const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
+					const hasWordTiming = ttml.includes('<span')
 					result = {
 						status: 'found',
 						source: 'unison',
-						lyrics,
+						ttml,
 						syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
 					}
 				}
@@ -125,12 +125,12 @@
 					if (resp.rawLyrics === 'Instrumental') {
 						result = { status: 'instrumental' }
 					} else {
-						const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
-						const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
+						const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
+						const hasWordTiming = ttml.includes('<span')
 						result = {
 							status: 'found',
 							source: 'lrclib',
-							lyrics,
+							ttml,
 							syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
 						}
 					}
@@ -141,11 +141,11 @@
 				if (custom) {
 					const resp = await LyricsProvider.fetchFromCustomSource(track, custom)
 					if (resp) {
-						const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
+						const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
 						result = {
 							status: 'found',
 							source: custom.name,
-							lyrics,
+							ttml,
 							syncType: resp.isPlainOnly ? 'plain' : 'line',
 						}
 					}
@@ -200,12 +200,12 @@
 
 			try {
 				const durationMs = Math.round(track.duration) * 1000
-				const lyrics = LyricsParser.parse(text, durationMs)
+				const ttml = LyricsParser.toTTML(text, durationMs)
 				const isPlainOnly = !text.includes('[') && !text.includes('<tt')
 				const result: CachedLyricsResult = {
 					status: 'found',
 					source: 'uploaded',
-					lyrics,
+					ttml,
 					syncType: isPlainOnly ? 'plain' : 'line',
 				}
 				await LyricsCache.set(track.id, result)
@@ -290,18 +290,18 @@
 								{/if}
 							</button>
 
-							<!-- LRC Mux -->
+							<!-- AM Lyrics -->
 							<button
 								type="button"
 								disabled={fetching}
 								class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer"
-								onclick={() => selectSource('lrcmux')}
+								onclick={() => selectSource('am-lyrics')}
 							>
 								<div class="flex flex-col">
-									<span class="text-body-large font-bold">LRC Mux</span>
+									<span class="text-body-large font-bold">AM Lyrics</span>
 									<span class="text-body-small text-onSurfaceVariant">Secondary Provider</span>
 								</div>
-								{#if fetching && activeFetchingSource === 'lrcmux'}
+								{#if fetching && activeFetchingSource === 'am-lyrics'}
 									<Spinner class="size-5" />
 								{:else}
 									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
