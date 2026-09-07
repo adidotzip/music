@@ -10,7 +10,6 @@
 	import { LyricsCache, type CachedLyricsResult } from '$lib/lyrics/LyricsCache.ts'
 	import { LyricsParser } from '$lib/lyrics/LyricsParser.ts'
 	import { LyricsProvider } from '$lib/lyrics/LyricsProvider.ts'
-	import { getLocale } from '$paraglide/runtime.js'
 
 	export interface LyricsSourceDialogProps {
 		open: DialogOpenAccessor<TrackData>
@@ -76,7 +75,7 @@
 		snackbar('Custom source deleted')
 	}
 
-	async function selectSource(sourceId: 'adi' | 'am-lyrics' | 'unison' | 'lrclib' | string) {
+	async function selectSource(sourceId: 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string) {
 		if (!track) return
 		fetching = true
 		activeFetchingSource = sourceId
@@ -84,40 +83,39 @@
 		try {
 			let result: CachedLyricsResult | null = null
 			const durationMs = Math.round(track.duration) * 1000
-			const language = getLocale()
 
 			if (sourceId === 'adi') {
 				const resp = await LyricsProvider.fetchFromAdi(track)
 				if (resp) {
-					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs, language)
+					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
 					result = {
 						status: 'found',
 						source: 'adi',
-						ttml,
+						lyrics,
 						syncType: resp.isPlainOnly ? 'plain' : 'karaoke',
 					}
 				}
-			} else if (sourceId === 'am-lyrics') {
-				const resp = await LyricsProvider.fetchFromAmLyrics(track)
+			} else if (sourceId === 'lrcmux') {
+				const resp = await LyricsProvider.fetchFromLrcmux(track)
 				if (resp) {
-					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
-					const hasWordTiming = ttml.includes('<span')
+					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
+					const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
 					result = {
 						status: 'found',
-						source: resp.source || 'am-lyrics',
-						ttml,
-						syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
+						source: 'lrcmux',
+						lyrics,
+						syncType: hasWordTiming ? 'karaoke' : 'line',
 					}
 				}
 			} else if (sourceId === 'unison') {
 				const resp = await LyricsProvider.fetchFromUnison(track)
 				if (resp) {
-					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
-					const hasWordTiming = ttml.includes('<span')
+					const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
+					const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
 					result = {
 						status: 'found',
 						source: 'unison',
-						ttml,
+						lyrics,
 						syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
 					}
 				}
@@ -127,12 +125,12 @@
 					if (resp.rawLyrics === 'Instrumental') {
 						result = { status: 'instrumental' }
 					} else {
-						const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
-						const hasWordTiming = ttml.includes('<span')
+						const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
+						const hasWordTiming = lyrics.some((lyric) => lyric.parts && lyric.parts.length > 0)
 						result = {
 							status: 'found',
 							source: 'lrclib',
-							ttml,
+							lyrics,
 							syncType: hasWordTiming ? 'karaoke' : resp.isPlainOnly ? 'plain' : 'line',
 						}
 					}
@@ -143,11 +141,11 @@
 				if (custom) {
 					const resp = await LyricsProvider.fetchFromCustomSource(track, custom)
 					if (resp) {
-						const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
+						const lyrics = LyricsParser.parse(resp.rawLyrics, durationMs)
 						result = {
 							status: 'found',
 							source: custom.name,
-							ttml,
+							lyrics,
 							syncType: resp.isPlainOnly ? 'plain' : 'line',
 						}
 					}
@@ -155,7 +153,6 @@
 			}
 
 			if (result) {
-				result.language = language
 				await LyricsCache.set(track.id, result)
 				window.dispatchEvent(new CustomEvent('lyrics-reload'))
 				snackbar('Lyrics loaded successfully')
@@ -203,12 +200,12 @@
 
 			try {
 				const durationMs = Math.round(track.duration) * 1000
-				const ttml = LyricsParser.toTTML(text, durationMs)
+				const lyrics = LyricsParser.parse(text, durationMs)
 				const isPlainOnly = !text.includes('[') && !text.includes('<tt')
 				const result: CachedLyricsResult = {
 					status: 'found',
 					source: 'uploaded',
-					ttml,
+					lyrics,
 					syncType: isPlainOnly ? 'plain' : 'line',
 				}
 				await LyricsCache.set(track.id, result)
@@ -240,7 +237,7 @@
 				<Separator />
 
 				<!-- Track details header -->
-				<div class="flex flex-col gap-1 bg-surfaceContainerLow px-6 py-4">
+				<div class="px-6 py-4 bg-surfaceContainerLow flex flex-col gap-1">
 					<div class="text-title-medium font-bold text-onSurface">{track.name}</div>
 					<div class="text-body-medium text-onSurfaceVariant">
 						{Array.isArray(track.artists) ? track.artists.join(', ') : track.artists}
@@ -250,7 +247,7 @@
 				<Separator />
 
 				<!-- Tabs -->
-				<div class="flex justify-center px-6 py-3">
+				<div class="px-6 py-3 flex justify-center">
 					<Tabs
 						selectedIndex={selectedTabIndex}
 						items={tabs}
@@ -268,10 +265,10 @@
 				</div>
 
 				<!-- Scrollable content -->
-				<div class="max-h-[350px] grow overflow-y-auto px-6 py-4">
+				<div class="grow overflow-y-auto px-6 py-4 max-h-[350px]">
 					{#if currentTab === 'sources'}
 						<div class="flex flex-col gap-3">
-							<div class="text-title-small mb-1 font-semibold text-onSurfaceVariant">
+							<div class="text-title-small font-semibold text-onSurfaceVariant mb-1">
 								Select Lyrics Provider
 							</div>
 
@@ -289,25 +286,25 @@
 								{#if fetching && activeFetchingSource === 'adi'}
 									<Spinner class="size-5" />
 								{:else}
-									<Icon type="chevronRight" class="size-5 text-onSurfaceVariant" />
+									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
 								{/if}
 							</button>
 
-							<!-- AM Lyrics -->
+							<!-- LRC Mux -->
 							<button
 								type="button"
 								disabled={fetching}
 								class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer"
-								onclick={() => selectSource('am-lyrics')}
+								onclick={() => selectSource('lrcmux')}
 							>
 								<div class="flex flex-col">
-									<span class="text-body-large font-bold">AM Lyrics</span>
+									<span class="text-body-large font-bold">LRC Mux</span>
 									<span class="text-body-small text-onSurfaceVariant">Secondary Provider</span>
 								</div>
-								{#if fetching && activeFetchingSource === 'am-lyrics'}
+								{#if fetching && activeFetchingSource === 'lrcmux'}
 									<Spinner class="size-5" />
 								{:else}
-									<Icon type="chevronRight" class="size-5 text-onSurfaceVariant" />
+									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
 								{/if}
 							</button>
 
@@ -325,7 +322,7 @@
 								{#if fetching && activeFetchingSource === 'unison'}
 									<Spinner class="size-5" />
 								{:else}
-									<Icon type="chevronRight" class="size-5 text-onSurfaceVariant" />
+									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
 								{/if}
 							</button>
 
@@ -343,13 +340,13 @@
 								{#if fetching && activeFetchingSource === 'lrclib'}
 									<Spinner class="size-5" />
 								{:else}
-									<Icon type="chevronRight" class="size-5 text-onSurfaceVariant" />
+									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
 								{/if}
 							</button>
 
 							<!-- Custom Sources -->
 							{#if customSources.length > 0}
-								<div class="text-title-small mt-4 mb-1 font-semibold text-onSurfaceVariant">
+								<div class="text-title-small font-semibold text-onSurfaceVariant mt-4 mb-1">
 									Custom Sources
 								</div>
 								{#each customSources as source}
@@ -361,14 +358,14 @@
 									>
 										<div class="flex flex-col">
 											<span class="text-body-large font-bold">{source.name}</span>
-											<span class="text-body-small max-w-[280px] truncate text-onSurfaceVariant">
+											<span class="text-body-small text-onSurfaceVariant truncate max-w-[280px]">
 												{source.url}
 											</span>
 										</div>
 										{#if fetching && activeFetchingSource === source.id}
 											<Spinner class="size-5" />
 										{:else}
-											<Icon type="chevronRight" class="size-5 text-onSurfaceVariant" />
+											<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
 										{/if}
 									</button>
 								{/each}
@@ -381,16 +378,15 @@
 							</Button>
 						</div>
 					{:else if currentTab === 'upload'}
-						<div class="flex flex-col items-center justify-center gap-4 py-6 text-center">
-							<Icon type="folder" class="mb-2 size-16 text-primary" />
+						<div class="flex flex-col gap-4 items-center justify-center py-6 text-center">
+							<Icon type="folder" class="size-16 text-primary mb-2" />
 							<div class="text-body-large font-semibold">Upload Local LRC or TTML</div>
-							<div class="text-body-small max-w-72 text-onSurfaceVariant">
-								Select an `.lrc`, `.ttml`, or `.txt` file containing synced lyrics for this track.
-								It will be loaded and saved locally.
+							<div class="text-body-small text-onSurfaceVariant max-w-72">
+								Select an `.lrc`, `.ttml`, or `.txt` file containing synced lyrics for this track. It will be loaded and saved locally.
 							</div>
 
 							<label
-								class="hover:bg-opacity-90 interactable mt-4 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 font-semibold text-onPrimary transition-all"
+								class="interactable flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 font-semibold text-onPrimary transition-all hover:bg-opacity-90 mt-4"
 							>
 								<Icon type="plus" class="size-5" />
 								Select File
@@ -423,18 +419,18 @@
 									required
 								/>
 
-								<p class="text-body-small px-1 leading-relaxed text-onSurfaceVariant">
+								<p class="text-body-small text-onSurfaceVariant px-1 leading-relaxed">
 									Use placeholders in your URL Template:
-									<code class="rounded bg-surfaceContainerHigh px-1 font-mono text-primary">
+									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
 										{'{title}'}
 									</code>,
-									<code class="rounded bg-surfaceContainerHigh px-1 font-mono text-primary">
+									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
 										{'{artist}'}
 									</code>,
-									<code class="rounded bg-surfaceContainerHigh px-1 font-mono text-primary">
+									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
 										{'{album}'}
 									</code>, or
-									<code class="rounded bg-surfaceContainerHigh px-1 font-mono text-primary">
+									<code class="bg-surfaceContainerHigh px-1 rounded font-mono text-primary">
 										{'{duration}'}
 									</code> (seconds).
 								</p>
@@ -447,7 +443,7 @@
 							{#if customSources.length > 0}
 								<Separator class="my-4" />
 
-								<div class="text-title-small mb-2 font-semibold text-onSurfaceVariant">
+								<div class="text-title-small font-semibold text-onSurfaceVariant mb-2">
 									Manage Custom Sources
 								</div>
 
@@ -456,15 +452,15 @@
 										<div
 											class="flex items-center justify-between rounded-xl bg-surfaceContainerLow p-3"
 										>
-											<div class="flex min-w-0 flex-col pr-4">
-												<span class="text-body-medium truncate font-bold">{source.name}</span>
-												<span class="text-body-small truncate font-mono text-onSurfaceVariant">
+											<div class="flex flex-col min-w-0 pr-4">
+												<span class="text-body-medium font-bold truncate">{source.name}</span>
+												<span class="text-body-small text-onSurfaceVariant truncate font-mono">
 													{source.url}
 												</span>
 											</div>
 											<button
 												type="button"
-												class="interactable flex size-10 items-center justify-center rounded-full text-error transition-colors hover:bg-error/10"
+												class="interactable flex size-10 items-center justify-center rounded-full text-error hover:bg-error/10 transition-colors"
 												onclick={() => deleteCustomSource(source.id)}
 											>
 												<Icon type="trashOutline" class="size-5" />
@@ -479,10 +475,7 @@
 
 				<Separator />
 
-				<div
-					data-dialog-footer
-					class="flex items-center justify-end bg-surfaceContainerLow px-6 py-4"
-				>
+				<div data-dialog-footer class="flex items-center justify-end px-6 py-4 bg-surfaceContainerLow">
 					<Button kind="flat" onclick={close}>Close</Button>
 				</div>
 			</div>
