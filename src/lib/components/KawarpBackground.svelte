@@ -23,10 +23,10 @@
         blurPasses = 8,
         animationSpeed = 1,
         transitionDuration = 1000,
-        saturation = 1.5,
+        saturation = 1.4,
         tintColor,
-        tintIntensity = 0.15,
-        dithering = 0.008,
+        tintIntensity = 0.18,
+        dithering = 0.012,
         scale = 1
     }: Props = $props()
 
@@ -37,7 +37,7 @@
 
     const activeTintColor = $derived<[number, number, number]>(
         tintColor === undefined
-            ? (mainStore.isThemeDark ? [0.16, 0.16, 0.24] : [0.95, 0.95, 0.98])
+            ? (mainStore.isThemeDark ? [0.12, 0.12, 0.18] : [0.96, 0.96, 0.98])
             : tintColor
     )
 
@@ -50,12 +50,13 @@
     let isLoaded = $state(false)
     let animationFrameId: number | null = null
 
-    // Beat Detection state trackers
+    // Smooth Beat Detection state
+    let lastFrameTime = performance.now()
+    let smoothedBass = 0
     let bassEnergy = 0
     let beatCutoff = 0
-    let beatDecay = 0.98
 
-    const runAudioReaction = () => {
+    const runAudioReaction = (currentTime: number = performance.now()) => {
         if (!enabled || !kawarpInstance || !isDesktop) {
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId)
@@ -64,57 +65,66 @@
             return
         }
 
+        // Frame-rate independent delta time calculation (clamped to prevent jumps on tab focus)
+        const dt = Math.min((currentTime - lastFrameTime) / 1000, 0.1) || 0.016
+        lastFrameTime = currentTime
+
         const analyser = player.equalizer?.analyser
         if (analyser && player.playing) {
             const bufferLength = analyser.frequencyBinCount
             const dataArray = new Uint8Array(bufferLength)
             analyser.getByteFrequencyData(dataArray)
 
-            // Dynamic frequency band isolator (20Hz - 150Hz)
+            // Dynamic frequency band isolator (20Hz - 140Hz)
             const sampleRate = analyser.context?.sampleRate || 44100
             const nyquist = sampleRate / 2
             const binHz = nyquist / bufferLength
-            
+
             const lowBin = Math.floor(20 / binHz)
-            const highBin = Math.min(bufferLength, Math.ceil(150 / binHz))
-            
+            const highBin = Math.min(bufferLength, Math.ceil(140 / binHz))
+
             let bassSum = 0
             const count = Math.max(1, highBin - lowBin)
             for (let i = lowBin; i < highBin; i++) {
                 bassSum += dataArray[i] ?? 0
             }
-            
+
             const rawBass = bassSum / count / 255
 
-            // Dynamic peak-threshold beat detection
-            if (rawBass > beatCutoff && rawBass > 0.3) {
-                bassEnergy = rawBass
-                beatCutoff = rawBass * 1.15
+            // Exponential moving average to eliminate raw audio noise jitter
+            smoothedBass += (rawBass - smoothedBass) * (1 - Math.exp(-18 * dt))
+
+            // Peak-threshold beat detection with smooth release decay
+            if (smoothedBass > beatCutoff && smoothedBass > 0.22) {
+                bassEnergy = smoothedBass
+                beatCutoff = smoothedBass * 1.15
             } else {
-                bassEnergy *= 0.88
-                beatCutoff *= beatDecay
+                bassEnergy += (0 - bassEnergy) * (1 - Math.exp(-7 * dt))
+                beatCutoff += (0 - beatCutoff) * (1 - Math.exp(-3.5 * dt))
             }
 
-            const targetWarpIntensity = warpIntensity + bassEnergy * 0.9
-            const targetAnimationSpeed = activeAnimationSpeed + bassEnergy * 2.0
-            const targetScale = scale + bassEnergy * 0.08
+            const targetWarpIntensity = warpIntensity + bassEnergy * 0.5
+            const targetAnimationSpeed = activeAnimationSpeed + bassEnergy * 1.1
+            const targetScale = scale + bassEnergy * 0.035
 
-            const ease = bassEnergy > 0.4 ? 0.4 : 0.12
-            
+            // Frame-rate independent exponential interpolation for organic springiness
+            const lerpSpeed = bassEnergy > 0.35 ? 12 : 6
+            const ease = 1 - Math.exp(-lerpSpeed * dt)
+
             kawarpInstance.warpIntensity += (targetWarpIntensity - kawarpInstance.warpIntensity) * ease
             kawarpInstance.animationSpeed += (targetAnimationSpeed - kawarpInstance.animationSpeed) * ease
             kawarpInstance.scale += (targetScale - kawarpInstance.scale) * ease
         } else {
-            kawarpInstance.warpIntensity += (warpIntensity - kawarpInstance.warpIntensity) * 0.05
-            kawarpInstance.animationSpeed += (activeAnimationSpeed - kawarpInstance.animationSpeed) * 0.05
-            kawarpInstance.scale += (scale - kawarpInstance.scale) * 0.05
+            const ease = 1 - Math.exp(-4 * dt)
+            kawarpInstance.warpIntensity += (warpIntensity - kawarpInstance.warpIntensity) * ease
+            kawarpInstance.animationSpeed += (activeAnimationSpeed - kawarpInstance.animationSpeed) * ease
+            kawarpInstance.scale += (scale - kawarpInstance.scale) * ease
         }
 
         animationFrameId = requestAnimationFrame(runAudioReaction)
     }
 
     onMount(() => {
-        // Detect desktop platforms safely
         const ua = navigator.userAgent || ''
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
         isDesktop = !isMobile
@@ -175,7 +185,7 @@
         }
     })
 
-    // React to options changes
+    // Options updates
     $effect(() => {
         if (!kawarpInstance || !isDesktop) return
 
@@ -192,10 +202,11 @@
         })
     })
 
-    // React to audio playing and start/stop visualizer loop
+    // Audio loop control
     $effect(() => {
         if (player.playing && enabled && kawarpInstance && isDesktop) {
             if (!animationFrameId) {
+                lastFrameTime = performance.now()
                 runAudioReaction()
             }
         } else {
@@ -213,7 +224,7 @@
         }
     })
 
-    // React to imageUrl changes
+    // Image transitions
     $effect(() => {
         if (!kawarpInstance || !isDesktop) return
 
@@ -237,7 +248,7 @@
         }
     })
 
-    // React to enabled changes
+    // Enable / Disable toggle
     $effect(() => {
         if (!kawarpInstance || !isDesktop) return
 
@@ -268,7 +279,9 @@
         overflow: hidden;
         pointer-events: none;
         z-index: 0;
-        transition: opacity 0.5s ease;
+        transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        transform: translateZ(0);
+        will-change: opacity;
     }
 
     .kawarp-background canvas {
@@ -276,6 +289,7 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
+        transform: scale(1.02); /* Prevents edge bleeding during heavy warp beats */
     }
 
     .kawarp-overlay {
@@ -283,22 +297,18 @@
         inset: 0;
         pointer-events: none;
         z-index: 1;
-        transition: background 0.5s ease;
+        transition: background 0.6s ease;
     }
 
     :global(.dark) .kawarp-overlay {
-        background: linear-gradient(
-            to bottom,
-            rgb(0 0 0 / 0.12),
-            rgb(0 0 0 / 0.35)
-        );
+        background: 
+            radial-gradient(circle at 50% 30%, transparent 20%, rgb(0 0 0 / 0.3) 100%),
+            linear-gradient(to bottom, rgb(0 0 0 / 0.15) 0%, rgb(0 0 0 / 0.45) 100%);
     }
 
     :global(html:not(.dark)) .kawarp-overlay {
-        background: linear-gradient(
-            to bottom,
-            rgb(255 255 255 / 0.45),
-            rgb(255 255 255 / 0.7)
-        );
+        background: 
+            radial-gradient(circle at 50% 30%, transparent 20%, rgb(255 255 255 / 0.2) 100%),
+            linear-gradient(to bottom, rgb(255 255 255 / 0.35) 0%, rgb(255 255 255 / 0.75) 100%);
     }
 </style>
