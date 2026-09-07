@@ -392,6 +392,10 @@ export class PlayerStore {
 		const nextState = force ?? !this.playing
 		this.playing = nextState
 		if (nextState) {
+			if (this.#audioLoader.loading) {
+				return
+			}
+
 			if (this.equalizer.enabled) {
 				void this.equalizer.resumeContext()
 			}
