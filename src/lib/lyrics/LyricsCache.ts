@@ -1,6 +1,6 @@
 import { getDatabase } from '$lib/db/database.ts'
 
-export const CACHE_VERSION = 15
+export const CACHE_VERSION = 16
 export const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
 
 export interface CachedLyricsResult {
@@ -8,10 +8,11 @@ export interface CachedLyricsResult {
 	source?: string
 	ttml?: string
 	syncType?: 'karaoke' | 'line' | 'plain'
+	language?: string
 }
 
 export class LyricsCache {
-	static async get(trackId: number): Promise<CachedLyricsResult | undefined> {
+	static async get(trackId: number, language?: string): Promise<CachedLyricsResult | undefined> {
 		try {
 			const db = await getDatabase()
 			const cached = await db.get('lyrics', trackId)
@@ -22,6 +23,9 @@ export class LyricsCache {
 
 			const isUploaded = (cached.data as any)?.source === 'uploaded'
 			if (!isUploaded && Date.now() - cached.cachedAt > CACHE_TTL_MS) {
+				return undefined
+			}
+			if (!isUploaded && language && (cached.data as CachedLyricsResult).language !== language) {
 				return undefined
 			}
 

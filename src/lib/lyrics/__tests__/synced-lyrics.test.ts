@@ -90,7 +90,7 @@ describe('AM Lyrics System', () => {
 		expect(result.ttml).toContain('First')
 	})
 
-	it('falls back to LRCLIB when Adi and AM Lyrics fail or have no match', async () => {
+	it('falls back to LRCLIB after Adi and LRCMux fail', async () => {
 		const fetchMock = vi
 			.fn<typeof fetch>()
 			.mockResolvedValueOnce(
@@ -99,9 +99,7 @@ describe('AM Lyrics System', () => {
 					results: [],
 				}),
 			) // Adi search returns no match
-			.mockResolvedValueOnce(new Response(null, { status: 404 })) // AM Lyrics BiniCache returns 404
-			.mockResolvedValueOnce(new Response(null, { status: 404 })) // AM Lyrics LRCMux returns 404
-			.mockResolvedValueOnce(new Response(null, { status: 404 })) // Unison fetch returns 404
+			.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRCMux returns 404
 			.mockResolvedValueOnce(
 				jsonResponse({
 					syncedLyrics: '[00:01.00]LRCLib Line 1\n[00:02.00]LRCLib Line 2',
@@ -118,6 +116,32 @@ describe('AM Lyrics System', () => {
 		}
 		expect(result.source).toBe('lrclib')
 		expect(result.ttml).toContain('LRCLib Line 1')
+	})
+
+	it('uses LRCMux before lower-priority providers', async () => {
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(jsonResponse({ ok: true, results: [] }))
+			.mockResolvedValueOnce(
+				jsonResponse({
+					lyrics: [{ time: 1000, text: 'LRCMux line' }],
+				}),
+			)
+
+		vi.stubGlobal('fetch', fetchMock)
+
+		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal)
+
+		expect(result.status).toBe('found')
+		expect(result.source).toBe('lrcmux')
+		expect(fetchMock).toHaveBeenCalledTimes(2)
+	})
+
+	it('only includes Adi Chinese translations for Chinese locales', () => {
+		const rawTtml = '<tt><body><p><span>Original</span><span ttm:role="x-translation" xml:lang="zh-CN">中文</span></p></body></tt>'
+
+		expect(LyricsParser.toTTML(rawTtml, 10_000, 'en')).not.toContain('中文')
+		expect(LyricsParser.toTTML(rawTtml, 10_000, 'zh-CN')).toContain('中文')
 	})
 
 	it('falls back to plain lyrics when no synchronized lyrics are found', async () => {

@@ -29,7 +29,7 @@ function parseCentiseconds(str?: string): number {
 }
 
 export class LyricsParser {
-    static toTTML(rawLyrics: string, durationMs: number): string {
+    static toTTML(rawLyrics: string, durationMs: number, language = 'en'): string {
         const trimmed = rawLyrics.trim()
         if (!trimmed) {
             return `<?xml version="1.0" encoding="UTF-8"?>
@@ -41,7 +41,7 @@ export class LyricsParser {
         }
 
         if (trimmed.startsWith('<tt') || trimmed.startsWith('<?xml') || trimmed.includes('xmlns="http://www.w3.org/ns/ttml"')) {
-            return trimmed
+            return LyricsParser.filterTranslations(trimmed, language)
         }
 
         const lines = trimmed.split(/\r?\n/)
@@ -170,6 +170,17 @@ export class LyricsParser {
 ${pXml}    </div>
   </body>
 </tt>`
+    }
+
+    private static filterTranslations(ttml: string, language: string): string {
+        const keepChineseTranslations = language.toLowerCase().startsWith('zh-')
+        return ttml.replace(
+            /<span\b(?=[^>]*\bttm:role=["']x-translation["'])([^>]*)>[\s\S]*?<\/span>/gi,
+            (match, attributes: string) => {
+                const translationLanguage = attributes.match(/\bxml:lang=["']([^"']+)["']/i)?.[1]?.toLowerCase()
+                return keepChineseTranslations && translationLanguage?.startsWith('zh-') ? match : ''
+            },
+        )
     }
 
     static parse(rawLyrics: string, durationMs: number): string {
