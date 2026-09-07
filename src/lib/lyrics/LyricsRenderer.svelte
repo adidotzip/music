@@ -96,6 +96,8 @@
 
 		--highlight-color: var(--lyric-active-fill, #ffffff);
 		--am-lyrics-highlight-color: var(--lyric-active-fill, #ffffff);
+		--am-lyrics-compact-font-size: 34px;
+		--am-lyrics-compact-line-spacing: 24px;
 	}
 
 	am-lyrics::-webkit-scrollbar {
