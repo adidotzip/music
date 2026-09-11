@@ -33,7 +33,7 @@ const config = {
 			directives: {
 				'default-src': ['none'],
 
-				'script-src': ['self', 'https://gc.zgo.at/', 'https://sdk.scdn.co'],
+				'script-src': ['self', 'https://gc.zgo.at/'],
 
 				'style-src': ['self', 'unsafe-inline'],
 
@@ -63,11 +63,6 @@ const config = {
 
 					// Artwork proxy
 					'https://artwork.m8tec.top',
-
-					// Spotify
-					'https://i.scdn.co',
-					'https://*.scdn.co',
-					'https://*.spotifycdn.com',
 				],
 
 				'media-src': [
@@ -85,10 +80,6 @@ const config = {
 
 					// Deezer previews
 					'https://cdns-preview-*.dzcdn.net',
-
-					// Spotify
-					'https://*.scdn.co',
-					'https://*.spotifycdn.com',
 				],
 
 				'font-src': ['self'],
@@ -128,21 +119,11 @@ const config = {
 					'https://api.deezer.com',
 					'https://e-cdns-images.dzcdn.net',
 					'https://cdn-images.dzcdn.net',
-
-					// Spotify
-					'https://api.spotify.com',
-					'https://accounts.spotify.com',
-					'https://*.spotify.com',
-					'https://*.scdn.co',
-					'wss://*.spotify.com',
-					'wss://*.scdn.co',
 				],
 
 				'worker-src': ['self', 'blob:'],
 
-				'child-src': ['self', 'blob:', 'https://sdk.scdn.co', 'https://*.spotify.com'],
-
-				'frame-src': ['self', 'https://sdk.scdn.co', 'https://*.spotify.com'],
+				'child-src': ['self', 'blob:'],
 
 				'object-src': ['none'],
 

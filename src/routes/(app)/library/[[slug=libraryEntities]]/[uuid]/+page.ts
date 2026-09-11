@@ -9,7 +9,6 @@ import {
 	FAVORITE_PLAYLIST_UUID,
 	type LibraryStoreName,
 } from '$lib/library/types.ts'
-import { spotifyService, stringToNegativeId } from '$lib/services/spotify.ts'
 import type { PageLoad } from './$types.js'
 
 type DetailsSlug = Exclude<LibraryStoreName, 'tracks'>
@@ -146,8 +145,6 @@ export const load: PageLoad = async (event): Promise<LoadResult> => {
 	let id: number | undefined
 	if (uuid === FAVORITE_PLAYLIST_UUID) {
 		id = FAVORITE_PLAYLIST_ID
-	} else if (uuid.startsWith('spotify:')) {
-		id = stringToNegativeId(uuid)
 	} else {
 		const db = await getDatabase()
 		id = await db.getKeyFromIndex(slug, 'uuid', uuid)
@@ -155,34 +152,6 @@ export const load: PageLoad = async (event): Promise<LoadResult> => {
 
 	if (!id) {
 		error(404)
-	}
-
-	if (uuid.startsWith('spotify:')) {
-		const spotifyTracksQueryPromise = createPageQuery({
-			key: () => [uuid],
-			fetcher: async () => {
-				let tracks: any[] = []
-				if (slug === 'playlists') {
-					tracks = await spotifyService.getPlaylistTracks(uuid.replace('spotify:playlist:', ''))
-				} else if (slug === 'albums') {
-					tracks = await spotifyService.getAlbumTracks(uuid.replace('spotify:album:', ''))
-				} else if (slug === 'artists') {
-					tracks = await spotifyService.getArtistTopTracks(uuid.replace('spotify:artist:', ''))
-				}
-				return { tracksIds: tracks.map((t) => t.id), playlistIdMap: slug === 'playlists' ? {} : null }
-			},
-		})
-
-		const [itemQuery, tracksQuery] = await Promise.all([
-			createDetailsPageQuery(slug, id),
-			spotifyTracksQueryPromise,
-		])
-
-		return {
-			slug,
-			itemQuery,
-			tracksQuery: tracksQuery as PageQueryResult<TracksQueryRegularResult | PlaylistTracksQueryResult>,
-		}
 	}
 
 	const itemQuery = await createDetailsPageQuery(slug, id)

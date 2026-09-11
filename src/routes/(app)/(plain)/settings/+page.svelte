@@ -21,67 +21,11 @@
 		PLAYER_PLAYBACK_RATE_MIN,
 	} from '$lib/stores/player/player.svelte.ts'
 	import { getLocale, type Locale, setLocale } from '$paraglide/runtime.js'
-	import { onMount } from 'svelte'
-	import { spotifyService } from '$lib/services/spotify.ts'
 	import DirectoriesList from './components/DirectoriesList.svelte'
 	import InstallAppBanner from './components/InstallAppBanner.svelte'
 	import MissingFsApiBanner from './components/MissingFsApiBanner.svelte'
 
 	const { data } = $props()
-
-	let spotifyConnected = $state(spotifyService.isConnected)
-	let spotifyUserProfile = $state(spotifyService.userProfile)
-	let spotifyIsPremium = $state(spotifyService.isPremium)
-	let isConnectingSpotify = $state(false)
-
-	onMount(async () => {
-		const urlParams = new URLSearchParams(window.location.search)
-		const code = urlParams.get('code')
-		const state = urlParams.get('state')
-		const error = urlParams.get('error')
-
-		if (error) {
-			snackbar(m.spotifyConnectError({ error }))
-			window.history.replaceState({}, document.title, window.location.pathname)
-			return
-		}
-
-		if (code && state) {
-			isConnectingSpotify = true
-			window.history.replaceState({}, document.title, window.location.pathname)
-			const res = await spotifyService.handleAuthCallback(code, state)
-			isConnectingSpotify = false
-			spotifyConnected = spotifyService.isConnected
-			spotifyUserProfile = spotifyService.userProfile
-			spotifyIsPremium = spotifyService.isPremium
-
-			if (res.success) {
-				if (spotifyIsPremium) {
-					snackbar(m.spotifyConnectedAs({ name: spotifyUserProfile?.display_name || 'User' }))
-				} else {
-					snackbar(m.spotifyPremiumRequired())
-				}
-			} else {
-				snackbar(m.spotifyConnectError({ error: res.error || 'Failed to authenticate' }))
-			}
-		}
-	})
-
-	const handleConnectSpotify = async () => {
-		try {
-			await spotifyService.initiateAuth()
-		} catch (err: any) {
-			snackbar(m.spotifyConnectError({ error: err.message || 'Configuration error' }))
-		}
-	}
-
-	const handleDisconnectSpotify = () => {
-		spotifyService.disconnect()
-		spotifyConnected = false
-		spotifyUserProfile = null
-		spotifyIsPremium = false
-		snackbar(m.spotifyDisconnect())
-	}
 
 	initPageQueries(() => data)
 
@@ -499,67 +443,6 @@
 					{m.cancel()}
 				</Button>
 			</div>
-		</div>
-	{/if}
-</section>
-
-<section class="card settings-max-width mx-auto mt-6 w-full text-body-lg">
-	{@render heading(m.spotifySource())}
-
-	<div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-		<div class="flex flex-col gap-1">
-			<div class="flex items-center gap-2 font-medium">
-				{m.spotifySource()}
-				{#if isConnectingSpotify}
-					<Spinner class="size-4" />
-				{:else if spotifyConnected}
-					<div
-						class={[
-							'rounded-full px-2 py-0.5 text-label-sm',
-							spotifyIsPremium
-								? 'bg-primaryContainer text-onPrimaryContainer'
-								: 'bg-errorContainer text-onErrorContainer',
-						]}
-					>
-						{spotifyIsPremium ? m.spotifyStatusPremium() : m.spotifyStatusNonPremium()}
-					</div>
-				{/if}
-			</div>
-
-			{#if spotifyConnected && spotifyUserProfile}
-				<div class="text-body-sm text-onSurfaceVariant">
-					{spotifyUserProfile.display_name} ({spotifyUserProfile.email || spotifyUserProfile.id})
-				</div>
-			{:else if !spotifyConnected}
-				<div class="text-body-sm text-onSurfaceVariant">
-					{m.spotifyPremiumRequired()}
-				</div>
-			{/if}
-		</div>
-
-		<div>
-			{#if isConnectingSpotify}
-				<Button kind="toned" disabled>
-					<Spinner class="size-5 mr-1" />
-					{m.spotifyConnect()}
-				</Button>
-			{:else if spotifyConnected}
-				<Button kind="outlined" onclick={handleDisconnectSpotify}>
-					{m.spotifyDisconnect()}
-				</Button>
-			{:else}
-				<Button kind="toned" onclick={handleConnectSpotify}>
-					{m.spotifyConnect()}
-				</Button>
-			{/if}
-		</div>
-	</div>
-
-	{#if spotifyConnected && !spotifyIsPremium}
-		<div
-			class="m-4 rounded-xl border border-error/30 bg-errorContainer/20 p-4 text-body-sm text-onErrorContainer"
-		>
-			{m.spotifyPremiumRequired()}
 		</div>
 	{/if}
 </section>
