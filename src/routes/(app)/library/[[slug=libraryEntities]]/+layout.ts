@@ -16,6 +16,7 @@ import {
 	searchPlaylists,
 	searchSongs,
 } from '$lib/services/jiosaavn.ts'
+import { spotifyService } from '$lib/services/spotify.ts'
 import { getPersistedLibrarySplitLayoutEnabled } from '$lib/stores/main/store.svelte.ts'
 import { defineViewTransitionMatcher } from '$lib/view-transitions.svelte.ts'
 import type { LayoutLoad } from './$types.js'
@@ -74,7 +75,24 @@ const loadData = async <Slug extends LibraryStoreName>(
 					})
 				}
 
+				if (spotifyService.isConnected) {
+					const spotifyResult = await spotifyService.search(searchTerm)
+					const spotifyItems = spotifyResult[slug] || []
+					for (const item of spotifyItems) {
+						setLibraryValueInCache(slug, item.id, item as any)
+					}
+					onlineItems = [...onlineItems, ...spotifyItems]
+				}
+
 				result = [...localResult, ...onlineItems.map((i) => i.id)]
+			} else if (spotifyService.isConnected) {
+				if (slug === 'playlists') {
+					const spotifyPlaylists = await spotifyService.getUserPlaylists()
+					for (const p of spotifyPlaylists) {
+						setLibraryValueInCache('playlists', p.id, p as any)
+					}
+					result = [...localResult, ...spotifyPlaylists.map((p) => p.id)]
+				}
 			}
 
 			if (slug === 'playlists') {
