@@ -9,7 +9,6 @@ import { throttle } from '$lib/helpers/utils/throttle.ts'
 import { createTrackQuery, type TrackData } from '$lib/library/get/value-queries.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-import { spotifyService } from '$lib/services/spotify.ts'
 import { AudioLoader } from './audio-loader.svelte.js'
 import { EqualizerStore } from './equalizer.svelte.js'
 import { type PlayTrackOptions, QueueStore } from './queue.svelte.js'
@@ -94,32 +93,6 @@ export class PlayerStore {
 		const audio = this.#audio
 		audio.crossOrigin = 'anonymous'
 
-		if (typeof window !== 'undefined') {
-			spotifyService.onPlaybackStateChange = ({ paused, position, duration }) => {
-				if (
-					this.activeTrack?.url?.startsWith('spotify:') ||
-					this.activeTrack?.uuid?.startsWith('spotify:')
-				) {
-					this.currentTime = position
-					if (duration > 0) {
-						this.duration = duration
-					}
-					if (this.playing === paused) {
-						this.playing = !paused
-					}
-				}
-			}
-
-			spotifyService.onTrackEnded = () => {
-				if (
-					this.activeTrack?.url?.startsWith('spotify:') ||
-					this.activeTrack?.uuid?.startsWith('spotify:')
-				) {
-					this.playNext()
-				}
-			}
-		}
-
 		// Plain (non-$state) so reads inside the effect don't create subscriptions.
 		let prevTrackId: number | null = null
 
@@ -157,23 +130,6 @@ export class PlayerStore {
 			prevTrackId = track.id
 			this.currentTime = 0
 			this.duration = 0
-
-			if (
-				track.url?.startsWith('spotify:') ||
-				track.uuid?.startsWith('spotify:')
-			) {
-				this.#audioLoader.reset()
-				this.#audio.pause()
-				this.duration = track.duration || 0
-				void spotifyService.playTrack(track).then((handled) => {
-					if (!handled && spotifyService.isConnected && !spotifyService.isPremium) {
-						snackbar(m.spotifyPremiumRequired())
-					}
-				})
-				return
-			}
-
-			void spotifyService.pause()
 
 			void this.#audioLoader.load(track.directory, track.file, track.url).then((result) => {
 				if (result.status === 'failed') {
@@ -233,13 +189,6 @@ export class PlayerStore {
 
 		// Guarded by loading: prevents play() on an empty/stale src during file fetch.
 		$effect(() => {
-			if (
-				this.activeTrack?.url?.startsWith('spotify:') ||
-				this.activeTrack?.uuid?.startsWith('spotify:')
-			) {
-				return
-			}
-
 			if (this.#audioLoader.loading) {
 				return
 			}
@@ -344,12 +293,6 @@ export class PlayerStore {
 			// so we adjust the volume to match that perception
 			const k = 0.5
 			audio.volume = (this.volume / 100) ** k
-			if (
-				this.activeTrack?.url?.startsWith('spotify:') ||
-				this.activeTrack?.uuid?.startsWith('spotify:')
-			) {
-				void spotifyService.setVolume(this.volume)
-			}
 		})
 
 		$effect(() => {
@@ -448,19 +391,6 @@ export class PlayerStore {
 
 		const nextState = force ?? !this.playing
 		this.playing = nextState
-
-		if (
-			this.activeTrack?.url?.startsWith('spotify:') ||
-			this.activeTrack?.uuid?.startsWith('spotify:')
-		) {
-			if (nextState) {
-				void spotifyService.resume()
-			} else {
-				void spotifyService.pause()
-			}
-			return
-		}
-
 		if (nextState) {
 			if (this.#audioLoader.loading) {
 				return
@@ -512,14 +442,7 @@ export class PlayerStore {
 
 	seek = (time: number): void => {
 		this.currentTime = time
-		if (
-			this.activeTrack?.url?.startsWith('spotify:') ||
-			this.activeTrack?.uuid?.startsWith('spotify:')
-		) {
-			void spotifyService.seek(time)
-		} else {
-			this.#audio.currentTime = time
-		}
+		this.#audio.currentTime = time
 		this.#updatePositionState()
 	}
 

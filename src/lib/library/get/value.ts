@@ -4,7 +4,6 @@ import { type DatabaseChangeDetails, onDatabaseChange } from '$lib/db/events.ts'
 import type { Album, Artist, Playlist, Track } from '$lib/library/types.ts'
 import { FAVORITE_PLAYLIST_ID, FAVORITE_PLAYLIST_UUID, type LibraryStoreName } from '../types.ts'
 import { getSongDetails } from '$lib/services/jiosaavn.ts'
-import { getSpotifyTrackById } from '$lib/services/spotify.ts'
 
 const idToUuidMap = new Map<number, string>()
 
@@ -56,10 +55,6 @@ export interface TrackData extends Track {
 const trackConfig: QueryConfig<TrackData> = {
 	fetch: async (id) => {
 		if (id < 0) {
-			const spotifyTrack = getSpotifyTrackById(id)
-			if (spotifyTrack) {
-				return spotifyTrack
-			}
 			const uuid = idToUuidMap.get(id)
 			if (uuid) {
 				const details = await getSongDetails(uuid)
