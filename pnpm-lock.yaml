@@ -21,8 +21,8 @@ importers:
         specifier: ^3.14.0
         version: 3.14.0
       '@uimaxbai/am-lyrics':
-        specifier: ^1.6.1
-        version: 1.6.1
+        specifier: ^1.6.3
+        version: 1.6.3
       hls.js:
         specifier: ^1.6.17
         version: 1.6.17
@@ -840,8 +840,8 @@ packages:
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
-  '@uimaxbai/am-lyrics@1.6.1':
-    resolution: {integrity: sha512-v6QPDnzzXWOCISfznuA1Zbxv7DXD1K22pL53TuII5LWf8hp8GhoI6QglqhufniwkoupeVi1FJAhGTtpPPriQ6Q==}
+  '@uimaxbai/am-lyrics@1.6.3':
+    resolution: {integrity: sha512-g/QklkpmOewKogJc582KH+NKx7jEAqeqvQ2JJv8lHAyDKtZJ7STOn71vz3D6SjNapbAVGoMLwxOk0pr5KKextw==}
     peerDependencies:
       '@lit/react': ^1.0.0
       react: '>=17.0.0'
@@ -2178,7 +2178,7 @@ snapshots:
     dependencies:
       '@types/node': 24.12.2
 
-  '@uimaxbai/am-lyrics@1.6.1':
+  '@uimaxbai/am-lyrics@1.6.3':
     dependencies:
       '@babel/runtime': 7.29.7
       lit: 3.3.3
