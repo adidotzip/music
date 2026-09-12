@@ -4,7 +4,7 @@ import { getDatabase } from '$lib/db/database.ts'
 import { clearDatabaseStores } from '$lib/helpers/test-helpers.ts'
 import type { TrackData } from '$lib/library/get/value-queries.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-import { LyricsCache, CACHE_VERSION } from '../LyricsCache.ts'
+import { LyricsCache, CACHE_VERSION, setTrackProvider, clearTrackProvider } from '../LyricsCache.ts'
 import { LyricsParser } from '../LyricsParser.ts'
 import { LyricsService } from '../LyricsService.ts'
 
@@ -213,6 +213,78 @@ describe('AM Lyrics System', () => {
 	describe('LyricsCache expiration logic', () => {
 		beforeEach(async () => {
 			await clearDatabaseStores()
+		})
+
+		it('respects provider selection and keys cache by song + provider', async () => {
+			const track = createTrack({ id: 100 })
+
+			// 1. Initial fetch with default provider (returns Adi)
+			const fetchMockAdi = vi
+				.fn<typeof fetch>()
+				.mockResolvedValueOnce(jsonResponse({ ok: true, results: [{ id: 'adi-1' }] }))
+				.mockResolvedValueOnce(
+					jsonResponse({
+						ok: true,
+						lyric: { format: 'ttml', rawContent: '<tt>Adi Content</tt>' },
+					}),
+				)
+			vi.stubGlobal('fetch', fetchMockAdi)
+
+			const autoResult = await LyricsService.fetchLyrics(track)
+			expect(autoResult.status).toBe('found')
+			expect(autoResult.source).toBe('adi')
+			expect(autoResult.ttml).toContain('Adi Content')
+
+			// 2. Select LRCLIB provider
+			setTrackProvider(track.id, 'lrclib')
+
+			const fetchMockLrclib = vi.fn<typeof fetch>().mockResolvedValueOnce(
+				jsonResponse({
+					syncedLyrics: '[00:01.00]LRCLIB Content',
+				}),
+			)
+			vi.stubGlobal('fetch', fetchMockLrclib)
+
+			// Fetching with LRCLIB preference must NOT return cached Adi lyrics
+			const lrclibResult = await LyricsService.fetchLyrics(track)
+			expect(lrclibResult.status).toBe('found')
+			expect(lrclibResult.source).toBe('lrclib')
+			expect(lrclibResult.ttml).toContain('LRCLIB Content')
+
+			// Verify cache keying: '100:lrclib' has LRCLIB content, '100:auto' has Adi content
+			const cachedLrclib = await LyricsCache.get(100, 'lrclib')
+			expect(cachedLrclib?.ttml).toContain('LRCLIB Content')
+
+			const cachedAuto = await LyricsCache.get(100, 'auto')
+			expect(cachedAuto?.ttml).toContain('Adi Content')
+
+			clearTrackProvider(track.id)
+		})
+
+		it('falls back when selected provider returns no lyrics', async () => {
+			const track = createTrack({ id: 200 })
+			setTrackProvider(track.id, 'lrclib')
+
+			// LRCLIB returns 404, fallback to Adi returns Adi content
+			const fetchMock = vi
+				.fn<typeof fetch>()
+				.mockResolvedValueOnce(new Response(null, { status: 404 })) // LRCLIB exact
+				.mockResolvedValueOnce(jsonResponse([])) // LRCLIB search
+				.mockResolvedValueOnce(jsonResponse({ ok: true, results: [{ id: 'adi-fallback' }] })) // Adi search
+				.mockResolvedValueOnce(
+					jsonResponse({
+						ok: true,
+						lyric: { format: 'ttml', rawContent: '<tt>Adi Fallback Content</tt>' },
+					}),
+				) // Adi fetch
+			vi.stubGlobal('fetch', fetchMock)
+
+			const result = await LyricsService.fetchLyrics(track)
+			expect(result.status).toBe('found')
+			expect(result.source).toBe('adi')
+			expect(result.ttml).toContain('Adi Fallback Content')
+
+			clearTrackProvider(track.id)
 		})
 
 		it('exempts uploaded lyrics from expiration and expires regular lyrics correctly', async () => {

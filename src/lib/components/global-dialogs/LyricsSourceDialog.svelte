@@ -7,9 +7,9 @@
 	import Spinner from '$lib/components/Spinner.svelte'
 	import Tabs from '$lib/components/Tabs.svelte'
 	import type { TrackData } from '$lib/library/get/value.ts'
-	import { LyricsCache, type CachedLyricsResult } from '$lib/lyrics/LyricsCache.ts'
+	import { LyricsCache, setTrackProvider, type CachedLyricsResult } from '$lib/lyrics/LyricsCache.ts'
 	import { LyricsParser } from '$lib/lyrics/LyricsParser.ts'
-	import { LyricsProvider } from '$lib/lyrics/LyricsProvider.ts'
+	import { LyricsService } from '$lib/lyrics/LyricsService.ts'
 
 	export interface LyricsSourceDialogProps {
 		open: DialogOpenAccessor<TrackData>
@@ -81,60 +81,18 @@
 		activeFetchingSource = sourceId
 
 		try {
-			let result: CachedLyricsResult | null = null
-			const durationMs = Math.round(track.duration) * 1000
+			setTrackProvider(track.id, sourceId)
+			const res = await LyricsService.fetchLyrics(track, undefined, sourceId)
+			window.dispatchEvent(new CustomEvent('lyrics-reload'))
 
-			let resp = null
-			let sourceName = sourceId
-
-			if (sourceId === 'adi') {
-				resp = await LyricsProvider.fetchFromAdi(track)
-			} else if (sourceId === 'lrcmux') {
-				resp = await LyricsProvider.fetchFromLrcmux(track)
-			} else if (sourceId === 'am-lyrics') {
-				resp = await LyricsProvider.fetchFromAmLyrics(track)
-			} else if (sourceId === 'unison') {
-				resp = await LyricsProvider.fetchFromUnison(track)
-			} else if (sourceId === 'lrclib') {
-				resp = await LyricsProvider.fetchFromLrclib(track)
-			} else {
-				// Custom source
-				const custom = customSources.find((cs) => cs.id === sourceId)
-				if (custom) {
-					resp = await LyricsProvider.fetchFromCustomSource(track, custom)
-					if (resp) {
-						sourceName = custom.name
-					}
-				}
-			}
-
-			if (resp) {
-				if (resp.rawLyrics === 'Instrumental') {
-					result = { status: 'instrumental' }
-				} else {
-					const ttml = LyricsParser.toTTML(resp.rawLyrics, durationMs)
-					const syncType = resp.isPlainOnly
-						? 'plain'
-						: ttml.includes('<span')
-							? 'karaoke'
-							: 'line'
-					result = {
-						status: 'found',
-						source: resp.source || sourceName,
-						ttml,
-						syncType,
-					}
-				}
-			}
-
-			if (result) {
-				await LyricsCache.set(track.id, result)
-				window.dispatchEvent(new CustomEvent('lyrics-reload'))
+			if (res.status === 'found') {
 				snackbar('Lyrics loaded successfully')
-				open.close()
+			} else if (res.status === 'instrumental') {
+				snackbar('Track is instrumental')
 			} else {
-				snackbar('Failed to fetch lyrics from this source')
+				snackbar('No lyrics found for this source')
 			}
+			open.close()
 		} catch (e) {
 			console.error(e)
 			snackbar('An error occurred while fetching lyrics')
@@ -147,9 +105,7 @@
 	async function resetToDefault() {
 		if (!track) return
 		try {
-			// Clear cache entry to trigger standard priority searching chain
-			const db = await (await import('$lib/db/database.ts')).getDatabase()
-			await db.delete('lyrics', track.id)
+			await LyricsCache.clearForTrack(track.id)
 			window.dispatchEvent(new CustomEvent('lyrics-reload'))
 			snackbar('Lyrics reset to default search')
 			open.close()
@@ -183,7 +139,8 @@
 					ttml,
 					syncType: isPlainOnly ? 'plain' : ttml.includes('<span') ? 'karaoke' : 'line',
 				}
-				await LyricsCache.set(track.id, result)
+				setTrackProvider(track.id, 'uploaded')
+				await LyricsCache.set(track.id, result, 'uploaded')
 				window.dispatchEvent(new CustomEvent('lyrics-reload'))
 				snackbar('Lyrics uploaded successfully')
 				open.close()

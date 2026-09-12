@@ -2,6 +2,7 @@ import { getDatabase } from '$lib/db/database.ts'
 import { dispatchDatabaseChangedEvent } from '$lib/db/events.ts'
 import { getArtworkRelatedData } from '$lib/library/scan-actions/scanner/parse/format-artwork.ts'
 import { UNKNOWN_ITEM, type Track } from '$lib/library/types.ts'
+import { LyricsCache } from '$lib/lyrics/LyricsCache.ts'
 import { LyricsService } from '$lib/lyrics/LyricsService.ts'
 import { searchSongs } from '$lib/services/jiosaavn.ts'
 
@@ -262,8 +263,7 @@ export const autoApplyTrackMetadata = async (
 
 		// Automatically fetch lyrics for the updated track
 		try {
-			const localDb = await getDatabase()
-			await localDb.delete('lyrics', trackId)
+			await LyricsCache.clearForTrack(trackId)
 			await LyricsService.fetchLyrics(updatedTrack as any)
 			if (typeof window !== 'undefined') {
 				window.dispatchEvent(new CustomEvent('lyrics-reload'))
