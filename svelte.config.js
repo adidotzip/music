@@ -8,6 +8,9 @@ const env = loadEnv('production', process.cwd(), 'PUBLIC_')
 const config = {
 	compilerOptions: {
 		runes: true,
+		experimental: {
+			async: true,
+		},
 	},
 
 	kit: {
