@@ -1,7 +1,9 @@
 <script lang="ts">
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import Spinner from '$lib/components/Spinner.svelte'
+	import { formatArtists } from '$lib/helpers/utils/text.ts'
 	import type { TrackData } from '$lib/library/get/value-queries.ts'
+	import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 	import LyricsRenderer from '$lib/lyrics/LyricsRenderer.svelte'
 	import { getSourceDisplayName, LyricsService, type ServiceLyricsResult } from '$lib/lyrics/LyricsService.ts'
 
@@ -19,6 +21,20 @@
 
 	const isLyricsDark = $derived(
 		mainStore.isThemeDark || (isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded)
+	)
+
+	// Metadata forwarded to <am-lyrics> so the component can run its own
+	// LyricsPlus / Apple Music lookup if our server-side fetch returned nothing.
+	const amLyricsSongTitle = $derived(track?.name)
+	const amLyricsSongArtist = $derived(track ? formatArtists(track.artists) : undefined)
+	const amLyricsSongAlbum = $derived(
+		track?.album && track.album !== UNKNOWN_ITEM ? track.album : undefined
+	)
+	const amLyricsSongDurationMs = $derived(
+		track && track.duration > 0 ? Math.round(track.duration * 1000) : undefined
+	)
+	const amLyricsQuery = $derived(
+		track ? `${track.name} - ${formatArtists(track.artists)}` : undefined
 	)
 
 	let result: ServiceLyricsResult | undefined = $state()
@@ -108,6 +124,11 @@
 			<LyricsRenderer
 				ttml={result.ttml}
 				audioElement={player.audioElement}
+				songTitle={amLyricsSongTitle}
+				songArtist={amLyricsSongArtist}
+				songAlbum={amLyricsSongAlbum}
+				songDurationMs={amLyricsSongDurationMs}
+				query={amLyricsQuery}
 				class="h-full w-full"
 			/>
 		</div>
