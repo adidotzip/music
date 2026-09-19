@@ -5,7 +5,7 @@
 	import type { TrackData } from '$lib/library/get/value-queries.ts'
 	import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 	import LyricsRenderer from '$lib/lyrics/LyricsRenderer.svelte'
-	import { getSourceDisplayName, LyricsService, type ServiceLyricsResult } from '$lib/lyrics/LyricsService.ts'
+	import { LyricsService, type ServiceLyricsResult } from '$lib/lyrics/LyricsService.ts'
 
 	interface Props {
 		track: TrackData | undefined
@@ -93,6 +93,8 @@
 	</div>
 {/snippet}
 
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <section
 	class={[
 		'lyrics-shell relative h-full w-full overflow-hidden bg-transparent',
@@ -100,6 +102,11 @@
 		className,
 	]}
 	aria-live="polite"
+	onclick={(e) => {
+		if (e.detail === 3 && track) {
+			dialogs.openDialog('lyricsSource', track)
+		}
+	}}
 >
 	{#if !track}
 		{@render emptyState(
@@ -138,20 +145,6 @@
 			'Lyrics Unavailable',
 			"We couldn't find synced lyrics for this track.",
 		)}
-	{/if}
-
-	{#if track && !loading && result}
-		<button
-			type="button"
-			class="interactable absolute bottom-4 right-4 z-30 rounded-full border border-onSurface/10 bg-surfaceContainerHighest/85 px-3 py-1 text-label-sm text-onSurfaceVariant backdrop-blur-md shadow-sm cursor-pointer select-none"
-			onclick={(e) => {
-				if (e.detail === 3) {
-					dialogs.openDialog('lyricsSource', track)
-				}
-			}}
-		>
-			Source: {result.source ? getSourceDisplayName(result.source) : 'None (Triple-click)'}
-		</button>
 	{/if}
 </section>
 
