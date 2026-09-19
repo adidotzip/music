@@ -27,6 +27,19 @@
 
 	$effect(() => {
 		const currentEl = el
+		if (currentEl?.shadowRoot) {
+			const styleId = 'am-lyrics-hide-watermark'
+			if (!currentEl.shadowRoot.getElementById(styleId)) {
+				const style = document.createElement('style')
+				style.id = styleId
+				style.textContent = '.version-info { display: none !important; }'
+				currentEl.shadowRoot.appendChild(style)
+			}
+		}
+	})
+
+	$effect(() => {
+		const currentEl = el
 		const currentAudio = audioElement
 		if (!(currentEl && currentAudio)) return
 
