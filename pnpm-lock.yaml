@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@material/material-color-utilities': ba9c0fd32469c32e8fbc40d212f789ab9438cca094fa57f398755793916bd133
-  '@uimaxbai/am-lyrics': 0050424b31e2c73871109dcdaf29a5875af1c17fff59efef8f04bd29bd5bfd72
+  '@uimaxbai/am-lyrics': a7379d628b983c256069ffff228407170f1e029a4743550be614b51c77e6b448
 
 importers:
 
@@ -23,7 +23,7 @@ importers:
         version: 3.14.0
       '@uimaxbai/am-lyrics':
         specifier: ^1.6.3
-        version: 1.6.3(patch_hash=0050424b31e2c73871109dcdaf29a5875af1c17fff59efef8f04bd29bd5bfd72)
+        version: 1.6.3(patch_hash=a7379d628b983c256069ffff228407170f1e029a4743550be614b51c77e6b448)
       hls.js:
         specifier: ^1.6.17
         version: 1.6.17
@@ -2179,7 +2179,7 @@ snapshots:
     dependencies:
       '@types/node': 24.12.2
 
-  '@uimaxbai/am-lyrics@1.6.3(patch_hash=0050424b31e2c73871109dcdaf29a5875af1c17fff59efef8f04bd29bd5bfd72)':
+  '@uimaxbai/am-lyrics@1.6.3(patch_hash=a7379d628b983c256069ffff228407170f1e029a4743550be614b51c77e6b448)':
     dependencies:
       '@babel/runtime': 7.29.7
       lit: 3.3.3
