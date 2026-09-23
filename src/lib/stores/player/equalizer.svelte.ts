@@ -66,6 +66,8 @@ export class EqualizerStore {
 
 			if (enabled) {
 				void this.resumeContext()
+			} else if (this.#audioContext && this.#audioContext.state === 'running') {
+				void this.#audioContext.suspend()
 			}
 
 			if (this.#filters.length === 0) {
