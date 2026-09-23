@@ -4,10 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  '@material/material-color-utilities': ba9c0fd32469c32e8fbc40d212f789ab9438cca094fa57f398755793916bd133
-  '@uimaxbai/am-lyrics': a7379d628b983c256069ffff228407170f1e029a4743550be614b51c77e6b448
-
 importers:
 
   .:
@@ -17,13 +13,13 @@ importers:
         version: 1.2.0
       '@material/material-color-utilities':
         specifier: ^0.4.0
-        version: 0.4.0(patch_hash=ba9c0fd32469c32e8fbc40d212f789ab9438cca094fa57f398755793916bd133)
+        version: 0.4.0
       '@tanstack/virtual-core':
         specifier: ^3.14.0
         version: 3.14.0
       '@uimaxbai/am-lyrics':
         specifier: ^1.6.3
-        version: 1.6.3(patch_hash=a7379d628b983c256069ffff228407170f1e029a4743550be614b51c77e6b448)
+        version: 1.6.3
       hls.js:
         specifier: ^1.6.17
         version: 1.6.17
@@ -1781,7 +1777,7 @@ snapshots:
 
   '@lix-js/server-protocol-schema@0.1.1': {}
 
-  '@material/material-color-utilities@0.4.0(patch_hash=ba9c0fd32469c32e8fbc40d212f789ab9438cca094fa57f398755793916bd133)': {}
+  '@material/material-color-utilities@0.4.0': {}
 
   '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:
@@ -2179,7 +2175,7 @@ snapshots:
     dependencies:
       '@types/node': 24.12.2
 
-  '@uimaxbai/am-lyrics@1.6.3(patch_hash=a7379d628b983c256069ffff228407170f1e029a4743550be614b51c77e6b448)':
+  '@uimaxbai/am-lyrics@1.6.3':
     dependencies:
       '@babel/runtime': 7.29.7
       lit: 3.3.3
