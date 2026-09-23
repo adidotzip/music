@@ -223,8 +223,20 @@ export class PlayerStore {
 		}
 
 		audio.onplay = () => {
+			setPlaybackRate()
 			syncPlayingFromAudio()
 			this.#updatePositionState()
+		}
+
+		audio.onratechange = () => {
+			const expectedRate = clamp(
+				this.playbackRate,
+				PLAYER_PLAYBACK_RATE_MIN,
+				PLAYER_PLAYBACK_RATE_MAX,
+			)
+			if (audio.playbackRate !== expectedRate || audio.defaultPlaybackRate !== expectedRate) {
+				setPlaybackRate()
+			}
 		}
 		audio.onpause = () => {
 			syncPlayingFromAudio()
@@ -268,11 +280,13 @@ export class PlayerStore {
 		}, 100)
 
 		const setPlaybackRate = () => {
-			audio.playbackRate = clamp(
+			const rate = clamp(
 				this.playbackRate,
 				PLAYER_PLAYBACK_RATE_MIN,
 				PLAYER_PLAYBACK_RATE_MAX,
 			)
+			audio.defaultPlaybackRate = rate
+			audio.playbackRate = rate
 		}
 
 		audio.onloadedmetadata = () => {
@@ -286,6 +300,12 @@ export class PlayerStore {
 
 		$effect(() => {
 			audio.preservesPitch = this.preservePitch
+			if ('webkitPreservesPitch' in audio) {
+				;(audio as any).webkitPreservesPitch = this.preservePitch
+			}
+			if ('mozPreservesPitch' in audio) {
+				;(audio as any).mozPreservesPitch = this.preservePitch
+			}
 		})
 
 		$effect(() => {
