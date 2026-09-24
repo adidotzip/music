@@ -191,7 +191,7 @@ export class PlayerStore {
 			})
 
 			if (track) {
-				void this.#preloadUpcoming(track)
+				void this.#preloadUpcoming()
 				this.animatedArtworkSrc = undefined
 				this.animatedArtworkTallSrc = undefined
 				this.animatedArtworkLoaded = false
@@ -412,7 +412,7 @@ export class PlayerStore {
 		}
 	}
 
-	#preloadUpcoming = async (track: TrackData): Promise<void> => {
+	#preloadUpcoming = async (): Promise<void> => {
 		const nextId = this.#queue.itemsIds[this.#queue.activeTrackIndex + 1]
 		if (nextId === undefined) {
 			this.#clearPreloadedAudio()
