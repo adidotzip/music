@@ -24,12 +24,21 @@ const request = async <T>(path: string, params: SpicyApiParams = {}): Promise<T>
 		}
 	}
 
-	const response = await fetch(url)
-	if (!response.ok) {
-		throw new Error(`SpicyAMLL ${response.status}: ${response.statusText}`)
+ 	try {
+		const response = await fetch(url, { headers: { Accept: 'application/json' } })
+		if (!response.ok) throw new Error(`SpicyAMLL ${response.status}: ${response.statusText}`)
+		return response.json() as Promise<T>
+	} catch (directError) {
+		const proxy = new URL(`${API_BASE}/proxy`)
+		proxy.searchParams.set('url', url.toString())
+		try {
+			const response = await fetch(proxy, { headers: { Accept: 'application/json' } })
+			if (!response.ok) throw new Error(`SpicyAMLL proxy ${response.status}: ${response.statusText}`)
+			return response.json() as Promise<T>
+		} catch {
+			throw directError
+		}
 	}
-
-	return response.json() as Promise<T>
 }
 
 const unwrap = <T>(value: unknown): T => {
