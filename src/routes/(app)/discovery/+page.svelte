@@ -355,9 +355,8 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 								<button class="opacity-60 hover:opacity-100" onclick={() => void viewAlbum(item)}>View album</button>
 							{/if}
 							{#if item.artist}
-								<button class="opacity-60 hover:opacity-100" onclick={() => void viewArtist(item.artist, item)}>
-									{favoriteArtists.includes(String(item.id)) ? '★' : '☆'} {item.artist}
-								</button>
+								<button class="opacity-60 hover:opacity-100" onclick={() => void viewArtist(item.artist, item)}>{item.artist}</button>
+								<button class="opacity-60 hover:opacity-100" onclick={() => toggleArtist(item.artist)}>{favoriteArtists.includes(item.artist) ? '★' : '☆'}</button>
 							{/if}
 						</div>
 					</div>
