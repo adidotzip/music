@@ -3,7 +3,7 @@ const API_BASE = 'https://api.spicyamll.online'
 export type SpicyApiParams = Record<string, string | number | boolean | undefined | null>
 
 export interface SpicyTrack {
-	id: number
+	id: string | number
 	name: string
 	artist?: string
 	artists?: string[]
@@ -58,17 +58,25 @@ export const spicyamll = {
 	artist: (params: SpicyApiParams) => request<unknown>('/get/artist', params).then(unwrap),
 	album: (params: SpicyApiParams) => request<unknown>('/album', params).then(unwrap),
 	albumTracks: async (albumId: string | number) => {
-		const payload = await request<unknown>('/album', { id: albumId, l: 'en-US' })
+		const payload = await request<unknown>('/album', { id: String(albumId), l: 'en-US' })
 		const root = unwrap<unknown>(payload)
-		const data = Array.isArray(root) ? root : []
-		const album = data[0]
+
+		// SpicyAMLL can return either an array of albums or an already-unwrapped album object.
+		const albumList = Array.isArray(root) ? root : [root]
+		const album = albumList[0] as Record<string, unknown> | undefined
 		if (!album || typeof album !== 'object') return []
-		const relationships = (album as Record<string, unknown>).relationships
-		if (!relationships || typeof relationships !== 'object') return []
-		const tracks = (relationships as Record<string, unknown>).tracks
-		if (!tracks || typeof tracks !== 'object') return []
-		const trackData = (tracks as Record<string, unknown>).data
-		return normalizeTracks(trackData)
+
+		const relationships =
+			album.relationships && typeof album.relationships === 'object'
+				? album.relationships as Record<string, unknown>
+				: undefined
+		const tracks =
+			relationships?.tracks && typeof relationships.tracks === 'object'
+				? relationships.tracks as Record<string, unknown>
+				: undefined
+		const trackData = tracks?.data
+
+		return normalizeTracks(trackData ?? album)
 	},
 	playlist: (params: SpicyApiParams) => request<unknown>('/get/playlist', params).then(unwrap),
 	musicVideo: (params: SpicyApiParams) => request<unknown>('/get/musicvideo', params).then(unwrap),
@@ -248,10 +256,12 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 
 			const artistName = String(attributes.artistName ?? item.artist ?? item.artistName ?? '')
 			const albumName = String(attributes.albumName ?? item.album ?? item.albumName ?? '')
+			const rawId = item.id ?? item.songId ?? item.song_id ?? item.trackId ?? item.musicId
+			const parsedId = rawId !== undefined && rawId !== null && rawId !== '' ? rawId : index
 
 			return {
 				...item,
-				id: Number(item.id ?? item.songId ?? item.song_id ?? item.trackId ?? item.musicId ?? index),
+				id: typeof parsedId === 'number' ? parsedId : String(parsedId),
 				name: String(attributes.name ?? item.name ?? item.title ?? item.songName ?? 'Unknown'),
 				artist: artistName,
 				artists: artistName
@@ -270,7 +280,7 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 					: (item.year as string | number | undefined),
 			}
 		})
-		.filter((track) => Number.isFinite(track.id) && track.id > 0)
+		.filter((track) => track.id !== undefined && track.id !== null && track.id !== '')
 }
 
 export const searchArtists = async (query: string) => {
@@ -285,7 +295,26 @@ export const searchArtists = async (query: string) => {
 }
 
 export const searchAlbums = async (query: string) => {
-	const candidates = [{ album: query }, { name: query }, { query }, { q: query }]
+	// Prefer the discovery parser because it understands Apple Music album
+	// resources and their string collection IDs.
+	try {
+		const results = await searchDiscovery(query)
+		const albums = results.filter((result) => result.type === 'album')
+		if (albums.length) {
+			return albums.map((album) => ({
+				id: album.id,
+				name: album.name,
+				artist: album.artist,
+				artists: album.artist ? [album.artist] : [],
+				album: album.name,
+				albumName: album.name,
+				image: album.artUrl,
+			}))
+		}
+	} catch {}
+
+	// Fallback to direct album endpoint variants.
+	const candidates = [{ id: query }, { album: query }, { name: query }, { q: query }]
 	for (const params of candidates) {
 		try {
 			const value = normalizeTracks(await spicyamll.album(params))
