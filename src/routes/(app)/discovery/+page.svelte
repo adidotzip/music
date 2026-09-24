@@ -5,7 +5,12 @@
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
-	import { normalizeTracks, searchCatalog, spicyamll } from '$lib/services/spicyamll.ts'
+	import {
+		getSongsForArtist,
+		normalizeTracks,
+		searchCatalog,
+		spicyamll,
+	} from '$lib/services/spicyamll.ts'
 
 	const player = usePlayer()
 
@@ -24,9 +29,7 @@
 			const detail = await spicyamll.song(item.id)
 			const normalized = normalizeTracks(detail)
 			if (normalized[0]) track = { ...item, ...normalized[0] }
-		} catch {
-			// The search result is already enough to stream.
-		}
+		} catch {}
 
 		const id = remoteId(track.id, index)
 		registerRemoteTrack({
@@ -43,21 +46,31 @@
 			discNo: 0,
 			discOf: 0,
 			language: undefined,
-			image: track.image || undefined
-				? { optimized: false, small: track.image || '', full: track.image || '' }
+			image: track.image
+				? { optimized: false, small: track.image, full: track.image }
 				: undefined,
 			primaryColor: undefined,
 			file: undefined,
 			directory: undefined,
 			fileName: undefined,
 			scannedAt: Date.now(),
-			url: spicyamll.streamUrl(track.id, { codec: 'aac', fallback: true, language: 'en-US' }),
+			url: spicyamll.streamUrl(track.id, {
+				codec: 'atmos',
+				fallback: false,
+				language: 'en-US',
+			}),
 			favorite: false,
-			type: 'track'
+			type: 'track',
 		})
 
 		player.playTrack(0, [id])
 	}
+
+	const dedupe = (tracks: ReturnType<typeof normalizeTracks>) =>
+		tracks.filter(
+			(item, index, array) =>
+				item.id > 0 && array.findIndex((candidate) => candidate.id === item.id) === index,
+		)
 
 	const search = async () => {
 		const term = query.trim()
@@ -66,29 +79,39 @@
 		loading = true
 		error = null
 		searched = true
+		results = []
 
 		try {
-			// The API docs expose /get/search for catalog discovery.
-			// /get/artist is a detail endpoint and requires ?artist=...
-			results = await searchCatalog(term)
+			// Primary discovery search.
+			results = dedupe(await searchCatalog(term))
 
-			// If search returns Apple Music relationship objects, normalize the
-			// actual track resources as a second pass.
+			// If the catalog search does not return tracks, resolve the query
+			// as an artist using the documented artist detail endpoint, then
+			// load that artist's songs.
 			if (!results.length) {
-				const searchResponse = await spicyamll.search({ q: term, l: 'en-US', limit: 25 })
-				results = normalizeTracks(searchResponse)
+				const artist = dedupe(normalizeTracks(await spicyamll.artist({ artist: term })))
+				if (artist[0]) {
+					results = dedupe(await getSongsForArtist(artist[0].id, artist[0].name))
+				}
 			}
 
-			results = results.filter((item, index, array) =>
-				item.id > 0 && array.findIndex((candidate) => candidate.id === item.id) === index
-			)
-
+			// Finally try the album detail endpoint if the query is an album.
+			if (!results.length) {
+				results = dedupe(normalizeTracks(await spicyamll.album({ album: term, l: 'en-US' })))
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unable to search SpicyAMLL'
 			results = []
 		} finally {
 			loading = false
 		}
+	}
+
+	const formatDuration = (seconds: number) => {
+		if (!seconds || !Number.isFinite(seconds)) return ''
+		const minutes = Math.floor(seconds / 60)
+		const remaining = Math.floor(seconds % 60)
+		return `${minutes}:${remaining.toString().padStart(2, '0')}`
 	}
 </script>
 
@@ -101,7 +124,9 @@
 <main class="mx-auto flex w-full max-w-(--app-max-content-width) flex-col gap-8 px-4 pt-8 pb-32">
 	<section class="flex flex-col gap-3">
 		<div class="text-headline-large font-bold">Discover music</div>
-		<div class="text-body-lg opacity-70">Search the SpicyAMLL catalog and play it directly in Adi Music.</div>
+		<div class="text-body-lg opacity-70">
+			Search songs, artists and albums from the Apple Music catalog.
+		</div>
 
 		<form
 			class="mt-2 flex w-full max-w-175 items-center gap-2 rounded-2xl border border-primary/10 bg-surfaceContainerHighest p-2"
@@ -136,43 +161,33 @@
 			<div>Try a different artist, album, or song.</div>
 		</div>
 	{:else if results.length > 0}
-		<section class="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-5">
+		<section class="flex flex-col gap-2">
 			{#each results as item, index (item.id)}
-				<article class="group overflow-hidden rounded-3xl bg-surfaceContainer transition-transform duration-200 hover:-translate-y-1">
+				<article
+					class="flex items-center gap-4 rounded-2xl p-3 transition-colors hover:bg-surfaceContainerHighest"
+				>
 					<Artwork
 						src={item.image || undefined}
 						alt={item.name}
-						class="w-full"
+						class="size-16 shrink-0 rounded-xl"
 						fallbackIcon="musicNote"
 					/>
-					<div class="flex flex-col gap-3 p-4">
-						<div class="min-w-0">
-							<div class="truncate text-title-md">{item.name}</div>
-							<div class="truncate text-body-sm opacity-65">{item.artist || item.artists?.join(', ') || 'Unknown Artist'}</div>
-							{#if item.album || item.albumName}
-								<div class="truncate text-body-sm opacity-50">{item.album || item.albumName}</div>
-							{/if}
+					<div class="min-w-0 grow">
+						<div class="truncate text-title-md">{item.name}</div>
+						<div class="truncate text-body-sm opacity-65">
+							{item.artist || item.artists?.join(', ') || 'Unknown Artist'}
 						</div>
-						<Button onclick={() => void playTrack(item, index)} class="w-full">
-							<Icon type="play" />
-							Play
-						</Button>
+						{#if item.album || item.albumName}
+							<div class="truncate text-body-sm opacity-50">
+								{item.album || item.albumName}
+								{#if item.duration} · {formatDuration(item.duration)}{/if}
+							</div>
+						{/if}
 					</div>
+					<Button onclick={() => void playTrack(item, index)} kind="blank" tooltip="Play">
+						<Icon type="play" />
+					</Button>
 				</article>
-			{/each}
-		</section>
-	{:else}
-		<section class="grid gap-4 md:grid-cols-3">
-			{#each [
-				['musicNote', 'Search anything', 'Find songs, artists, albums and more.'],
-				['playlistMusic', 'Build your queue', 'Play a result and keep browsing without leaving the player.'],
-				['musicNote', 'Stream instantly', 'Adi Music uses the AAC web stream from SpicyAMLL.']
-			] as card}
-				<div class="rounded-3xl bg-surfaceContainer p-6">
-					<Icon type={card[0]} class="mb-5 size-8" />
-					<div class="text-title-lg">{card[1]}</div>
-					<div class="mt-1 text-body-md opacity-65">{card[2]}</div>
-				</div>
 			{/each}
 		</section>
 	{/if}
