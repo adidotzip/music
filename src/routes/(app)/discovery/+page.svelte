@@ -51,12 +51,12 @@
 	let surpriseBusy = $state(false)
 
 	const moods: Mood[] = [
-		{ name: 'Chill', icon: 'waterDrop', query: 'chill' },
-		{ name: 'Energy', icon: 'bolt', query: 'energy' },
-		{ name: 'Late Night', icon: 'nightlight', query: 'late night' },
-		{ name: 'Focus', icon: 'target', query: 'focus' },
-		{ name: 'Happy', icon: 'sentimentSatisfied', query: 'happy' },
-		{ name: 'Melancholy', icon: 'sentimentDissatisfied', query: 'melancholy' },
+		{ name: 'Chill', icon: 'volumeMid', query: 'chill' },
+		{ name: 'Energy', icon: 'flash', query: 'energy' },
+		{ name: 'Late Night', icon: 'home', query: 'late night' },
+		{ name: 'Focus', icon: 'headphones', query: 'focus' },
+		{ name: 'Happy', icon: 'favorite', query: 'happy' },
+		{ name: 'Melancholy', icon: 'musicNote', query: 'melancholy' },
 	]
 
 	const genreSeeds = ['Alternative', 'Electronic', 'Indie', 'Pop', 'Rock', 'R&B']
