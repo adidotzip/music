@@ -1,4 +1,6 @@
-<script lang="ts">import Artwork from '$lib/components/Artwork.svelte'
+<script lang="ts">
+	import { goto } from '$app/navigation'
+	import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
@@ -6,36 +8,125 @@
 	import MenuButton from '$lib/components/MenuButton.svelte'
 	import Separator from '$lib/components/Separator.svelte'
 	import Spinner from '$lib/components/Spinner.svelte'
-	import { goto } from '$app/navigation'
+	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
+	import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
+	import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
-import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online-library.ts'
-	import { usePlayer } from '$lib/stores/player/use-store.ts'
-	import { normalizeTracks, parseDiscoveryResults, searchArtists, searchDiscovery, spicyamll, getSongsForArtist, type DiscoveryResource } from '$lib/services/spicyamll.ts'
+	import {
+		getSongsForArtist,
+		normalizeTracks,
+		parseDiscoveryResults,
+		searchDiscovery,
+		spicyamll,
+		type DiscoveryResource,
+		type DiscoveryTrack,
+	} from '$lib/services/spicyamll.ts'
 
 	type DiscoveryItem = DiscoveryResource
 
 	const player = usePlayer()
+
 	let query = $state('')
 	let loading = $state(false)
 	let loadingRecommendations = $state(false)
 	let error = $state<string | null>(null)
-	let results = $state<DiscoveryItem[]>([])
 	let searched = $state(false)
+
+	let results = $state<DiscoveryItem[]>([])
 	let topPicks = $state<DiscoveryItem[]>([])
 	let recommendations = $state<DiscoveryItem[]>([])
 	let recentlyPlayed = $state<DiscoveryItem[]>([])
-	let favoriteArtists = $state<string[]>(getFavoriteArtistIds())
-	let selectedAlbum = $state<DiscoveryItem | null>(null)
-	let albumTracks = $state<DiscoveryTrack[]>([])
-	let selectedArtist = $state<DiscoveryItem | null>(null)
-	let artistTracks = $state<DiscoveryTrack[]>([])
-	let artistInfo = $state<DiscoveryItem | null>(null)
+
+	let selectedDetail = $state<{
+		type: 'album' | 'artist'
+		id: string
+		name: string
+		artist?: string
+		artUrl?: string
+	} | null>(null)
+	let detailLoading = $state(false)
+	let detailTrackIds = $state<number[]>([])
+
+	let nextRemoteId = -1000
+	const trackIdMap = new Map<string, number>()
+
+	const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
+		const key = `spicyamll:${input.id}`
+		if (trackIdMap.has(key)) {
+			return trackIdMap.get(key)!
+		}
+
+		const id = nextRemoteId--
+		trackIdMap.set(key, id)
+
+		const isResource = 'artUrl' in input
+		const name = input.name || 'Unknown'
+		const artistName = isResource ? input.artist : input.artist
+		const albumName = isResource ? input.album : input.album
+		const imageUrl = isResource ? input.artUrl : input.image
+		const rawDuration = !isResource && input.duration ? input.duration : 0
+		const yearStr = !isResource && input.year ? String(input.year) : UNKNOWN_ITEM
+
+		registerRemoteTrack({
+			id,
+			remoteId: Number(input.id) || 0,
+			streaming: true,
+			uuid: key,
+			name,
+			album: albumName || UNKNOWN_ITEM,
+			artists: artistName ? [artistName] : ['Unknown Artist'],
+			year: yearStr,
+			duration: rawDuration,
+			genre: [],
+			trackNo: 0,
+			trackOf: 0,
+			discNo: 0,
+			discOf: 0,
+			language: undefined,
+			image: imageUrl ? { optimized: false, small: imageUrl, full: imageUrl } : undefined,
+			primaryColor: undefined,
+			file: undefined,
+			directory: undefined,
+			fileName: undefined,
+			scannedAt: Date.now(),
+			url: spicyamll.streamUrl(input.id, {
+				codec: 'aac',
+				fallback: true,
+				language: 'en-US',
+			}),
+			favorite: false,
+			type: 'track',
+		})
+
+		return id
+	}
+
 	let songResults = $derived(results.filter((item) => item.type === 'song'))
 	let albumResults = $derived(results.filter((item) => item.type === 'album'))
 	let artistResults = $derived(results.filter((item) => item.type === 'artist'))
 
-	const remoteId = (id: number, index: number) => -Math.max(1, Math.abs(id || index + 1))
+	let songTrackIds = $derived(songResults.map((s) => getOrRegisterRemoteTrack(s)))
+	let recSongTrackIds = $derived(
+		recommendations.filter((r) => r.type === 'song').map((s) => getOrRegisterRemoteTrack(s)),
+	)
+	let topPicksSongTrackIds = $derived(
+		topPicks.filter((r) => r.type === 'song').map((s) => getOrRegisterRemoteTrack(s)),
+	)
+	let recentlyPlayedTrackIds = $derived(
+		recentlyPlayed.filter((r) => r.type === 'song').map((s) => getOrRegisterRemoteTrack(s)),
+	)
+
+	const cleanArtUrl = (url: unknown) => {
+		if (typeof url !== 'string' || !url) return 'favicon.svg'
+		const value = url
+			.replace(/\{w\}/g, '600')
+			.replace(/\{h\}/g, '600')
+			.replace(/\{c\}/g, 'bb')
+			.replace(/\{f\}/g, 'jpg')
+			.replace(/\d+x\d+bb\./, '600x600bb.')
+		return /^https?:\/\//i.test(value) ? value : 'favicon.svg'
+	}
 
 	const shuffle = <T,>(items: T[]) => {
 		const out = [...items]
@@ -56,17 +147,6 @@ import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online
 		})
 	}
 
-	const cleanArtUrl = (url: unknown) => {
-		if (typeof url !== 'string' || !url) return 'favicon.svg'
-		const value = url
-			.replace(/\{w\}/g, '600')
-			.replace(/\{h\}/g, '600')
-			.replace(/\{c\}/g, 'bb')
-			.replace(/\{f\}/g, 'jpg')
-			.replace(/\d+x\d+bb\./, '600x600bb.')
-		return /^https?:\/\//i.test(value) ? value : 'favicon.svg'
-	}
-
 	const parseRecommendationSearch = (input: unknown): DiscoveryItem[] => parseDiscoveryResults(input)
 
 	const loadRecommendations = async () => {
@@ -75,7 +155,7 @@ import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online
 			const history = getRecentlyPlayed(100)
 			recentlyPlayed = history.slice(0, 10).map((track) => ({
 				type: 'song',
-				id: track.trackId || track.id,
+				id: String(track.trackId || track.id),
 				name: track.name,
 				artist: track.artist,
 				album: track.album,
@@ -88,7 +168,7 @@ import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online
 				const latest = history[0]
 				const latestItem: DiscoveryItem = {
 					type: 'song',
-					id: latest.trackId || latest.id,
+					id: String(latest.trackId || latest.id),
 					name: latest.name,
 					artist: latest.artist,
 					album: latest.album,
@@ -120,115 +200,6 @@ import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online
 		}
 	}
 
-	const playTrack = async (
-		item: ReturnType<typeof normalizeTracks>[number],
-		index: number,
-		startPlayback = true,
-	) => {
-		const track = item
-		const id = remoteId(track.id, index)
-
-		registerRemoteTrack({
-				id,
-			remoteId: Number(track.id),
-			streaming: true,
-			uuid: `spicyamll:${track.id}`,
-			name: track.name,
-			album: track.album || track.albumName || '~\\0unknown',
-			artists: track.artists?.length ? track.artists : [track.artist || 'Unknown Artist'],
-			year: track.year ? String(track.year) : '~\\0unknown',
-			duration: track.duration ?? 0,
-			genre: [],
-			trackNo: 0,
-			trackOf: 0,
-			discNo: 0,
-			discOf: 0,
-			language: undefined,
-			image: track.image ? { optimized: false, small: track.image, full: track.image } : undefined,
-			primaryColor: undefined,
-			file: undefined,
-			directory: undefined,
-			fileName: undefined,
-			scannedAt: Date.now(),
-			url: spicyamll.streamUrl(track.id, {
-				codec: 'aac',
-				fallback: true,
-				language: 'en-US',
-			}),
-			favorite: false,
-			type: 'track',
-		})
-
-		if (startPlayback) player.playTrack(0, [id])
-		return id
-	}
-
-	const playTrackCollection = async (tracks: DiscoveryTrack[], shuffleQueue = false) => {
-		if (!tracks.length) return
-		const ids: number[] = []
-		for (const [index, track] of tracks.entries()) {
-			ids.push(await playTrack(track, index, false))
-		}
-		player.playTrack(0, ids, shuffleQueue ? { shuffle: true } : undefined)
-	}
-
-
-type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
-
-
-	const viewAlbum = async (item: DiscoveryItem) => {
-		selectedAlbum = item
-		try {
-			albumTracks = await spicyamll.albumTracks(item.id)
-		} catch {
-			albumTracks = []
-		}
-	}
-
-	const viewArtist = async (artist: string, artistId: string | undefined) => {
-		try {
-			let id = artistId
-			let info: DiscoveryItem | null = artistId
-				? { type: 'artist', id: artistId, name: artist, artist: artist, album: '', artUrl: 'favicon.svg' }
-				: null
-			if (!id) {
-				const found = await searchArtists(artist)
-				id = found[0] ? String(found[0].id) : undefined
-				info = found[0] ? {
-					type: 'artist', id, name: found[0].name, artist: found[0].artist || artist,
-					album: '', artUrl: found[0].image || 'favicon.svg'
-				} : null
-			}
-			if (!id) return
-			selectedArtist = info
-			artistInfo = info
-			artistTracks = await getSongsForArtist(id, artist)
-		} catch {
-			artistTracks = []
-		}
-	}
-
-	const toggleArtist = (id: string | number) => {
-		toggleFavoriteArtist(id)
-		favoriteArtists = getFavoriteArtistIds()
-	}
-
-	const playDiscoveryItem = async (item: DiscoveryItem, index: number) => {
-		if (item.type === 'album') return viewAlbum(item)
-		if (item.type === 'artist') return viewArtist(item.name, item.id)
-		if (item.type === 'song') {
-			const track = normalizeTracks({
-				id: item.id,
-				name: item.name,
-				artist: item.artist,
-				album: item.album,
-				image: item.artUrl,
-			})[0]
-			if (track) return playTrack(track, index)
-		}
-
-	}
-
 	const search = async () => {
 		const term = query.trim()
 		if (!term) return
@@ -236,10 +207,10 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		error = null
 		searched = true
 		results = []
+		selectedDetail = null
 
 		try {
 			results = await searchDiscovery(term)
-
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unable to search SpicyAMLL'
 		} finally {
@@ -247,328 +218,410 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		}
 	}
 
-	const formatDuration = (seconds: number) => {
-		if (!seconds || !Number.isFinite(seconds)) return ''
-		const minutes = Math.floor(seconds / 60)
-		const remaining = Math.floor(seconds % 60)
-		return `${minutes}:${remaining.toString().padStart(2, '0')}`
+	const viewAlbum = async (album: DiscoveryItem) => {
+		selectedDetail = {
+			type: 'album',
+			id: album.id,
+			name: album.name,
+			artist: album.artist,
+			artUrl: album.artUrl,
+		}
+		detailLoading = true
+		detailTrackIds = []
+		try {
+			const tracks = await spicyamll.albumTracks(album.id)
+			detailTrackIds = tracks.map((t) => getOrRegisterRemoteTrack(t))
+		} catch {
+			detailTrackIds = []
+		} finally {
+			detailLoading = false
+		}
+	}
+
+	const viewArtist = async (artist: DiscoveryItem) => {
+		selectedDetail = {
+			type: 'artist',
+			id: artist.id,
+			name: artist.name,
+			artUrl: artist.artUrl,
+		}
+		detailLoading = true
+		detailTrackIds = []
+		try {
+			const tracks = await getSongsForArtist(artist.id, artist.name)
+			detailTrackIds = tracks.map((t) => getOrRegisterRemoteTrack(t))
+		} catch {
+			detailTrackIds = []
+		} finally {
+			detailLoading = false
+		}
 	}
 
 	void loadRecommendations()
-
-	const pageStagger = (index: number) => ({ '--discovery-delay': `${Math.min(index, 8) * 45}ms` })
 </script>
 
-{#snippet discoverySidebar()}
-	<div
-		class="desktop-sidebar fixed left-0 z-10 mt-20 flex h-max w-20 flex-col items-center gap-2 [@media(max-height:500px)]:mt-2"
+{#snippet navItemsSnippet(className: string)}
+	<Button
+		as="a"
+		href="/library/tracks"
+		kind="blank"
+		tooltip={m.tracks()}
+		class={['flex shrink-0 items-center justify-center', className]}
 	>
-		{#each [
-			{ href: '/library/tracks', icon: 'musicNote', label: 'Tracks' },
-			{ href: '/library/albums', icon: 'album', label: 'Albums' },
-			{ href: '/library/artists', icon: 'person', label: 'Artists' },
-			{ href: '/library/playlists', icon: 'playlist', label: 'Playlists' },
-		] as item}
-			<Button as="a" href={item.href} kind="blank" tooltip={item.label} class="flex h-14 w-20 shrink-0 items-center justify-center">
-				<div class="flex items-center justify-center rounded-full p-2">
-					<Icon type={item.icon} />
-				</div>
-			</Button>
-		{/each}
-		<Button kind="blank" tooltip="Discovery" class="flex h-14 w-20 shrink-0 items-center justify-center">
-			<div class="flex items-center justify-center rounded-full bg-secondaryContainer p-2 text-onSecondaryContainer">
-				<Icon type="compass" />
-			</div>
-		</Button>
+		<div class="flex items-center justify-center rounded-full p-2">
+			<Icon type="musicNote" />
+		</div>
+	</Button>
+
+	<Button
+		as="a"
+		href="/library/albums"
+		kind="blank"
+		tooltip={m.albums()}
+		class={['flex shrink-0 items-center justify-center', className]}
+	>
+		<div class="flex items-center justify-center rounded-full p-2">
+			<Icon type="album" />
+		</div>
+	</Button>
+
+	<Button
+		as="a"
+		href="/library/artists"
+		kind="blank"
+		tooltip={m.artists()}
+		class={['flex shrink-0 items-center justify-center', className]}
+	>
+		<div class="flex items-center justify-center rounded-full p-2">
+			<Icon type="person" />
+		</div>
+	</Button>
+
+	<Button
+		as="a"
+		href="/library/playlists"
+		kind="blank"
+		tooltip={m.playlists()}
+		class={['flex shrink-0 items-center justify-center', className]}
+	>
+		<div class="flex items-center justify-center rounded-full p-2">
+			<Icon type="playlist" />
+		</div>
+	</Button>
+
+	<Button
+		as="a"
+		href="/discovery"
+		kind="blank"
+		tooltip="Discovery"
+		class={['flex shrink-0 items-center justify-center', className]}
+	>
+		<div class="flex items-center justify-center rounded-full bg-secondaryContainer p-2 text-onSecondaryContainer">
+			<Icon type="compass" />
+		</div>
+	</Button>
+{/snippet}
+
+{#snippet layoutBottom()}
+	<div
+		class="pointer-events-auto grid h-16 w-full grid-cols-[repeat(auto-fit,minmax(0,1fr))] bg-surfaceContainer sm:hidden active-view-regular:view-name-[bottom-bar]"
+	>
+		{@render navItemsSnippet('h-full')}
 	</div>
 {/snippet}
 
-<Header title="Discovery" noBackButton>
-	<Button as="a" href="/library/tracks" kind="blank" tooltip="Library">
-		<Icon type="library" />
-	</Button>
+{useSetOverlaySnippet('bottom-bar', () => layoutBottom)}
+
+<Header title={selectedDetail ? selectedDetail.name : 'Discovery'} noBackButton>
+	{#if selectedDetail}
+		<IconButton
+			icon="backArrow"
+			tooltip={m.goBack()}
+			class="mr-auto"
+			onclick={() => {
+				selectedDetail = null
+			}}
+		/>
+	{/if}
 </Header>
 
-{@render discoverySidebar()}
+<div class="desktop-sidebar fixed z-1 mt-20 hidden h-max w-max flex-col items-center gap-2 sm:flex [@media(max-height:500px)]:mt-2">
+	{@render navItemsSnippet('h-14 w-20')}
+</div>
 
-<main class="discovery-page mx-auto flex w-full max-w-(--app-max-content-width) flex-col gap-10 px-4 pt-6 pb-32 sm:pl-24 sm:pr-6 sm:pt-8">
-	<section class="flex flex-col gap-5">
-		<div class="discovery-heading flex flex-col gap-1">
-			<div class="text-headline-large font-bold">Discover music</div>
-			<div class="text-body-lg opacity-70">
-				Search songs, artists and albums from the Apple Music catalog.
-			</div>
-		</div>
-
+<main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
+	{#if !selectedDetail}
 		<form
-			class="@container discovery-search sticky top-2 z-5 mt-2 flex w-full max-w-250 self-end items-center gap-1 rounded-2xl border border-outlineVariant/50 bg-surfaceContainerHighest px-2 shadow-xs transition-[border-color,box-shadow,background-color] duration-200 @sm:gap-2 focus-within:border-primary/30 focus-within:shadow-md"
+			class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex w-full max-w-125 items-center gap-1 rounded-lg border border-primary/10 bg-surfaceContainerHighest px-2 @sm:gap-2"
 			onsubmit={(event) => {
 				event.preventDefault()
 				void search()
 			}}
 		>
-			<Icon type="magnify" class="ml-2 shrink-0 opacity-60" />
 			<input
 				bind:value={query}
-				class="h-12 min-w-0 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
+				type="text"
+				name="search"
 				placeholder="Search tracks, artists, albums"
-				aria-label="Search music"
+				class="h-12 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
 			/>
+
+			<IconButton icon="magnify" tooltip="Search" type="submit" />
+
 			<Separator vertical class="my-auto hidden h-6 @sm:flex" />
-			<IconButton icon="sort" tooltip="Search options" disabled={loading} />
-			<Separator vertical class="my-auto hidden h-6 @sm:flex" />
+
 			<MenuButton
-				ariaLabel="Open application menu"
-				tooltip="More"
+				ariaLabel={m.libraryOpenApplicationMenu()}
+				tooltip={m.more()}
 				menuItems={() => [
 					{ label: m.settings(), action: () => void goto('/settings') },
 					{ label: m.about(), action: () => void goto('/about') },
 				]}
+				width={200}
 			/>
 		</form>
-	</section>
+	{/if}
 
-	{#if error}
-		<div class="discovery-state rounded-2xl border border-error/30 bg-errorContainer p-4 text-onErrorContainer">
-			{error}
+	{#if selectedDetail}
+		<div class="@container flex grow flex-col pb-4">
+			<section
+				class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row"
+			>
+				<Artwork
+					src={selectedDetail.artUrl}
+					fallbackIcon={selectedDetail.type === 'album' ? 'album' : 'person'}
+					class="h-49 shrink-0 rounded-2xl @2xl:h-full"
+				/>
+
+				<div
+					class="relative z-0 flex size-full flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh"
+				>
+					<div class="flex grow flex-col p-4">
+						<div class="flex items-center gap-2">
+							<Icon
+								type={selectedDetail.type === 'album' ? 'album' : 'person'}
+								class="size-10 text-onSurface/54"
+							/>
+							<h1 class="text-headline-md">{selectedDetail.name}</h1>
+						</div>
+
+						{#if selectedDetail.artist}
+							<div class="grid w-full overflow-hidden text-body-lg">
+								<div class="truncate">
+									{selectedDetail.artist}
+								</div>
+							</div>
+						{/if}
+
+						<div class="mt-1 text-onSurfaceVariant">
+							{m.libraryTracksCount({ count: detailTrackIds.length })}
+						</div>
+					</div>
+
+					<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
+						<Button
+							kind="filled"
+							class="my-1"
+							disabled={detailTrackIds.length === 0}
+							onclick={() => {
+								player.playTrack(0, detailTrackIds)
+							}}
+						>
+							{m.play()}
+						</Button>
+
+						<Button
+							kind="flat"
+							class="my-1 mr-auto"
+							disabled={detailTrackIds.length === 0}
+							onclick={() => {
+								player.playTrack(0, detailTrackIds, {
+									shuffle: true,
+								})
+							}}
+						>
+							{m.shuffle()}
+							<Icon type="shuffle" />
+						</Button>
+
+						<Button
+							kind="blank"
+							onclick={() => {
+								selectedDetail = null
+							}}
+						>
+							{m.dismiss()}
+						</Button>
+					</div>
+				</div>
+			</section>
+
+			{#if detailLoading}
+				<div class="flex min-h-40 items-center justify-center">
+					<Spinner class="size-8" />
+				</div>
+			{:else}
+				<TracksListContainer items={detailTrackIds} />
+			{/if}
+		</div>
+	{:else if error}
+		<div class="my-auto flex flex-col items-center p-8 text-center text-error">
+			<div class="text-title-lg">{error}</div>
 		</div>
 	{:else if loading}
-		<div class="discovery-state flex min-h-60 flex-col items-center justify-center gap-4 text-center opacity-70" aria-live="polite">
+		<div class="my-auto flex min-h-60 flex-col items-center justify-center gap-4 text-center opacity-70">
 			<Spinner class="size-10" />
-			<div class="text-title-md">Searching the catalog…</div>
-			<div class="text-body-sm opacity-70">Finding songs, artists, and albums</div>
+			<div class="text-title-md">Searching catalog...</div>
 		</div>
 	{:else if searched && results.length === 0}
-		<div class="flex min-h-50 flex-col items-center justify-center gap-2 text-center opacity-70">
-			<Icon type="magnify" class="size-20" />
-			<div class="text-title-lg">No results</div>
-			<div>Try a different artist, album, or song.</div>
+		<div class="relative m-auto flex flex-col items-center text-center py-12">
+			<Icon type="magnify" class="my-auto size-35 opacity-54" />
+			<div class="text-body-lg">{m.libraryNoResults()}</div>
+			<div>{m.libraryNoResultsExplanation()}</div>
 		</div>
 	{:else if results.length > 0}
-		<section class="flex flex-col gap-10">
+		<div class="flex flex-col gap-8 pb-8">
 			{#if songResults.length}
-				<div class="discovery-section flex flex-col gap-2">
+				<section class="flex flex-col gap-2">
 					<div class="flex items-center justify-between">
-						<h2 class="text-title-lg font-bold">Songs</h2>
-						<span class="text-body-sm opacity-50">{songResults.length}</span>
+						<h2 class="text-title-lg font-bold text-onSurface">Songs</h2>
+						<span class="text-body-sm text-onSurfaceVariant/70">{songResults.length}</span>
 					</div>
-					{#each songResults as item, index (item.id)}
-						<article class="discovery-row group flex items-center gap-3 rounded-2xl px-3 py-2 hover:bg-surfaceContainerHighest" style={pageStagger(index)}>
-							<Artwork src={item.artUrl} alt={item.name} class="size-14 shrink-0 rounded-xl" fallbackIcon="musicNote" />
-							<div class="min-w-0 grow">
-								<div class="truncate text-title-sm">{item.name}</div>
-								<div class="truncate text-body-sm opacity-60">{item.artist || 'Unknown Artist'}</div>
-							</div>
-							<div class="hidden shrink-0 gap-1 group-hover:flex sm:flex">
-								<Button onclick={() => void playDiscoveryItem(item, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
-								
-							</div>
-						</article>
-					{/each}
-				</div>
+					<TracksListContainer items={songTrackIds} />
+				</section>
 			{/if}
 
 			{#if albumResults.length}
-				<div class="discovery-section flex flex-col gap-3">
-					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Albums</h2><span class="text-body-sm opacity-50">{albumResults.length}</span></div>
-					<div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-						{#each albumResults as item, index (item.id)}
-							<button class="discovery-card min-w-0 text-left" style={pageStagger(index)} onclick={() => void viewAlbum(item)}>
-								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
-								<div class="mt-2 truncate text-title-sm">{item.name}</div>
-								<div class="truncate text-body-sm opacity-60">{item.artist || 'Unknown Artist'}</div>
+				<section class="flex flex-col gap-3">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg font-bold text-onSurface">Albums</h2>
+						<span class="text-body-sm text-onSurfaceVariant/70">{albumResults.length}</span>
+					</div>
+					<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{#each albumResults as item (item.id)}
+							<button
+								type="button"
+								class="interactable flex flex-col overflow-hidden rounded-lg bg-surfaceContainerHigh text-left"
+								onclick={() => void viewAlbum(item)}
+							>
+								<Artwork
+									src={item.artUrl}
+									fallbackIcon="album"
+									class="aspect-square w-full rounded-[inherit]"
+								/>
+								<div class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant">
+									<div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
+									<div class="truncate text-body-sm text-onSurfaceVariant">{item.artist || 'Unknown Artist'}</div>
+								</div>
 							</button>
 						{/each}
 					</div>
-				</div>
+				</section>
 			{/if}
 
 			{#if artistResults.length}
-				<div class="discovery-section flex flex-col gap-3">
-					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Artists</h2><span class="text-body-sm opacity-50">{artistResults.length}</span></div>
-					<div class="flex flex-col gap-1">
-						{#each artistResults as item, index (item.id)}
-							<div class="discovery-row flex items-center gap-3 rounded-2xl p-3 hover:bg-surfaceContainerHighest" style={pageStagger(index)}>
-								<button class="shrink-0" onclick={() => void viewArtist(item.name, item.id)} aria-label="View artist">
-									<Artwork src={item.artUrl} alt={item.name} class="size-14 rounded-full" fallbackIcon="musicNote" />
-								</button>
-								<button class="min-w-0 grow text-left" onclick={() => void viewArtist(item.name, item.id)}>
-									<div class="truncate text-title-sm">{item.name}</div>
-									<div class="text-body-sm opacity-60">{item.genre || 'Artist'}</div>
-								</button>
-								<Button onclick={() => toggleArtist(item.id)} kind="blank">{favoriteArtists.includes(item.id) ? '★' : '☆'}</Button>
-							</div>
+				<section class="flex flex-col gap-3">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg font-bold text-onSurface">Artists</h2>
+						<span class="text-body-sm text-onSurfaceVariant/70">{artistResults.length}</span>
+					</div>
+					<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{#each artistResults as item (item.id)}
+							<button
+								type="button"
+								class="interactable flex flex-col overflow-hidden rounded-lg bg-surfaceContainerHigh text-left"
+								onclick={() => void viewArtist(item)}
+							>
+								<Artwork
+									src={item.artUrl}
+									fallbackIcon="person"
+									class="aspect-square w-full rounded-[inherit]"
+								/>
+								<div class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant">
+									<div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
+								</div>
+							</button>
 						{/each}
 					</div>
+				</section>
+			{/if}
+		</div>
+	{:else}
+		<div class="flex flex-col gap-8 pb-8">
+			{#if recentlyPlayedTrackIds.length}
+				<section class="flex flex-col gap-3">
+					<h2 class="text-title-lg font-bold text-onSurface">Recently Played</h2>
+					<TracksListContainer items={recentlyPlayedTrackIds} />
+				</section>
+			{/if}
+
+			{#if topPicksSongTrackIds.length}
+				<section class="flex flex-col gap-3">
+					<h2 class="text-title-lg font-bold text-onSurface">Top Picks For You</h2>
+					<TracksListContainer items={topPicksSongTrackIds} />
+				</section>
+			{/if}
+
+			{#if recSongTrackIds.length}
+				<section class="flex flex-col gap-3">
+					<h2 class="text-title-lg font-bold text-onSurface">Recommended For You</h2>
+					<TracksListContainer items={recSongTrackIds.slice(0, 20)} />
+				</section>
+			{:else if loadingRecommendations}
+				<div class="flex min-h-40 flex-col items-center justify-center gap-2 text-center opacity-60">
+					<Spinner class="size-6" />
+					<div class="text-body-md">Building recommendations...</div>
 				</div>
 			{/if}
-		</section>
-	{/if}
 
-	{#if selectedAlbum}
-		<section class="discovery-detail rounded-3xl bg-surfaceContainerHighest p-5">
-			<div class="flex items-center gap-4">
-				<Artwork src={selectedAlbum.artUrl || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
-				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
-				{#if albumTracks.length}<Button onclick={() => void playTrackCollection(albumTracks)}>Play</Button>{/if}
-				<Button onclick={() => { selectedAlbum = null; albumTracks = [] }} kind="blank">Close</Button>
-			</div>
-			<div class="mt-4 flex flex-col gap-1">
-				{#each albumTracks as track, index (track.id)}
-					<div class="flex items-center gap-3 rounded-xl p-2 hover:bg-surface">
-						<div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.artist}</div></div>
-						<Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button>
-					</div>
-				{/each}
-			</div>
-		</section>
-	{/if}
-
-	{#if selectedArtist}
-		<section class="discovery-detail @container flex flex-col gap-4">
-			<div class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row">
-				<Artwork
-					src={selectedArtist.artUrl}
-					alt={selectedArtist.name}
-					class="size-49 shrink-0 rounded-full @2xl:size-60"
-					fallbackIcon="person"
-				/>
-				<div class="relative z-0 flex size-full min-h-60 flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh">
-					<div class="flex grow flex-col p-5">
-						<div class="text-body-sm text-onSurfaceVariant">Artist</div>
-						<h1 class="text-headline-md">{selectedArtist.name}</h1>
-						{#if selectedArtist.bio}
-							<div class="mt-2 line-clamp-3 text-body-md text-onSurfaceVariant">{selectedArtist.bio}</div>
-						{/if}
-						<div class="mt-2 text-onSurfaceVariant">
-							{artistTracks.length} {artistTracks.length === 1 ? 'track' : 'tracks'}
-						</div>
-					</div>
-					<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-5">
-						<Button
-							kind="filled"
-							disabled={artistTracks.length === 0}
-							onclick={() => void playTrackCollection(artistTracks)}
-						>
-							Play
-						</Button>
-						<Button
-							kind="flat"
-							disabled={artistTracks.length === 0}
-							onclick={() => void playTrackCollection(artistTracks, true)}
-						>
-							Shuffle <Icon type="shuffle" />
-						</Button>
-						<Button kind="flat" onclick={() => toggleArtist(selectedArtist.id)}>
-							{favoriteArtists.includes(selectedArtist.id) ? 'Following' : 'Follow'}
-						</Button>
-						<Button kind="blank" onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }}>Close</Button>
-					</div>
-				</div>
-			</div>
-			<div class="flex flex-col gap-1">
-				{#each artistTracks as track, index (track.id)}
-					<div class="group flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-surfaceContainerHighest">
-						<Artwork src={track.image} alt={track.name} class="size-12 shrink-0 rounded-lg" fallbackIcon="musicNote" />
-						<div class="min-w-0 grow">
-							<div class="truncate">{track.name}</div>
-							<div class="truncate text-body-sm opacity-60">{track.album || 'Unknown Album'}</div>
-						</div>
-						<Button onclick={() => void playTrack(track, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
-					</div>
-				{/each}
-			</div>
-		</section>
-	{/if}
-	{#if !searched}
-		{#if recentlyPlayed.length}
-			<section class="discovery-section flex flex-col gap-3">
-				<div class="text-title-lg font-bold">Recently Played</div>
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-					{#each recentlyPlayed as item (item.id)}
-						<div class="min-w-0">
-							<button class="discovery-card block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
-								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
-								<div class="mt-2 truncate text-title-sm">{item.name}</div>
-								<div class="truncate text-body-sm opacity-60">{item.artist}</div>
+			{#if recommendations.some((r) => r.type === 'album')}
+				<section class="flex flex-col gap-3">
+					<h2 class="text-title-lg font-bold text-onSurface">Recommended Albums</h2>
+					<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{#each recommendations.filter((r) => r.type === 'album').slice(0, 12) as item (item.id)}
+							<button
+								type="button"
+								class="interactable flex flex-col overflow-hidden rounded-lg bg-surfaceContainerHigh text-left"
+								onclick={() => void viewAlbum(item)}
+							>
+								<Artwork
+									src={item.artUrl}
+									fallbackIcon="album"
+									class="aspect-square w-full rounded-[inherit]"
+								/>
+								<div class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant">
+									<div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
+									<div class="truncate text-body-sm text-onSurfaceVariant">{item.artist || 'Unknown Artist'}</div>
+								</div>
 							</button>
-							<div class="mt-1 flex gap-1">
-								<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
+						{/each}
+					</div>
+				</section>
+			{/if}
 
-		{#if topPicks.length}
-			<section class="discovery-section flex flex-col gap-3">
-				<div class="text-title-lg font-bold">Top Picks For You</div>
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-					{#each topPicks as item (item.type + item.id)}
-						<div class="min-w-0">
-							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
-								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
-								<div class="mt-2 truncate text-title-sm">{item.name}</div>
-								<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
+			{#if recommendations.some((r) => r.type === 'artist')}
+				<section class="flex flex-col gap-3">
+					<h2 class="text-title-lg font-bold text-onSurface">Recommended Artists</h2>
+					<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{#each recommendations.filter((r) => r.type === 'artist').slice(0, 12) as item (item.id)}
+							<button
+								type="button"
+								class="interactable flex flex-col overflow-hidden rounded-lg bg-surfaceContainerHigh text-left"
+								onclick={() => void viewArtist(item)}
+							>
+								<Artwork
+									src={item.artUrl}
+									fallbackIcon="person"
+									class="aspect-square w-full rounded-[inherit]"
+								/>
+								<div class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant">
+									<div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
+								</div>
 							</button>
-							<div class="mt-1 flex gap-1">
-								<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
-								{#if item.type === 'song'}<Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">+</Button>{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		{#if recommendations.length}
-			<section class="discovery-section flex flex-col gap-3">
-				<div class="text-title-lg font-bold">Recommended For You</div>
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-					{#each recommendations.slice(0, 20) as item (item.type + item.id)}
-						<div class="min-w-0">
-							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
-								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
-								<div class="mt-2 truncate text-title-sm">{item.name}</div>
-								<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
-							</button>
-							<div class="mt-1 flex gap-1">
-								{#if item.type === 'song'}<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button><Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">+</Button>{:else if item.type === 'album'}<Button onclick={() => void viewAlbum(item)} kind="blank">View</Button>{:else}<Button onclick={() => void viewArtist(item.name, item.id)} kind="blank">View</Button>{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{:else if loadingRecommendations}
-			<div class="py-8 text-center opacity-60">Building your recommendations…</div>
-		{/if}
+						{/each}
+					</div>
+				</section>
+			{/if}
+		</div>
 	{/if}
 </main>
-
-
-<style>
-	.discovery-page { animation: discovery-page-in 420ms var(--ease-standard); }
-	.discovery-heading, .discovery-search, .discovery-state, .discovery-detail, .discovery-section { animation: discovery-fade-up 480ms var(--ease-standard) both; }
-	.discovery-search { animation-delay: 60ms; }
-	.discovery-row, .discovery-card { animation: discovery-item-in 480ms var(--ease-standard) both; animation-delay: var(--discovery-delay, 0ms); }
-	.discovery-card { transition: transform 220ms var(--ease-standard), box-shadow 220ms var(--ease-standard), opacity 220ms var(--ease-standard); }
-	@media (hover: hover) { .discovery-card:hover { transform: translateY(-2px); } }
-	@media (max-width: 639px) {
-		.discovery-page { gap: 2rem; padding-left: 1rem; padding-right: 1rem; padding-top: 1.25rem; }
-		.discovery-search { top: 0.5rem; border-radius: 1.25rem; }
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.discovery-page, .discovery-heading, .discovery-search, .discovery-state, .discovery-detail, .discovery-section, .discovery-row, .discovery-card { animation: none !important; transition: none !important; }
-		.discovery-card:hover { transform: none; }
-	}
-	@keyframes discovery-page-in { from { opacity: 0; } to { opacity: 1; } }
-	@keyframes discovery-fade-up {
-		from { opacity: 0; transform: translateY(10px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-	@keyframes discovery-item-in {
-		from { opacity: 0; transform: translateY(8px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-</style>
