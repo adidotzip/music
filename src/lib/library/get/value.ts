@@ -28,7 +28,7 @@ const recoverRemoteTrack = async (id: number): Promise<TrackData | undefined> =>
 			limit: 10,
 		})
 		const songs = parseDiscoveryResults(response).filter((item) => item.type === 'song')
-		const normalize = (value: string) => value.toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim()
+		const normalize = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
 		const name = normalize(recent.name)
 		const artist = normalize(recent.artist)
 		const match =
