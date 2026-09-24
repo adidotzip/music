@@ -56,7 +56,20 @@ export const spicyamll = {
 	catalogSearch: (storefront: string, params: SpicyApiParams) =>
 		request<unknown>(`/get/v1/catalog/${encodeURIComponent(storefront)}/search`, params).then(unwrap),
 	artist: (params: SpicyApiParams) => request<unknown>('/get/artist', params).then(unwrap),
-	album: (params: SpicyApiParams) => request<unknown>('/get/album', params).then(unwrap),
+	album: (params: SpicyApiParams) => request<unknown>('/album', params).then(unwrap),
+	albumTracks: async (albumId: string | number) => {
+		const payload = await request<unknown>('/album', { id: albumId, l: 'en-US' })
+		const root = unwrap<unknown>(payload)
+		const data = Array.isArray(root) ? root : []
+		const album = data[0]
+		if (!album || typeof album !== 'object') return []
+		const relationships = (album as Record<string, unknown>).relationships
+		if (!relationships || typeof relationships !== 'object') return []
+		const tracks = (relationships as Record<string, unknown>).tracks
+		if (!tracks || typeof tracks !== 'object') return []
+		const trackData = (tracks as Record<string, unknown>).data
+		return normalizeTracks(trackData)
+	},
 	playlist: (params: SpicyApiParams) => request<unknown>('/get/playlist', params).then(unwrap),
 	musicVideo: (params: SpicyApiParams) => request<unknown>('/get/musicvideo', params).then(unwrap),
 	musicVideoGet: (params: SpicyApiParams) => request<unknown>('/get/musicvideo/get', params).then(unwrap),
