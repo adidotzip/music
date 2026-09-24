@@ -164,7 +164,7 @@
 			{#each [
 				['musicNote', 'Search anything', 'Find songs, artists, albums and more.'],
 				['playlistMusic', 'Build your queue', 'Play a result and keep browsing without leaving the player.'],
-				['waveform', 'Stream instantly', 'Adi Music uses the AAC web stream from SpicyAMLL.']
+				['musicNote', 'Stream instantly', 'Adi Music uses the AAC web stream from SpicyAMLL.']
 			] as card}
 				<div class="rounded-3xl bg-surfaceContainer p-6">
 					<Icon type={card[0]} class="mb-5 size-8" />
