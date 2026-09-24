@@ -309,44 +309,33 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		</div>
 	{:else if results.length > 0}
 		<section class="flex flex-col gap-2">
-			{#each results as item, index (item.id)}
-				<article
-					class="flex items-center gap-4 rounded-2xl p-3 transition-colors hover:bg-surfaceContainerHighest"
-				>
-					<Artwork
-						src={item.image || undefined}
-						alt={item.name}
-						class="size-16 shrink-0 rounded-xl"
-						fallbackIcon="musicNote"
-					/>
+			{#each results as item, index (item.type + ':' + item.id)}
+				<article class="flex items-center gap-4 rounded-2xl p-3 transition-colors hover:bg-surfaceContainerHighest">
+					<button class="shrink-0" onclick={() => void playDiscoveryItem(item, index)} aria-label={item.type === 'song' ? 'Play song' : item.type === 'album' ? 'View album' : 'View artist'}>
+						<Artwork src={item.artUrl} alt={item.name} class="size-16 rounded-xl" fallbackIcon="musicNote" />
+					</button>
 					<div class="min-w-0 grow">
 						<div class="truncate text-title-md">{item.name}</div>
-						<div class="truncate text-body-sm opacity-65">
-							{item.artist || item.artists?.join(', ') || 'Unknown Artist'}
-						</div>
-						{#if item.album || item.albumName}
-							<div class="truncate text-body-sm opacity-50">
-								{item.album || item.albumName}
-								{#if item.duration} · {formatDuration(item.duration)}{/if}
-							</div>
-						{/if}
+						<div class="truncate text-body-sm opacity-65">{item.type === 'artist' ? 'Artist' : item.artist || 'Unknown Artist'}</div>
+						{#if item.album}<div class="truncate text-body-sm opacity-50">{item.album}</div>{/if}
 						<div class="mt-1 flex gap-3 text-body-sm">
-							{#if item.album || item.albumName}
-								<button class="opacity-60 hover:opacity-100" onclick={() => void viewAlbum(item)}>View album</button>
-							{/if}
-							{#if item.artist}
-								<button class="opacity-60 hover:opacity-100" onclick={() => void viewArtist(item.artist, item)}>{item.artist}</button>
-								<button class="opacity-60 hover:opacity-100" onclick={() => toggleArtist(item.artist)}>{favoriteArtists.includes(item.artist) ? '★' : '☆'}</button>
+							<button class="opacity-60 hover:opacity-100" onclick={() => void playDiscoveryItem(item, index)}>
+								{item.type === 'song' ? 'Play' : item.type === 'album' ? 'View album' : 'View artist'}
+							</button>
+							{#if item.type === 'artist'}
+								<button class="opacity-60 hover:opacity-100" onclick={() => toggleArtist(item.id)}>{favoriteArtists.includes(item.id) ? '★ Following' : '☆ Follow'}</button>
 							{/if}
 						</div>
 					</div>
 					<div class="flex shrink-0 items-center gap-1">
-						<Button onclick={() => void playTrack(item, index)} kind="blank" tooltip="Play">
-							<Icon type="play" />
-						</Button>
-						<Button onclick={() => void addSong(item)} kind="blank" tooltip="Add to library">
-							{downloading.includes(String(item.id)) ? '…' : '+'}
-						</Button>
+						{#if item.type === 'song'}
+							<Button onclick={() => void playDiscoveryItem(item, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+							<Button onclick={() => void addSong(normalizeTracks({ id: item.id, name: item.name, artist: item.artist, album: item.album, image: item.artUrl })[0])} kind="blank" tooltip="Add to library">{downloading.includes(item.id) ? '…' : '+'}</Button>
+						{:else if item.type === 'album'}
+							<Button onclick={() => void viewAlbum(item)} kind="blank" tooltip="View album"><Icon type="album" /></Button>
+						{:else}
+							<Button onclick={() => void viewArtist(item.name, item.id)} kind="blank" tooltip="View artist"><Icon type="artist" /></Button>
+						{/if}
 					</div>
 				</article>
 			{/each}
@@ -356,7 +345,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	{#if selectedAlbum}
 		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
 			<div class="flex items-center gap-4">
-				<Artwork src={selectedAlbum.image || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
+				<Artwork src={selectedAlbum.artUrl || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
 				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
 				<Button onclick={() => { selectedAlbum = null; albumTracks = [] }} kind="blank">Close</Button>
 			</div>
@@ -372,9 +361,9 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		</section>
 	{/if}
 
-	{#if selectedArtist}
+	{#if selectedArtist.name}
 		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
-			<div class="flex items-center justify-between gap-4"><div><div class="text-title-lg font-bold">{selectedArtist}</div><div class="text-body-sm opacity-60">Artist</div></div><Button onclick={() => { selectedArtist = null; artistTracks = [] }} kind="blank">Close</Button></div>
+			<div class="flex items-center justify-between gap-4"><div><div class="text-title-lg font-bold">{selectedArtist.name}</div><div class="text-body-sm opacity-60">Artist</div></div><Button onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }} kind="blank">Close</Button></div>
 			<div class="mt-4 flex flex-col gap-1">{#each artistTracks as track, index (track.id)}<div class="flex items-center gap-3 rounded-xl p-2"><div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.album}</div></div><Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button><Button onclick={() => void addSong(track)} kind="blank">+</Button></div>{/each}</div>
 		</section>
 	{/if}
