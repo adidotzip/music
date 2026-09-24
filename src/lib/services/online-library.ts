@@ -4,6 +4,7 @@ import type { Track } from '$lib/library/types.ts'
 import { spicyamll } from './spicyamll.ts'
 
 const ARTIST_FAVORITES_KEY = 'adi_music_favorite_artists'
+const SONG_FAVORITES_KEY = 'adi_music_favorite_songs'
 
 export type OnlineArtist = {
 	id: string
@@ -11,6 +12,31 @@ export type OnlineArtist = {
 	artUrl: string
 	genre: string
 	bio: string
+}
+
+
+export function getFavoriteSongIds(): string[] {
+	if (typeof localStorage === 'undefined') return []
+	try {
+		const value = JSON.parse(localStorage.getItem(SONG_FAVORITES_KEY) || '[]')
+		return Array.isArray(value) ? value.map(String) : []
+	} catch {
+		return []
+	}
+}
+
+export function isFavoriteSong(id: string | number) {
+	return getFavoriteSongIds().includes(String(id))
+}
+
+export function toggleFavoriteSong(id: string | number) {
+	if (typeof localStorage === 'undefined') return false
+	const key = String(id)
+	const ids = getFavoriteSongIds()
+	const next = ids.includes(key) ? ids.filter((item) => item !== key) : [key, ...ids]
+	localStorage.setItem(SONG_FAVORITES_KEY, JSON.stringify(next))
+	window.dispatchEvent(new CustomEvent('adi-music-favorite-songs-changed', { detail: { id: key, favorite: !ids.includes(key) } }))
+	return !ids.includes(key)
 }
 
 export function getFavoriteArtistIds(): string[] {
