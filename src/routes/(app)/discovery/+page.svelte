@@ -2,6 +2,10 @@
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
+	import IconButton from '$lib/components/IconButton.svelte'
+	import MenuButton from '$lib/components/MenuButton.svelte'
+	import Separator from '$lib/components/Separator.svelte'
+	import { goto } from '$app/navigation'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { getDatabase } from '$lib/db/database.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
@@ -275,13 +279,39 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	void loadRecommendations()
 </script>
 
+{#snippet discoverySidebar()}
+	<div
+		class="desktop-sidebar fixed left-0 z-10 mt-20 flex h-max w-20 flex-col items-center gap-2 [@media(max-height:500px)]:mt-2"
+	>
+		{#each [
+			{ href: '/library/tracks', icon: 'musicNote', label: 'Tracks' },
+			{ href: '/library/albums', icon: 'album', label: 'Albums' },
+			{ href: '/library/artists', icon: 'person', label: 'Artists' },
+			{ href: '/library/playlists', icon: 'playlist', label: 'Playlists' },
+		] as item}
+			<Button as="a" href={item.href} kind="blank" tooltip={item.label} class="flex h-14 w-20 shrink-0 items-center justify-center">
+				<div class="flex items-center justify-center rounded-full p-2">
+					<Icon type={item.icon} />
+				</div>
+			</Button>
+		{/each}
+		<Button kind="blank" tooltip="Discovery" class="flex h-14 w-20 shrink-0 items-center justify-center">
+			<div class="flex items-center justify-center rounded-full bg-secondaryContainer p-2 text-onSecondaryContainer">
+				<Icon type="compass" />
+			</div>
+		</Button>
+	</div>
+{/snippet}
+
 <Header title="Discovery" noBackButton>
 	<Button as="a" href="/library/tracks" kind="blank" tooltip="Library">
 		<Icon type="library" />
 	</Button>
 </Header>
 
-<main class="mx-auto flex w-full max-w-(--app-max-content-width) flex-col gap-8 px-4 pt-8 pb-32">
+{@render discoverySidebar()}
+
+<main class="mx-auto flex w-full max-w-(--app-max-content-width) flex-col gap-8 px-4 pt-8 pb-32 sm:pl-20">
 	<section class="flex flex-col gap-3">
 		<div class="text-headline-large font-bold">Discover music</div>
 		<div class="text-body-lg opacity-70">
@@ -289,7 +319,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		</div>
 
 		<form
-			class="mt-2 flex w-full max-w-175 items-center gap-2 rounded-2xl border border-primary/10 bg-surfaceContainerHighest p-2"
+			class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex w-full max-w-250 items-center gap-1 rounded-lg border border-primary/10 bg-surfaceContainerHighest px-2 @sm:gap-2"
 			onsubmit={(event) => {
 				event.preventDefault()
 				void search()
@@ -298,13 +328,21 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			<Icon type="magnify" class="ml-2 shrink-0 opacity-60" />
 			<input
 				bind:value={query}
-				class="h-12 min-w-0 grow bg-transparent px-2 text-body-lg outline-none"
-				placeholder="Search songs, artists, albums..."
+				class="h-12 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
+				placeholder="Search tracks, artists, albums"
 				aria-label="Search music"
 			/>
-			<Button type="submit" disabled={loading || !query.trim()}>
-				{loading ? 'Searching…' : 'Search'}
-			</Button>
+			<Separator vertical class="my-auto hidden h-6 @sm:flex" />
+			<IconButton icon="sort" tooltip="Search options" disabled={loading} />
+			<Separator vertical class="my-auto hidden h-6 @sm:flex" />
+			<MenuButton
+				ariaLabel="Open application menu"
+				tooltip="More"
+				menuItems={() => [
+					{ label: m.settings(), action: () => void goto('/settings') },
+					{ label: m.about(), action: () => void goto('/about') },
+				]}
+			/>
 		</form>
 	</section>
 
@@ -402,14 +440,63 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	{/if}
 
 	{#if selectedArtist}
-		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
-			<div class="flex items-center gap-4">
-				<Artwork src={selectedArtist.artUrl} alt={selectedArtist.name} class="size-24 shrink-0 rounded-full" fallbackIcon="musicNote" />
-				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedArtist.name}</div><div class="text-body-sm opacity-60">{selectedArtist.genre || 'Artist'}</div>{#if selectedArtist.bio}<div class="mt-1 line-clamp-2 text-body-sm opacity-60">{selectedArtist.bio}</div>{/if}</div>
-				<Button onclick={() => toggleArtist(selectedArtist.id)} kind="blank">{favoriteArtists.includes(selectedArtist.id) ? 'Following' : 'Follow'}</Button>
-				<Button onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }} kind="blank">Close</Button>
+		<section class="@container flex flex-col gap-4">
+			<div class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row">
+				<Artwork
+					src={selectedArtist.artUrl}
+					alt={selectedArtist.name}
+					class="size-49 shrink-0 rounded-full @2xl:size-60"
+					fallbackIcon="person"
+				/>
+				<div class="relative z-0 flex size-full min-h-60 flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh">
+					<div class="flex grow flex-col p-5">
+						<div class="text-body-sm text-onSurfaceVariant">Artist</div>
+						<h1 class="text-headline-md">{selectedArtist.name}</h1>
+						{#if selectedArtist.bio}
+							<div class="mt-2 line-clamp-3 text-body-md text-onSurfaceVariant">{selectedArtist.bio}</div>
+						{/if}
+						<div class="mt-2 text-onSurfaceVariant">
+							{artistTracks.length} {artistTracks.length === 1 ? 'track' : 'tracks'}
+						</div>
+					</div>
+					<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-5">
+						<Button
+							kind="filled"
+							disabled={artistTracks.length === 0}
+							onclick={() => void playTrack(artistTracks[0]!, 0)}
+						>
+							Play
+						</Button>
+						<Button
+							kind="flat"
+							disabled={artistTracks.length === 0}
+							onclick={async () => {
+							for (const [index, track] of artistTracks.entries()) await playTrack(track, index)
+							player.playTrack(0, artistTracks.map((track, index) => remoteId(track.id, index)), { shuffle: true })
+						}}
+						>
+							Shuffle <Icon type="shuffle" />
+						</Button>
+						<Button kind="flat" onclick={() => toggleArtist(selectedArtist.id)}>
+							{favoriteArtists.includes(selectedArtist.id) ? 'Following' : 'Follow'}
+						</Button>
+						<Button kind="blank" onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }}>Close</Button>
+					</div>
+				</div>
 			</div>
-			<div class="mt-5 flex flex-col gap-1">{#each artistTracks as track, index (track.id)}<div class="flex items-center gap-3 rounded-xl p-2 hover:bg-surface"><div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.album}</div></div><Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button><Button onclick={() => void addSong(track)} kind="blank">+</Button></div>{/each}</div>
+			<div class="flex flex-col gap-1">
+				{#each artistTracks as track, index (track.id)}
+					<div class="group flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-surfaceContainerHighest">
+						<Artwork src={track.image} alt={track.name} class="size-12 shrink-0 rounded-lg" fallbackIcon="musicNote" />
+						<div class="min-w-0 grow">
+							<div class="truncate">{track.name}</div>
+							<div class="truncate text-body-sm opacity-60">{track.album || 'Unknown Album'}</div>
+						</div>
+						<Button onclick={() => void playTrack(track, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+						<Button onclick={() => void addSong(track)} kind="blank" tooltip="Add to library">+</Button>
+					</div>
+				{/each}
+			</div>
 		</section>
 	{/if}
 	{#if !searched}
