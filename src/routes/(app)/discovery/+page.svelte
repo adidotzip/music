@@ -7,7 +7,6 @@
 	import Separator from '$lib/components/Separator.svelte'
 	import { goto } from '$app/navigation'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
-	import { getDatabase } from '$lib/db/database.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
 import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online-library.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
@@ -468,7 +467,6 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 							<div class="truncate text-body-sm opacity-60">{track.album || 'Unknown Album'}</div>
 						</div>
 						<Button onclick={() => void playTrack(track, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
-						<Button onclick={() => void addSong(track)} kind="blank" tooltip="Add to library">+</Button>
 					</div>
 				{/each}
 			</div>
