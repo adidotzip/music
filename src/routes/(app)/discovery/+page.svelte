@@ -653,7 +653,7 @@
 				{#if title.subtitle}<p class="text-body-sm text-onSurfaceVariant">{title.subtitle}</p>{/if}
 			</div>
 		</div>
-		<div class="shelf-scroll" tabindex="0" aria-label={title.title}>
+		<div class="shelf-scroll" aria-label={title.title}>
 			{#each items as item, index (item.type + item.id)}
 				<article class="media-card shelf-card" class:circular={circular}>
 					<button class="art-button" onclick={() => void activate(item, index)} aria-label={item.name}>
