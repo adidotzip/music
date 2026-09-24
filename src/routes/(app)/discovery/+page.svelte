@@ -5,6 +5,7 @@
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
+import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online-library.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
 	import { normalizeTracks, searchCatalog, spicyamll, getSongsForArtist } from '$lib/services/spicyamll.ts'
 
@@ -27,6 +28,12 @@
 	let topPicks = $state<DiscoveryItem[]>([])
 	let recommendations = $state<DiscoveryItem[]>([])
 	let recentlyPlayed = $state<DiscoveryItem[]>([])
+	let favoriteArtists = $state<string[]>([])
+	let downloading = $state<string[]>([])
+	let selectedAlbum = $state<ReturnType<typeof normalizeTracks>[number] | null>(null)
+	let albumTracks = $state<ReturnType<typeof normalizeTracks>>([])
+	let selectedArtist = $state<string | null>(null)
+	let artistTracks = $state<ReturnType<typeof normalizeTracks>>([])
 
 	const remoteId = (id: number, index: number) => -Math.max(1, Math.abs(id || index + 1))
 
@@ -174,7 +181,56 @@
 			type: 'track',
 		})
 		player.playTrack(0, [id])
-		void loadRecommendations()
+		favoriteArtists = getFavoriteArtistIds()
+	void loadRecommendations()
+	}
+
+	const addSong = async (item: ReturnType<typeof normalizeTracks>[number]) => {
+		if (downloading.includes(String(item.id))) return
+		downloading = [...downloading, String(item.id)]
+		try {
+			await downloadSongToLibrary(item.id, {
+				name: item.name,
+				album: item.album || item.albumName || '~\\0unknown',
+				artists: item.artists?.length ? item.artists : [item.artist || 'Unknown Artist'],
+				year: item.year ? String(item.year) : '~\\0unknown',
+				duration: item.duration ?? 0,
+				genre: [],
+				trackNo: 0,
+				trackOf: 0,
+				discNo: 0,
+				discOf: 0,
+				image: item.image ? { optimized: false, small: item.image, full: item.image } : undefined,
+			})
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Unable to add song'
+		} finally {
+			downloading = downloading.filter((id) => id !== String(item.id))
+		}
+	}
+
+	const viewAlbum = async (item: ReturnType<typeof normalizeTracks>[number]) => {
+		selectedAlbum = item
+		try {
+			albumTracks = normalizeTracks(await spicyamll.album({ album: item.id, l: 'en-US' }))
+		} catch {
+			albumTracks = []
+		}
+	}
+
+	const viewArtist = async (artist: string, item?: ReturnType<typeof normalizeTracks>[number]) => {
+		selectedArtist = artist
+		try {
+			if (item) artistTracks = await getSongsForArtist(item.id, artist)
+			else artistTracks = []
+		} catch {
+			artistTracks = []
+		}
+	}
+
+	const toggleArtist = (id: string | number) => {
+		toggleFavoriteArtist(id)
+		favoriteArtists = getFavoriteArtistIds()
 	}
 
 	const playDiscoveryItem = async (item: DiscoveryItem, index: number) => {
@@ -295,14 +351,44 @@
 							</div>
 						{/if}
 					</div>
-					<Button onclick={() => void playTrack(item, index)} kind="blank" tooltip="Play">
-						<Icon type="play" />
-					</Button>
+					<div class="flex shrink-0 items-center gap-1">
+						<Button onclick={() => void playTrack(item, index)} kind="blank" tooltip="Play">
+							<Icon type="play" />
+						</Button>
+						<Button onclick={() => void addSong(item)} kind="blank" tooltip="Add to library">
+							{downloading.includes(String(item.id)) ? '…' : '+'}
+						</Button>
+					</div>
 				</article>
 			{/each}
 		</section>
 	{/if}
 
+	{#if selectedAlbum}
+		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
+			<div class="flex items-center gap-4">
+				<Artwork src={selectedAlbum.image || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
+				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
+				<Button onclick={() => { selectedAlbum = null; albumTracks = [] }} kind="blank">Close</Button>
+			</div>
+			<div class="mt-4 flex flex-col gap-1">
+				{#each albumTracks as track, index (track.id)}
+					<div class="flex items-center gap-3 rounded-xl p-2 hover:bg-surface">
+						<div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.artist}</div></div>
+						<Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button>
+						<Button onclick={() => void addSong(track)} kind="blank">+</Button>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if selectedArtist}
+		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
+			<div class="flex items-center justify-between gap-4"><div><div class="text-title-lg font-bold">{selectedArtist}</div><div class="text-body-sm opacity-60">Artist</div></div><Button onclick={() => { selectedArtist = null; artistTracks = [] }} kind="blank">Close</Button></div>
+			<div class="mt-4 flex flex-col gap-1">{#each artistTracks as track, index (track.id)}<div class="flex items-center gap-3 rounded-xl p-2"><div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.album}</div></div><Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button><Button onclick={() => void addSong(track)} kind="blank">+</Button></div>{/each}</div>
+		</section>
+	{/if}
 	{#if !searched}
 		{#if recentlyPlayed.length}
 			<section class="flex flex-col gap-3">
