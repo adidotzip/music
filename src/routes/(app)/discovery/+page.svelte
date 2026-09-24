@@ -5,7 +5,7 @@
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
-	import { normalizeTracks, spicyamll } from '$lib/services/spicyamll.ts'
+	import { getSongsForArtist, normalizeTracks, searchAlbums, searchArtists, spicyamll } from '$lib/services/spicyamll.ts'
 
 	const player = usePlayer()
 
@@ -68,16 +68,45 @@
 		searched = true
 
 		try {
-			const [artists, albums, playlists, videos] = await Promise.allSettled([
-				spicyamll.artist({ term, query: term, q: term }),
-				spicyamll.album({ term, query: term, q: term }),
-				spicyamll.playlist({ term, query: term, q: term }),
-				spicyamll.musicVideo({ term, query: term, q: term })
+			// /get/artist and /get/album return catalog entities, not necessarily
+			// playable tracks. Resolve artists into their songs before rendering.
+			const [artists, albums] = await Promise.all([
+				searchArtists(term),
+				searchAlbums(term),
 			])
 
-			const values = [artists, albums, playlists, videos]
-				.flatMap((result) => result.status === 'fulfilled' ? normalizeTracks(result.value) : [])
+			const artistSongs = (
+				await Promise.all(
+					artists.slice(0, 5).map((artist) =>
+						getSongsForArtist(
+							artist.id,
+							artist.artist || artist.name,
+						),
+					),
+				)
+			).flat()
 
+			// Also ask the song endpoint directly. Some SpicyAMLL deployments
+			// accept a text query here and return playable song objects.
+			let directSongs: ReturnType<typeof normalizeTracks> = []
+			for (const params of [
+				{ name: term },
+				{ query: term },
+				{ q: term },
+				{ keyword: term },
+			]) {
+				try {
+					const value = normalizeTracks(await spicyamll.songs(params.name || params.query || params.q || params.keyword))
+					if (value.length) {
+						directSongs = value
+						break
+					}
+				} catch {
+					// Continue with the other compatible parameter shape.
+				}
+			}
+
+			const values = [...artistSongs, ...directSongs, ...albums]
 			results = values.filter((item, index, array) =>
 				item.id > 0 && array.findIndex((candidate) => candidate.id === item.id) === index
 			)
