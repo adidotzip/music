@@ -100,7 +100,8 @@ export class PlayerStore {
 		this.equalizer.init()
 
 		const audio = this.#audio
-		audio.preload = 'auto'
+		// Keep the shared player lightweight until playback is requested.
+		audio.preload = 'metadata'
 
 		// Plain (non-$state) so reads inside the effect don't create subscriptions.
 		let prevTrackId: number | null = null
@@ -142,7 +143,12 @@ export class PlayerStore {
 			this.currentTime = 0
 			this.duration = 0
 
-			void this.#audioLoader.load(track.directory, track.file, track.url).then((result) => {
+			const usedPreloadedAudio = !!track.url && this.#consumePreloadedAudio(track.id)
+
+			void (usedPreloadedAudio
+				? Promise.resolve({ status: 'loaded' } as const)
+				: this.#audioLoader.load(track.directory, track.file, track.url)
+			).then((result) => {
 				// playTrack() sets the desired state to playing before the async
 				// source load finishes. Start playback as soon as the source is ready.
 				if (result.status === 'loaded' && this.playing && this.activeTrack?.id === track.id) {
@@ -406,26 +412,17 @@ export class PlayerStore {
 	}
 
 	#preloadUpcoming = async (track: TrackData): Promise<void> => {
-		const queueIds = this.#queue.itemsIds
-		const start = this.#queue.activeTrackIndex
-		if (start < 0 || !track.album || track.album === UNKNOWN_ITEM) return
+		const nextId = this.#queue.itemsIds[this.#queue.activeTrackIndex + 1]
+		if (nextId === undefined) {
+			this.#clearPreloadedAudio()
+			return
+		}
 
-		const upcomingIds = queueIds.slice(start + 1, start + 3)
-		const upcoming = await Promise.all(
-			upcomingIds.map((id) => getLibraryValue('tracks', id, true)),
-		)
-
-		const albumTracks = upcoming.filter(
-			(candidate): candidate is TrackData =>
-			!!candidate &&
-			candidate.album === track.album &&
-			candidate.artists?.some((artist) => track.artists?.includes(artist)),
-		)
-
-		const keepIds = new Set(albumTracks.map((candidate) => candidate.id))
+		const candidate = await getLibraryValue('tracks', nextId, true)
+		if (!candidate || this.#queue.itemsIds[this.#queue.activeTrackIndex + 1] !== nextId) return
 
 		for (const [id, entry] of this.#preloadedAudio) {
-			if (!keepIds.has(id)) {
+			if (id !== nextId) {
 				entry.audio.src = ''
 				entry.audio.load()
 				if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
@@ -433,30 +430,49 @@ export class PlayerStore {
 			}
 		}
 
-		for (const candidate of albumTracks) {
-			if (!this.#preloadedLyrics.has(candidate.id)) {
-				const promise = LyricsService.fetchLyrics(candidate).catch(() => null)
-				this.#preloadedLyrics.set(candidate.id, promise)
-			}
-
-			if (this.#preloadedAudio.has(candidate.id)) continue
-
-			let src = candidate.url
-			let objectUrl: string | undefined
-
-			if (!src && candidate.file instanceof File) {
-				objectUrl = URL.createObjectURL(candidate.file)
-				src = objectUrl
-			}
-
-			if (!src) continue
-
-			const audio = new Audio()
-			audio.preload = 'auto'
-			audio.src = src
-			audio.load()
-			this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
+		if (!this.#preloadedLyrics.has(candidate.id)) {
+			this.#preloadedLyrics.set(candidate.id, LyricsService.fetchLyrics(candidate).catch(() => null))
 		}
+
+		if (this.#preloadedAudio.has(candidate.id)) return
+
+		let src = candidate.url
+		let objectUrl: string | undefined
+		if (!src && candidate.file instanceof File) {
+			objectUrl = URL.createObjectURL(candidate.file)
+			src = objectUrl
+		}
+		if (!src) return
+
+		const audio = new Audio()
+		audio.preload = 'metadata'
+		audio.src = src
+		audio.load()
+		this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
+	}
+
+	#consumePreloadedAudio = (trackId: number): boolean => {
+		const entry = this.#preloadedAudio.get(trackId)
+		if (!entry) return false
+
+		this.#preloadedAudio.delete(trackId)
+		this.#audioLoader.reset()
+		this.#audio.preload = 'auto'
+		this.#audio.src = entry.audio.src
+		this.#audio.load()
+		entry.audio.src = ''
+		entry.audio.load()
+		if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
+		return true
+	}
+
+	#clearPreloadedAudio = (): void => {
+		for (const entry of this.#preloadedAudio.values()) {
+			entry.audio.src = ''
+			entry.audio.load()
+			if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
+		}
+		this.#preloadedAudio.clear()
 	}
 
 	#updatePositionState = (): void => {
@@ -504,6 +520,7 @@ export class PlayerStore {
 		const nextState = force ?? !this.playing
 		this.playing = nextState
 		if (nextState) {
+			this.#audio.preload = 'auto'
 			if (this.#audioLoader.loading) {
 				return
 			}
