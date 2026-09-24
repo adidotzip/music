@@ -403,7 +403,6 @@
 		}
 	}
 
-	const sectionTitle = (title: string, subtitle?: string) => ({ title, subtitle })
 
 	$effect(() => {
 		void loadRecommendations()
