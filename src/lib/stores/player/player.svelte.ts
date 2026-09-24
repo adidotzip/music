@@ -8,6 +8,7 @@ import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
 import { throttle } from '$lib/helpers/utils/throttle.ts'
 import { createTrackQuery, type TrackData } from '$lib/library/get/value-queries.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
+import { recordRecentTrack } from '$lib/services/library.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 import { AudioLoader } from './audio-loader.svelte.js'
 import { EqualizerStore } from './equalizer.svelte.js'
@@ -95,6 +96,7 @@ export class PlayerStore {
 
 		// Plain (non-$state) so reads inside the effect don't create subscriptions.
 		let prevTrackId: number | null = null
+		let prevTrack: TrackData | undefined
 
 		// Debounced to recover from transient undefined during a DB refresh.
 		const scheduleAudioReset = debounce(() => {
@@ -109,7 +111,7 @@ export class PlayerStore {
 		const trackChanged = (track: TrackData | undefined) => {
 			if (!track) {
 				if (prevTrackId !== null) {
-					this.#savePlayHistory(prevTrackId)
+					this.#savePlayHistory(prevTrackId, prevTrack)
 
 					prevTrackId = null
 				}
@@ -128,6 +130,7 @@ export class PlayerStore {
 			}
 
 			prevTrackId = track.id
+			prevTrack = track
 			this.currentTime = 0
 			this.duration = 0
 
@@ -260,7 +263,7 @@ export class PlayerStore {
 			) {
 				const trackId = this.#queue.activeTrackId
 				if (trackId !== null) {
-					this.#savePlayHistory(trackId)
+					this.#savePlayHistory(trackId, this.activeTrack)
 				}
 
 				this.togglePlay(false)
@@ -391,7 +394,7 @@ export class PlayerStore {
 		})
 	}
 
-	#savePlayHistory = (trackId: number): void => {
+	#savePlayHistory = (trackId: number, track?: TrackData): void => {
 		const playedTime = this.#audio.currentTime
 		const totalDuration = this.#audio.duration
 
@@ -401,6 +404,15 @@ export class PlayerStore {
 		const threshold = Math.min(timeThreshold, totalDuration * percentageThreshold)
 		if (totalDuration > 0 && playedTime >= threshold) {
 			void dbAddToPlayHistory(trackId)
+			if (track) {
+				recordRecentTrack({
+					trackId: track.id,
+					name: track.name,
+					artist: track.artists?.[0] ?? 'Unknown Artist',
+					album: track.album,
+					artUrl: track.image?.full ?? track.image?.small,
+				})
+			}
 		}
 	}
 
