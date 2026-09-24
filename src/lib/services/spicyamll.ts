@@ -100,6 +100,92 @@ export const spicyamll = {
 	},
 }
 
+export type DiscoveryResource = {
+	type: 'song' | 'album' | 'artist'
+	id: string
+	name: string
+	artist: string
+	album: string
+	artUrl: string
+	genre?: string
+	bio?: string
+}
+
+const cleanDiscoveryArtwork = (url: unknown) => {
+	if (typeof url !== 'string' || !url) return 'favicon.svg'
+	return url
+		.replace(/\{w\}/g, '1000')
+		.replace(/\{h\}/g, '1000')
+		.replace(/\{c\}/g, 'bb')
+		.replace(/\{f\}/g, 'jpg')
+		.replace(/\d+x\d+bb\./, '1000x1000bb.')
+}
+
+const parseDiscoveryGroup = (
+	input: unknown,
+	type: DiscoveryResource['type'],
+): DiscoveryResource[] => {
+	if (!input || typeof input !== 'object') return []
+	const root = input as Record<string, unknown>
+	const results = (root.results ?? (root.data && typeof root.data === 'object'
+		? (root.data as Record<string, unknown>).results
+		: undefined)) as Record<string, unknown> | undefined
+	if (!results) return []
+
+	const groupName = type === 'song' ? 'songs' : type === 'album' ? 'albums' : 'artists'
+	const group = results[groupName]
+	const data = group && typeof group === 'object'
+		? (group as Record<string, unknown>).data
+		: Array.isArray(group) ? group : []
+
+	if (!Array.isArray(data)) return []
+
+	return data.map((value) => {
+		const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+		const attrs = item.attributes && typeof item.attributes === 'object'
+			? item.attributes as Record<string, unknown>
+			: item
+		const artwork = attrs.artwork && typeof attrs.artwork === 'object'
+			? attrs.artwork as Record<string, unknown>
+			: {}
+		const editorial = attrs.editorialNotes && typeof attrs.editorialNotes === 'object'
+			? attrs.editorialNotes as Record<string, unknown>
+			: {}
+
+		const id = String(
+			attrs.trackId ?? attrs.collectionId ?? attrs.artistId ??
+			attrs.id ?? item.trackId ?? item.collectionId ?? item.artistId ?? item.id ?? '',
+		)
+		if (!id) return null
+
+		return {
+			type,
+			id,
+			name: String(attrs.name ?? item.name ?? item.title ?? item.trackName ?? 'Unknown'),
+			artist: String(attrs.artistName ?? item.artistName ?? item.artist ?? ''),
+			album: String(attrs.albumName ?? item.albumName ?? item.album ?? ''),
+			artUrl: cleanDiscoveryArtwork(artwork.url ?? attrs.artworkUrl100 ?? item.artworkUrl100 ?? item.artUrl ?? item.image),
+			genre: Array.isArray(attrs.genreNames) ? String(attrs.genreNames[0] ?? '') : String(attrs.genre ?? ''),
+			bio: String(editorial.short ?? editorial.standard ?? ''),
+		}
+	}).filter((item): item is DiscoveryResource => Boolean(item))
+}
+
+export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
+	...parseDiscoveryGroup(input, 'song'),
+	...parseDiscoveryGroup(input, 'album'),
+	...parseDiscoveryGroup(input, 'artist'),
+]
+
+export const searchDiscovery = async (query: string, limit = 25) => {
+	const response = await spicyamll.search({
+		term: query,
+		types: 'songs,albums,artists',
+		limit,
+	})
+	return parseDiscoveryResults(response)
+}
+
 export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 	const root = unwrap<unknown>(input)
 	const items: Record<string, unknown>[] = []
