@@ -310,4 +310,53 @@
 			{/each}
 		</section>
 	{/if}
+
+	{#if !searched}
+		{#if recentlyPlayed.length}
+			<section class="flex flex-col gap-3">
+				<div class="text-title-lg font-bold">Recently Played</div>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+					{#each recentlyPlayed as item (item.id)}
+						<button class="min-w-0 text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+							<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+							<div class="mt-2 truncate text-title-sm">{item.name}</div>
+							<div class="truncate text-body-sm opacity-60">{item.artist}</div>
+						</button>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if topPicks.length}
+			<section class="flex flex-col gap-3">
+				<div class="text-title-lg font-bold">Top Picks For You</div>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+					{#each topPicks as item (item.type + item.id)}
+						<button class="min-w-0 text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+							<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+							<div class="mt-2 truncate text-title-sm">{item.name}</div>
+							<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
+						</button>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if recommendations.length}
+			<section class="flex flex-col gap-3">
+				<div class="text-title-lg font-bold">Recommended For You</div>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+					{#each recommendations.slice(0, 20) as item (item.type + item.id)}
+						<button class="min-w-0 text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+							<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+							<div class="mt-2 truncate text-title-sm">{item.name}</div>
+							<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
+						</button>
+					{/each}
+				</div>
+			</section>
+		{:else if loadingRecommendations}
+			<div class="py-8 text-center opacity-60">Building your recommendations…</div>
+		{/if}
+	{/if}
 </main>
