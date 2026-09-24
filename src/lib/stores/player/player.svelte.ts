@@ -445,7 +445,7 @@ export class PlayerStore {
 		if (!src) return
 
 		const audio = new Audio()
-		audio.preload = 'metadata'
+		audio.preload = 'auto'
 		audio.src = src
 		audio.load()
 		this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
