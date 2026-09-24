@@ -142,8 +142,8 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 			fileName: undefined,
 			scannedAt: Date.now(),
 			url: spicyamll.streamUrl(track.id, {
-				codec: 'atmos',
-				fallback: false,
+				codec: 'aac',
+				fallback: true,
 				language: 'en-US',
 				storefront: 'us',
 			}),
