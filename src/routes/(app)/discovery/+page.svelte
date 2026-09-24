@@ -1,16 +1,4 @@
-<s
-	const addDiscoverySong = async (item: DiscoveryItem) => {
-		const track = normalizeTracks({
-			id: item.id,
-			name: item.name,
-			artist: item.artist,
-			album: item.album,
-			image: item.artUrl,
-		})[0]
-		if (track) await addSong(track)
-	}
-cript lang="ts">
-	import Artwork from '$lib/components/Artwork.svelte'
+<script lang="ts">import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
@@ -188,6 +176,17 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	}
 
 type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
+
+	const addDiscoverySong = async (item: DiscoveryItem) => {
+		const track = normalizeTracks({
+			id: item.id,
+			name: item.name,
+			artist: item.artist,
+			album: item.album,
+			image: item.artUrl,
+		})[0]
+		if (track) await addSong(track)
+	}
 
 	const viewAlbum = async (item: DiscoveryItem) => {
 		selectedAlbum = item
