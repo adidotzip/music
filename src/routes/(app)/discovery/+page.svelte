@@ -1,77 +1,52 @@
-<script lang="ts">
-	import { goto } from '$app/navigation'
-	import Artwork from '$lib/components/Artwork.svelte'
+<script lang="ts">import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
-	import { addSongToLibrary, getLibrarySongs, getRecentlyPlayed, type RecentTrack } from '$lib/services/library.ts'
-	import { usePlayer } from '$lib/stores/player/use-store.ts'
-	import {
-		normalizeTracks,
-		parseDiscoveryResults,
-		searchDiscovery,
-		searchArtists,
-		getSongsForArtist,
-		spicyamll,
-		type DiscoveryResource,
-	} from '$lib/services/spicyamll.ts'
+	import IconButton from '$lib/components/IconButton.svelte'
+	import MenuButton from '$lib/components/MenuButton.svelte'
+	import Separator from '$lib/components/Separator.svelte'
+	import Spinner from '$lib/components/Spinner.svelte'
+	import { goto } from '$app/navigation'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
+	import { getRecentlyPlayed } from '$lib/services/library.ts'
+import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online-library.ts'
+	import { usePlayer } from '$lib/stores/player/use-store.ts'
+	import { normalizeTracks, parseDiscoveryResults, searchArtists, searchDiscovery, spicyamll, getSongsForArtist, type DiscoveryResource } from '$lib/services/spicyamll.ts'
 
 	type DiscoveryItem = DiscoveryResource
-	type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
-
-	type Mood = {
-		name: string
-		icon: string
-		query: string
-	}
 
 	const player = usePlayer()
-
 	let query = $state('')
-	let searched = $state(false)
 	let loading = $state(false)
 	let loadingRecommendations = $state(false)
 	let error = $state<string | null>(null)
-
 	let results = $state<DiscoveryItem[]>([])
-	let recent = $state<RecentTrack[]>([])
-	let madeForYou = $state<DiscoveryItem[]>([])
-	let similarTracks = $state<DiscoveryItem[]>([])
-	let similarArtists = $state<DiscoveryItem[]>([])
-	let newMusic = $state<DiscoveryItem[]>([])
-	let explore = $state<DiscoveryItem[]>([])
-	let genreShelves = $state<{ name: string; items: DiscoveryItem[] }[]>([])
-	let moodShelves = $state<{ name: string; items: DiscoveryItem[] }[]>([])
-
+	let searched = $state(false)
+	let topPicks = $state<DiscoveryItem[]>([])
+	let recommendations = $state<DiscoveryItem[]>([])
+	let recentlyPlayed = $state<DiscoveryItem[]>([])
+	let favoriteArtists = $state<string[]>(getFavoriteArtistIds())
 	let selectedAlbum = $state<DiscoveryItem | null>(null)
 	let albumTracks = $state<DiscoveryTrack[]>([])
 	let selectedArtist = $state<DiscoveryItem | null>(null)
 	let artistTracks = $state<DiscoveryTrack[]>([])
-	let surpriseBusy = $state(false)
+	let artistInfo = $state<DiscoveryItem | null>(null)
+	let songResults = $derived(results.filter((item) => item.type === 'song'))
+	let albumResults = $derived(results.filter((item) => item.type === 'album'))
+	let artistResults = $derived(results.filter((item) => item.type === 'artist'))
 
-	const moods: Mood[] = [
-		{ name: 'Chill', icon: 'volumeMid', query: 'chill' },
-		{ name: 'Energy', icon: 'flash', query: 'energy' },
-		{ name: 'Late Night', icon: 'home', query: 'late night' },
-		{ name: 'Focus', icon: 'headphones', query: 'focus' },
-		{ name: 'Happy', icon: 'favorite', query: 'happy' },
-		{ name: 'Melancholy', icon: 'musicNote', query: 'melancholy' },
-	]
+	const remoteId = (id: number, index: number) => -Math.max(1, Math.abs(id || index + 1))
 
-	const genreSeeds = ['Alternative', 'Electronic', 'Indie', 'Pop', 'Rock', 'R&B']
-
-	const cleanArtUrl = (url: unknown) => {
-		if (typeof url !== 'string' || !url) return 'favicon.svg'
-		return url
-			.replace(/{w}/g, '1000')
-			.replace(/{h}/g, '1000')
-			.replace(/{c}/g, 'bb')
-			.replace(/{f}/g, 'jpg')
-			.replace(/d+xd+bb./, '1000x1000bb.')
+	const shuffle = <T,>(items: T[]) => {
+		const out = [...items]
+		for (let i = out.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1))
+			;[out[i], out[j]] = [out[j], out[i]]
+		}
+		return out
 	}
 
-	const dedupe = (items: DiscoveryItem[]) => {
+	const dedupeItems = (items: DiscoveryItem[]) => {
 		const seen = new Set<string>()
 		return items.filter((item) => {
 			const key = `${item.type}:${item.id}`
@@ -81,253 +56,128 @@
 		})
 	}
 
-	const shuffle = <T,>(items: T[]) => {
-		const copy = [...items]
-		for (let i = copy.length - 1; i > 0; i -= 1) {
-			const j = Math.floor(Math.random() * (i + 1))
-			;[copy[i], copy[j]] = [copy[j], copy[i]]
-		}
-		return copy
+	const cleanArtUrl = (url: unknown) => {
+		if (typeof url !== 'string' || !url) return 'favicon.svg'
+		const value = url
+			.replace(/\{w\}/g, '600')
+			.replace(/\{h\}/g, '600')
+			.replace(/\{c\}/g, 'bb')
+			.replace(/\{f\}/g, 'jpg')
+			.replace(/\d+x\d+bb\./, '600x600bb.')
+		return /^https?:\/\//i.test(value) ? value : 'favicon.svg'
 	}
 
-	const toItem = (track: RecentTrack): DiscoveryItem => ({
-		type: 'song',
-		id: String(track.trackId || track.id),
-		name: track.name,
-		artist: track.artist,
-		album: track.album,
-		artUrl: cleanArtUrl(track.artUrl),
-	})
-
-	const rankRecommendations = (items: DiscoveryItem[], history: RecentTrack[]) => {
-		const liked = new Set(getLibrarySongs().map((item) => String(item.id)))
-		const played = new Map<string, number>()
-		const artists = new Map<string, number>()
-		const genres = new Map<string, number>()
-
-		history.forEach((track, index) => {
-			played.set(String(track.trackId || track.id), history.length - index)
-			const artist = track.artist.trim().toLowerCase()
-			if (artist) artists.set(artist, (artists.get(artist) ?? 0) + (history.length - index))
-		})
-
-		const sorted = [...items]
-			.filter((item) => !liked.has(String(item.id)))
-			.map((item, index) => {
-				const artistKey = item.artist.trim().toLowerCase()
-				const artistScore = artists.get(artistKey) ?? 0
-				const genreScore = item.genre ? (genres.get(item.genre.toLowerCase()) ?? 0) : 0
-				const recentPenalty = played.has(String(item.id)) ? -40 : 0
-				const recency = history.findIndex((track) => track.artist.toLowerCase() === artistKey)
-				const recentScore = recency === -1 ? 10 : Math.max(0, 10 - recency)
-				const popularity = Math.max(0, 10 - index)
-				const novelty = item.type === 'song' ? 10 : 5
-
-				const score =
-					artistScore * 0.3 +
-					genreScore * 0.2 +
-					Math.min(20, artistScore) * 1.0 +
-					recentScore * 0.1 +
-					popularity * 0.1 +
-					novelty * 0.1 +
-					recentPenalty
-
-				return { item, score }
-			})
-			.sort((a, b) => b.score - a.score)
-
-		return sorted.map(({ item }) => item)
-	}
-
-	const fetchSearch = async (term: string, limit = 24) => {
-		try {
-			return await searchDiscovery(term, limit)
-		} catch {
-			return []
-		}
-	}
+	const parseRecommendationSearch = (input: unknown): DiscoveryItem[] => parseDiscoveryResults(input)
 
 	const loadRecommendations = async () => {
 		loadingRecommendations = true
-		error = null
-
 		try {
-			recent = getRecentlyPlayed(100)
-			const historyItems = recent.map(toItem)
-			const artists = [...new Set(recent.map((item) => item.artist.trim()).filter(Boolean))].slice(0, 5)
-			const favoriteIds = new Set(getLibrarySongs().map((item) => item.id))
+			const history = getRecentlyPlayed(100)
+			recentlyPlayed = history.slice(0, 10).map((track) => ({
+				type: 'song',
+				id: track.trackId || track.id,
+				name: track.name,
+				artist: track.artist,
+				album: track.album,
+				artUrl: cleanArtUrl(track.artUrl),
+			}))
 
-			const artistGroups = await Promise.all(
-				artists.map((artist) => fetchSearch(artist, 20)),
-			)
-
-			const personalizedPool = dedupe(artistGroups.flat())
-			madeForYou = rankRecommendations(personalizedPool, recent).slice(0, 12)
-
-			similarTracks = dedupe(
-				artists.length
-					? (await Promise.all(artists.slice(0, 3).map((artist) => fetchSearch(`${artist} similar songs`, 18)))).flat()
-					: personalizedPool,
-			)
-				.filter((item) => item.type === 'song' && !favoriteIds.has(String(item.id)))
-				.slice(0, 12)
-
-			similarArtists = dedupe(
-				artists.length
-					? (await Promise.all(artists.slice(0, 4).map((artist) => fetchSearch(`${artist} similar artists`, 14)))).flat()
-					: [],
-			).filter((item) => item.type === 'artist').slice(0, 12)
-
-			newMusic = dedupe([
-				...(artists.length
-					? (await Promise.all(artists.map((artist) => fetchSearch(`${artist} new release`, 12)))).flat()
-					: []),
-				...(await fetchSearch('new music releases', 20)),
-			]).slice(0, 14)
-
-			const explorePool = dedupe([
-				...(await fetchSearch('popular music', 20)),
-				...(await fetchSearch('global music', 20)),
-			])
-			explore = rankRecommendations(explorePool, recent).slice(0, 14)
-
-			genreShelves = (
-				await Promise.all(
-					genreSeeds.map(async (name) => ({
-						name,
-						items: dedupe(await fetchSearch(name, 12)).slice(0, 8),
-					})),
-				)
-			).filter((shelf) => shelf.items.length > 0)
-
-			moodShelves = (
-				await Promise.all(
-					moods.map(async (mood) => ({
-						name: mood.name,
-						items: dedupe(await fetchSearch(mood.query, 10)).slice(0, 8),
-					})),
-				)
-			).filter((shelf) => shelf.items.length > 0)
-
-			if (!madeForYou.length && historyItems.length) {
-				madeForYou = historyItems.slice(0, 8)
+			if (!history.length) {
+				topPicks = []
+			} else {
+				const latest = history[0]
+				const latestItem: DiscoveryItem = {
+					type: 'song',
+					id: latest.trackId || latest.id,
+					name: latest.name,
+					artist: latest.artist,
+					album: latest.album,
+					artUrl: cleanArtUrl(latest.artUrl),
+				}
+				const artists = [...new Set(history.map((track) => track.artist.trim()).filter(Boolean))].slice(0, 4)
+				const groups = await Promise.all(artists.map(async (artist) => {
+					try { return parseRecommendationSearch(await spicyamll.search({ term: artist, limit: 15 })) } catch { return [] }
+				}))
+				topPicks = [latestItem, ...shuffle(dedupeItems(groups.flat()).filter((x) => !(x.type === 'song' && x.id === latestItem.id))).slice(0, 10)]
 			}
-		} catch (cause) {
-			console.warn('[Discovery] recommendation load failed', cause)
+
+			const listenedIds = new Set(history.map((track) => String(track.trackId || track.id)))
+			const artists = [...new Set(history.map((track) => track.artist.trim()).filter(Boolean))].slice(0, 8)
+			const queries = artists.length ? artists : ['Hits', 'Pop', 'Rock', 'Electronic']
+			const groups = await Promise.all([
+				...queries.map(async (term) => {
+					try { return parseRecommendationSearch(await spicyamll.search({ term, limit: 25 })) } catch { return [] }
+				}),
+				(async () => {
+					try { return parseRecommendationSearch(await spicyamll.recommendations({ name: 'search-landing' })) } catch { return [] }
+				})(),
+			])
+			recommendations = shuffle(dedupeItems(groups.flat()).filter((item) => item.type !== 'song' || !listenedIds.has(item.id))).slice(0, 90)
+		} catch (e) {
+			console.warn('[Discovery] Recommendations failed:', e)
 		} finally {
 			loadingRecommendations = false
 		}
 	}
 
-	const remoteId = (id: string | number, index: number) =>
-		-Math.max(1, Math.abs(Number(id) || index + 1))
-
-	const playTrack = async (item: DiscoveryItem, index = 0) => {
-		if (item.type !== 'song') return
-
-		const normalized = normalizeTracks({
-			id: item.id,
-			name: item.name,
-			artist: item.artist,
-			album: item.album,
-			image: item.artUrl,
-		})[0]
-
-		if (!normalized) return
-
-		const id = remoteId(normalized.id, index)
+	const playTrack = async (
+		item: ReturnType<typeof normalizeTracks>[number],
+		index: number,
+		startPlayback = true,
+	) => {
+		const track = item
+		const id = remoteId(track.id, index)
 
 		registerRemoteTrack({
-			id,
-			remoteId: Number(normalized.id),
+				id,
+			remoteId: Number(track.id),
 			streaming: true,
-			uuid: `spicyamll:${normalized.id}`,
-			name: normalized.name,
-			album: normalized.album || normalized.albumName || '~\\0unknown',
-			artists: normalized.artists?.length ? normalized.artists : [normalized.artist || 'Unknown Artist'],
-			year: normalized.year ? String(normalized.year) : '~\\0unknown',
-			duration: normalized.duration ?? 0,
+			uuid: `spicyamll:${track.id}`,
+			name: track.name,
+			album: track.album || track.albumName || '~\\0unknown',
+			artists: track.artists?.length ? track.artists : [track.artist || 'Unknown Artist'],
+			year: track.year ? String(track.year) : '~\\0unknown',
+			duration: track.duration ?? 0,
 			genre: [],
 			trackNo: 0,
 			trackOf: 0,
 			discNo: 0,
 			discOf: 0,
 			language: undefined,
-			image: normalized.image
-				? { optimized: false, small: normalized.image, full: normalized.image }
-				: undefined,
+			image: track.image ? { optimized: false, small: track.image, full: track.image } : undefined,
 			primaryColor: undefined,
 			file: undefined,
 			directory: undefined,
 			fileName: undefined,
 			scannedAt: Date.now(),
-			url: spicyamll.streamUrl(normalized.id, {
-				codec: 'aac',
-				fallback: true,
+			url: spicyamll.streamUrl(track.id, {
+				codec: 'atmos',
+				fallback: false,
 				language: 'en-US',
+				storefront: 'us',
 			}),
 			favorite: false,
 			type: 'track',
 		})
 
-		player.playTrack(0, [id])
+		if (startPlayback) player.playTrack(0, [id])
+		return id
 	}
 
-	const playItems = async (items: DiscoveryItem[]) => {
-		const songs = items.filter((item) => item.type === 'song').slice(0, 25)
-		if (!songs.length) return
-
+	const playTrackCollection = async (tracks: DiscoveryTrack[], shuffleQueue = false) => {
+		if (!tracks.length) return
 		const ids: number[] = []
-		for (const [index, song] of songs.entries()) {
-			const normalized = normalizeTracks({
-				id: song.id,
-				name: song.name,
-				artist: song.artist,
-				album: song.album,
-				image: song.artUrl,
-			})[0]
-			if (!normalized) continue
-
-			const id = remoteId(normalized.id, index)
-			registerRemoteTrack({
-				id,
-				remoteId: Number(normalized.id),
-				streaming: true,
-				uuid: `spicyamll:${normalized.id}`,
-				name: normalized.name,
-				album: normalized.album || normalized.albumName || '~\\0unknown',
-				artists: normalized.artists?.length ? normalized.artists : [normalized.artist || 'Unknown Artist'],
-				year: normalized.year ? String(normalized.year) : '~\\0unknown',
-				duration: normalized.duration ?? 0,
-				genre: [],
-				trackNo: 0,
-				trackOf: 0,
-				discNo: 0,
-				discOf: 0,
-				language: undefined,
-				image: normalized.image
-					? { optimized: false, small: normalized.image, full: normalized.image }
-					: undefined,
-				primaryColor: undefined,
-				file: undefined,
-				directory: undefined,
-				fileName: undefined,
-				scannedAt: Date.now(),
-				url: spicyamll.streamUrl(normalized.id, {
-					codec: 'aac',
-					fallback: true,
-					language: 'en-US',
-				}),
-				favorite: false,
-				type: 'track',
-			})
-			ids.push(id)
+		for (const [index, track] of tracks.entries()) {
+			ids.push(await playTrack(track, index, false))
 		}
-
-		if (ids.length) player.playTrack(0, ids)
+		player.playTrack(0, ids, shuffleQueue ? { shuffle: true } : undefined)
 	}
 
-	const showAlbum = async (item: DiscoveryItem) => {
+
+type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
+
+
+	const viewAlbum = async (item: DiscoveryItem) => {
 		selectedAlbum = item
 		try {
 			albumTracks = await spicyamll.albumTracks(item.id)
@@ -336,425 +186,389 @@
 		}
 	}
 
-	const showArtist = async (item: DiscoveryItem) => {
-		selectedArtist = item
-		const artistResults = await searchArtists(item.name)
-		const id = artistResults[0]?.id
-		if (!id) {
-			artistTracks = []
-			return
-		}
-		artistTracks = await getSongsForArtist(id, item.name)
-	}
-
-	const activate = async (item: DiscoveryItem, index = 0) => {
-		if (item.type === 'song') return playTrack(item, index)
-		if (item.type === 'album') return showAlbum(item)
-		return showArtist(item)
-	}
-
-	const surpriseMe = async () => {
-		surpriseBusy = true
+	const viewArtist = async (artist: string, artistId: string | undefined) => {
 		try {
-			const history = getRecentlyPlayed(100)
-			const played = new Set(history.map((track) => String(track.trackId || track.id)))
-			const recentArtists = new Set(history.slice(0, 6).map((track) => track.artist.toLowerCase()))
-			const candidates = dedupe([
-				...(await fetchSearch('discover something new', 30)),
-				...(await fetchSearch('hidden gems music', 30)),
-				...(await fetchSearch('indie alternative electronic', 20)),
-			]).filter((item) =>
-				item.type !== 'song' ||
-				(!played.has(String(item.id)) && !recentArtists.has(item.artist.toLowerCase())),
-			)
-
-			const ranked = rankRecommendations(shuffle(candidates), history)
-			const target = ranked.find((item) => item.type === 'song') ?? ranked[0]
-			if (target) await activate(target)
-		} finally {
-			surpriseBusy = false
+			let id = artistId
+			let info: DiscoveryItem | null = artistId
+				? { type: 'artist', id: artistId, name: artist, artist: artist, album: '', artUrl: 'favicon.svg' }
+				: null
+			if (!id) {
+				const found = await searchArtists(artist)
+				id = found[0] ? String(found[0].id) : undefined
+				info = found[0] ? {
+					type: 'artist', id, name: found[0].name, artist: found[0].artist || artist,
+					album: '', artUrl: found[0].image || 'favicon.svg'
+				} : null
+			}
+			if (!id) return
+			selectedArtist = info
+			artistInfo = info
+			artistTracks = await getSongsForArtist(id, artist)
+		} catch {
+			artistTracks = []
 		}
 	}
 
-	const addToLibrary = (item: DiscoveryItem) => {
-		if (item.type !== 'song') return
-		addSongToLibrary({
-			id: item.id,
-			name: item.name,
-			artist: item.artist,
-			album: item.album,
-			artUrl: item.artUrl,
-		})
+	const toggleArtist = (id: string | number) => {
+		toggleFavoriteArtist(id)
+		favoriteArtists = getFavoriteArtistIds()
+	}
+
+	const playDiscoveryItem = async (item: DiscoveryItem, index: number) => {
+		if (item.type === 'album') return viewAlbum(item)
+		if (item.type === 'artist') return viewArtist(item.name, item.id)
+		if (item.type === 'song') {
+			const track = normalizeTracks({
+				id: item.id,
+				name: item.name,
+				artist: item.artist,
+				album: item.album,
+				image: item.artUrl,
+			})[0]
+			if (track) return playTrack(track, index)
+		}
+
 	}
 
 	const search = async () => {
 		const term = query.trim()
 		if (!term) return
-		searched = true
 		loading = true
 		error = null
+		searched = true
 		results = []
+
 		try {
 			results = await searchDiscovery(term)
-		} catch (cause) {
-			error = cause instanceof Error ? cause.message : 'Search failed'
+
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Unable to search SpicyAMLL'
 		} finally {
 			loading = false
 		}
 	}
 
+	const formatDuration = (seconds: number) => {
+		if (!seconds || !Number.isFinite(seconds)) return ''
+		const minutes = Math.floor(seconds / 60)
+		const remaining = Math.floor(seconds % 60)
+		return `${minutes}:${remaining.toString().padStart(2, '0')}`
+	}
 
-	$effect(() => {
-		void loadRecommendations()
-	})
+	void loadRecommendations()
+
+	const pageStagger = (index: number) => ({ '--discovery-delay': `${Math.min(index, 8) * 45}ms` })
 </script>
 
-<Header title="Discovery" noBackButton />
-
-<main class="discovery-shell mx-auto w-full max-w-(--app-max-content-width) px-4 pt-6 pb-32 sm:px-6 sm:pt-8">
-	<section class="discovery-hero">
-		<div class="discovery-hero-copy">
-			<p class="text-label-lg text-onSurfaceVariant">Adi Music</p>
-			<h1 class="text-headline-large font-bold tracking-tight">Discovery</h1>
-			<p class="max-w-2xl text-body-lg text-onSurfaceVariant">Find something new.</p>
-		</div>
-
-		<div class="hero-actions">
-			<Button kind="toned" size="md" disabled={surpriseBusy} onclick={() => void surpriseMe()}>
-				<Icon type="shuffle" />
-				{surpriseBusy ? 'Finding…' : '🎲 Surprise Me'}
+{#snippet discoverySidebar()}
+	<div
+		class="desktop-sidebar fixed left-0 z-10 mt-20 flex h-max w-20 flex-col items-center gap-2 [@media(max-height:500px)]:mt-2"
+	>
+		{#each [
+			{ href: '/library/tracks', icon: 'musicNote', label: 'Tracks' },
+			{ href: '/library/albums', icon: 'album', label: 'Albums' },
+			{ href: '/library/artists', icon: 'person', label: 'Artists' },
+			{ href: '/library/playlists', icon: 'playlist', label: 'Playlists' },
+		] as item}
+			<Button as="a" href={item.href} kind="blank" tooltip={item.label} class="flex h-14 w-20 shrink-0 items-center justify-center">
+				<div class="flex items-center justify-center rounded-full p-2">
+					<Icon type={item.icon} />
+				</div>
 			</Button>
-			<Button as="a" href="/library/tracks" kind="flat" size="md">
-				<Icon type="library" />
-				Library
-			</Button>
+		{/each}
+		<Button kind="blank" tooltip="Discovery" class="flex h-14 w-20 shrink-0 items-center justify-center">
+			<div class="flex items-center justify-center rounded-full bg-secondaryContainer p-2 text-onSecondaryContainer">
+				<Icon type="compass" />
+			</div>
+		</Button>
+	</div>
+{/snippet}
+
+<Header title="Discovery" noBackButton>
+	<Button as="a" href="/library/tracks" kind="blank" tooltip="Library">
+		<Icon type="library" />
+	</Button>
+</Header>
+
+{@render discoverySidebar()}
+
+<main class="discovery-page mx-auto flex w-full max-w-(--app-max-content-width) flex-col gap-10 px-4 pt-6 pb-32 sm:pl-24 sm:pr-6 sm:pt-8">
+	<section class="flex flex-col gap-5">
+		<div class="discovery-heading flex flex-col gap-1">
+			<div class="text-headline-large font-bold">Discover music</div>
+			<div class="text-body-lg opacity-70">
+				Search songs, artists and albums from the Apple Music catalog.
+			</div>
 		</div>
 
 		<form
-			class="discovery-search"
+			class="@container discovery-search sticky top-2 z-5 mt-2 flex w-full max-w-250 self-end items-center gap-1 rounded-2xl border border-outlineVariant/50 bg-surfaceContainerHighest px-2 shadow-xs transition-[border-color,box-shadow,background-color] duration-200 @sm:gap-2 focus-within:border-primary/30 focus-within:shadow-md"
 			onsubmit={(event) => {
 				event.preventDefault()
 				void search()
 			}}
 		>
-			<Icon type="magnify" class="shrink-0 opacity-60" />
+			<Icon type="magnify" class="ml-2 shrink-0 opacity-60" />
 			<input
 				bind:value={query}
+				class="h-12 min-w-0 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
+				placeholder="Search tracks, artists, albums"
 				aria-label="Search music"
-				placeholder="Artists, songs, genres"
-				class="min-w-0 flex-1 bg-transparent px-2 text-body-md outline-none placeholder:text-onSurface/50"
 			/>
-			<Button type="submit" kind="filled" size="sm" disabled={loading || !query.trim()}>
-				Search
-			</Button>
+			<Separator vertical class="my-auto hidden h-6 @sm:flex" />
+			<IconButton icon="sort" tooltip="Search options" disabled={loading} />
+			<Separator vertical class="my-auto hidden h-6 @sm:flex" />
+			<MenuButton
+				ariaLabel="Open application menu"
+				tooltip="More"
+				menuItems={() => [
+					{ label: m.settings(), action: () => void goto('/settings') },
+					{ label: m.about(), action: () => void goto('/about') },
+				]}
+			/>
 		</form>
 	</section>
 
-	{#if searched}
-		<section class="search-results">
-			<div class="section-heading">
-				<div>
-					<h2 class="text-title-lg font-bold">Search results</h2>
-					<p class="text-body-sm text-onSurfaceVariant">Explore from the same discovery surface.</p>
-				</div>
-			</div>
-
-			{#if loading}
-				<div class="state-card">
-					<div class="size-8 animate-spin rounded-full border-2 border-primary/25 border-t-primary"></div>
-					<span>Searching the catalog…</span>
-				</div>
-			{:else if error}
-				<div class="state-card text-onErrorContainer">{error}</div>
-			{:else if !results.length}
-				<div class="state-card">Nothing found. Try another artist, song, or genre.</div>
-			{:else}
-				<div class="result-grid">
-					{#each results.slice(0, 18) as item (item.type + item.id)}
-						<article class="media-card">
-							<button class="art-button" onclick={() => void activate(item)} aria-label={item.name}>
-								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon={item.type === 'artist' ? 'person' : 'musicNote'} />
-							</button>
-							<div class="mt-2 truncate text-title-sm">{item.name}</div>
-							<div class="truncate text-body-sm text-onSurfaceVariant">{item.artist || item.type}</div>
-							<div class="card-actions">
-								{#if item.type === 'song'}
-									<Button kind="blank" tooltip="Play" onclick={() => void activate(item)}><Icon type="play" /></Button>
-									<Button kind="blank" tooltip="Add to library" onclick={() => addToLibrary(item)}>+</Button>
-								{:else}
-									<Button kind="blank" onclick={() => void activate(item)}>View</Button>
-								{/if}
+	{#if error}
+		<div class="discovery-state rounded-2xl border border-error/30 bg-errorContainer p-4 text-onErrorContainer">
+			{error}
+		</div>
+	{:else if loading}
+		<div class="discovery-state flex min-h-60 flex-col items-center justify-center gap-4 text-center opacity-70" aria-live="polite">
+			<Spinner class="size-10" />
+			<div class="text-title-md">Searching the catalog…</div>
+			<div class="text-body-sm opacity-70">Finding songs, artists, and albums</div>
+		</div>
+	{:else if searched && results.length === 0}
+		<div class="flex min-h-50 flex-col items-center justify-center gap-2 text-center opacity-70">
+			<Icon type="magnify" class="size-20" />
+			<div class="text-title-lg">No results</div>
+			<div>Try a different artist, album, or song.</div>
+		</div>
+	{:else if results.length > 0}
+		<section class="flex flex-col gap-10">
+			{#if songResults.length}
+				<div class="discovery-section flex flex-col gap-2">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg font-bold">Songs</h2>
+						<span class="text-body-sm opacity-50">{songResults.length}</span>
+					</div>
+					{#each songResults as item, index (item.id)}
+						<article class="discovery-row group flex items-center gap-3 rounded-2xl px-3 py-2 hover:bg-surfaceContainerHighest" style={pageStagger(index)}>
+							<Artwork src={item.artUrl} alt={item.name} class="size-14 shrink-0 rounded-xl" fallbackIcon="musicNote" />
+							<div class="min-w-0 grow">
+								<div class="truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || 'Unknown Artist'}</div>
+							</div>
+							<div class="hidden shrink-0 gap-1 group-hover:flex sm:flex">
+								<Button onclick={() => void playDiscoveryItem(item, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+								
 							</div>
 						</article>
 					{/each}
 				</div>
 			{/if}
+
+			{#if albumResults.length}
+				<div class="discovery-section flex flex-col gap-3">
+					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Albums</h2><span class="text-body-sm opacity-50">{albumResults.length}</span></div>
+					<div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+						{#each albumResults as item, index (item.id)}
+							<button class="discovery-card min-w-0 text-left" style={pageStagger(index)} onclick={() => void viewAlbum(item)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || 'Unknown Artist'}</div>
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			{#if artistResults.length}
+				<div class="discovery-section flex flex-col gap-3">
+					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Artists</h2><span class="text-body-sm opacity-50">{artistResults.length}</span></div>
+					<div class="flex flex-col gap-1">
+						{#each artistResults as item, index (item.id)}
+							<div class="discovery-row flex items-center gap-3 rounded-2xl p-3 hover:bg-surfaceContainerHighest" style={pageStagger(index)}>
+								<button class="shrink-0" onclick={() => void viewArtist(item.name, item.id)} aria-label="View artist">
+									<Artwork src={item.artUrl} alt={item.name} class="size-14 rounded-full" fallbackIcon="musicNote" />
+								</button>
+								<button class="min-w-0 grow text-left" onclick={() => void viewArtist(item.name, item.id)}>
+									<div class="truncate text-title-sm">{item.name}</div>
+									<div class="text-body-sm opacity-60">{item.genre || 'Artist'}</div>
+								</button>
+								<Button onclick={() => toggleArtist(item.id)} kind="blank">{favoriteArtists.includes(item.id) ? '★' : '☆'}</Button>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		</section>
-	{:else}
-		{#if recent.length}
-			{@const latest = recent[0]}
-			<section class="spotlight-grid">
-				<div class="spotlight-card">
-					<div class="spotlight-art">
-						<Artwork src={cleanArtUrl(latest.artUrl)} alt={latest.name} class="size-full rounded-3xl" fallbackIcon="musicNote" />
-					</div>
-					<div class="spotlight-content">
-						<p class="text-label-lg text-onSurfaceVariant">Adi Discover</p>
-						<h2 class="text-headline-medium font-bold">Built from what you already love.</h2>
-						<p class="text-body-md text-onSurfaceVariant">A lightweight local-first mix shaped by your listening history, favorites, recency and fresh discoveries.</p>
-						<div class="mt-5 flex flex-wrap gap-2">
-							<Button onclick={() => void playItems(madeForYou)} disabled={!madeForYou.length}>Play Adi Discover</Button>
-							<Button kind="flat" onclick={() => void surpriseMe()} disabled={surpriseBusy}>
-								<Icon type="shuffle" />
-								Surprise me
-							</Button>
-						</div>
-					</div>
-				</div>
-				<div class="latest-card">
-					<p class="text-label-lg text-onSurfaceVariant">Because you listened to</p>
-					<div class="mt-3 flex items-center gap-4">
-						<Artwork src={cleanArtUrl(latest.artUrl)} alt={latest.name} class="size-20 rounded-2xl" />
-						<div class="min-w-0">
-							<div class="truncate text-title-lg font-semibold">{latest.name}</div>
-							<div class="truncate text-body-md text-onSurfaceVariant">{latest.artist}</div>
-							<Button class="mt-3" size="sm" onclick={() => void playTrack(toItem(latest))}>Play</Button>
-						</div>
-					</div>
-				</div>
-			</section>
-		{:else}
-			<section class="empty-discovery">
-				<div class="empty-copy">
-					<span class="empty-icon">✦</span>
-					<h2 class="text-headline-medium font-bold">Your next favorite could be here.</h2>
-					<p class="text-body-lg text-onSurfaceVariant">Play a few songs and Adi Music will start shaping Discovery around your taste.</p>
-				</div>
-				<Button kind="toned" onclick={() => void surpriseMe()} disabled={surpriseBusy}>
-					<Icon type="shuffle" />
-					Start exploring
-				</Button>
-			</section>
-		{/if}
-
-		{#if madeForYou.length}
-			{@render Shelf(sectionTitle('✨ Made for You', 'Personal picks based on your listening history.'), madeForYou)}
-		{:else if loadingRecommendations}
-			<section class="state-card">Building your local recommendations…</section>
-		{/if}
-
-		{#if similarTracks.length}
-			{@render Shelf(sectionTitle('Because You Like', 'More tracks that connect to artists you play a lot.'), similarTracks)}
-		{/if}
-
-		{#if similarArtists.length}
-			{@render Shelf(sectionTitle('Similar Artists'), similarArtists, true)}
-		{/if}
-
-		{#if newMusic.length}
-			{@render Shelf(sectionTitle('🆕 New Music', 'Recent releases around your taste.'), newMusic)}
-		{/if}
-
-		{#each genreShelves as shelf}
-			{@render Shelf(sectionTitle(shelf.name, 'Explore a little outside your usual rotation.'), shelf.items)}
-		{/each}
-
-		<section class="mood-block">
-			<div class="section-heading">
-				<div>
-					<h2 class="text-title-lg font-bold">🎭 By Mood</h2>
-					<p class="text-body-sm text-onSurfaceVariant">Pick a feeling, not a genre.</p>
-				</div>
-			</div>
-			<div class="mood-grid">
-				{#each moods as mood}
-					<a href="#mood-{mood.name.toLowerCase().replaceAll(' ', '-')}" class="mood-chip">
-						<Icon type={mood.icon} />
-						<span>{mood.name}</span>
-					</a>
-				{/each}
-			</div>
-		</section>
-
-		{#each moodShelves as shelf}
-			<section id="mood-{shelf.name.toLowerCase().replaceAll(' ', '-')}" class="mood-shelf">
-				{@render Shelf(sectionTitle(shelf.name), shelf.items)}
-			</section>
-		{/each}
-
-		{#if explore.length}
-			{@render Shelf(sectionTitle('🌎 Explore', 'Broader picks when you want to wander.'), explore)}
-		{/if}
 	{/if}
 
 	{#if selectedAlbum}
-		<section class="detail-panel">
-			<div class="detail-header">
-				<Artwork src={selectedAlbum.artUrl} alt={selectedAlbum.name} class="size-24 rounded-2xl" />
-				<div class="min-w-0 flex-1">
-					<div class="text-label-lg text-onSurfaceVariant">Album</div>
-					<h2 class="truncate text-headline-small font-bold">{selectedAlbum.name}</h2>
-					<p class="truncate text-body-md text-onSurfaceVariant">{selectedAlbum.artist}</p>
-				</div>
-				<Button onclick={() => void playItems(albumTracks.map((track) => ({ type: 'song', id: String(track.id), name: track.name, artist: track.artist || '', album: track.album || '', artUrl: track.image || 'favicon.svg' })))}>Play album</Button>
-				<Button kind="blank" onclick={() => (selectedAlbum = null)}>Close</Button>
+		<section class="discovery-detail rounded-3xl bg-surfaceContainerHighest p-5">
+			<div class="flex items-center gap-4">
+				<Artwork src={selectedAlbum.artUrl || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
+				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
+				{#if albumTracks.length}<Button onclick={() => void playTrackCollection(albumTracks)}>Play</Button>{/if}
+				<Button onclick={() => { selectedAlbum = null; albumTracks = [] }} kind="blank">Close</Button>
 			</div>
-			{#if albumTracks.length}
-				<div class="detail-list">
-					{#each albumTracks as track, index (track.id)}
-						<button class="detail-row" onclick={() => void playTrack({ type: 'song', id: String(track.id), name: track.name, artist: track.artist || '', album: track.album || '', artUrl: track.image || 'favicon.svg' }, index)}>
-							<Artwork src={track.image} alt={track.name} class="size-12 rounded-xl" />
-							<span class="min-w-0 flex-1 text-left">
-								<span class="block truncate text-title-sm">{track.name}</span>
-								<span class="block truncate text-body-sm text-onSurfaceVariant">{track.artist}</span>
-							</span>
-							<Icon type="play" />
-						</button>
+			<div class="mt-4 flex flex-col gap-1">
+				{#each albumTracks as track, index (track.id)}
+					<div class="flex items-center gap-3 rounded-xl p-2 hover:bg-surface">
+						<div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.artist}</div></div>
+						<Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if selectedArtist}
+		<section class="discovery-detail @container flex flex-col gap-4">
+			<div class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row">
+				<Artwork
+					src={selectedArtist.artUrl}
+					alt={selectedArtist.name}
+					class="size-49 shrink-0 rounded-full @2xl:size-60"
+					fallbackIcon="person"
+				/>
+				<div class="relative z-0 flex size-full min-h-60 flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh">
+					<div class="flex grow flex-col p-5">
+						<div class="text-body-sm text-onSurfaceVariant">Artist</div>
+						<h1 class="text-headline-md">{selectedArtist.name}</h1>
+						{#if selectedArtist.bio}
+							<div class="mt-2 line-clamp-3 text-body-md text-onSurfaceVariant">{selectedArtist.bio}</div>
+						{/if}
+						<div class="mt-2 text-onSurfaceVariant">
+							{artistTracks.length} {artistTracks.length === 1 ? 'track' : 'tracks'}
+						</div>
+					</div>
+					<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-5">
+						<Button
+							kind="filled"
+							disabled={artistTracks.length === 0}
+							onclick={() => void playTrackCollection(artistTracks)}
+						>
+							Play
+						</Button>
+						<Button
+							kind="flat"
+							disabled={artistTracks.length === 0}
+							onclick={() => void playTrackCollection(artistTracks, true)}
+						>
+							Shuffle <Icon type="shuffle" />
+						</Button>
+						<Button kind="flat" onclick={() => toggleArtist(selectedArtist.id)}>
+							{favoriteArtists.includes(selectedArtist.id) ? 'Following' : 'Follow'}
+						</Button>
+						<Button kind="blank" onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }}>Close</Button>
+					</div>
+				</div>
+			</div>
+			<div class="flex flex-col gap-1">
+				{#each artistTracks as track, index (track.id)}
+					<div class="group flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-surfaceContainerHighest">
+						<Artwork src={track.image} alt={track.name} class="size-12 shrink-0 rounded-lg" fallbackIcon="musicNote" />
+						<div class="min-w-0 grow">
+							<div class="truncate">{track.name}</div>
+							<div class="truncate text-body-sm opacity-60">{track.album || 'Unknown Album'}</div>
+						</div>
+						<Button onclick={() => void playTrack(track, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+					</div>
+				{/each}
+			</div>
+		</section>
+	{/if}
+	{#if !searched}
+		{#if recentlyPlayed.length}
+			<section class="discovery-section flex flex-col gap-3">
+				<div class="text-title-lg font-bold">Recently Played</div>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+					{#each recentlyPlayed as item (item.id)}
+						<div class="min-w-0">
+							<button class="discovery-card block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist}</div>
+							</button>
+							<div class="mt-1 flex gap-1">
+								<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+							</div>
+						</div>
 					{/each}
 				</div>
-			{/if}
-		</section>
-	{:else if selectedArtist}
-		<section class="detail-panel">
-			<div class="detail-header">
-				<Artwork src={selectedArtist.artUrl} alt={selectedArtist.name} class="size-24 rounded-full" fallbackIcon="person" />
-				<div class="min-w-0 flex-1">
-					<div class="text-label-lg text-onSurfaceVariant">Artist</div>
-					<h2 class="truncate text-headline-small font-bold">{selectedArtist.name}</h2>
-					<p class="truncate text-body-md text-onSurfaceVariant">{selectedArtist.genre || 'Artist'}</p>
-				</div>
-				<Button onclick={() => void playItems(artistTracks.map((track) => ({ type: 'song', id: String(track.id), name: track.name, artist: track.artist || selectedArtist?.name || '', album: track.album || '', artUrl: track.image || 'favicon.svg' })))}>Play artist</Button>
-				<Button kind="blank" onclick={() => (selectedArtist = null)}>Close</Button>
-			</div>
-			{#if artistTracks.length}
-				<div class="detail-list">
-					{#each artistTracks.slice(0, 15) as track, index (track.id)}
-						<button class="detail-row" onclick={() => void playTrack({ type: 'song', id: String(track.id), name: track.name, artist: track.artist || selectedArtist?.name || '', album: track.album || '', artUrl: track.image || 'favicon.svg' }, index)}>
-							<Artwork src={track.image} alt={track.name} class="size-12 rounded-xl" />
-							<span class="min-w-0 flex-1 text-left">
-								<span class="block truncate text-title-sm">{track.name}</span>
-								<span class="block truncate text-body-sm text-onSurfaceVariant">{track.album || 'Single'}</span>
-							</span>
-							<Icon type="play" />
-						</button>
+			</section>
+		{/if}
+
+		{#if topPicks.length}
+			<section class="discovery-section flex flex-col gap-3">
+				<div class="text-title-lg font-bold">Top Picks For You</div>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+					{#each topPicks as item (item.type + item.id)}
+						<div class="min-w-0">
+							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
+							</button>
+							<div class="mt-1 flex gap-1">
+								<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+								{#if item.type === 'song'}<Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">+</Button>{/if}
+							</div>
+						</div>
 					{/each}
 				</div>
-			{/if}
-		</section>
+			</section>
+		{/if}
+
+		{#if recommendations.length}
+			<section class="discovery-section flex flex-col gap-3">
+				<div class="text-title-lg font-bold">Recommended For You</div>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+					{#each recommendations.slice(0, 20) as item (item.type + item.id)}
+						<div class="min-w-0">
+							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
+							</button>
+							<div class="mt-1 flex gap-1">
+								{#if item.type === 'song'}<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button><Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">+</Button>{:else if item.type === 'album'}<Button onclick={() => void viewAlbum(item)} kind="blank">View</Button>{:else}<Button onclick={() => void viewArtist(item.name, item.id)} kind="blank">View</Button>{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{:else if loadingRecommendations}
+			<div class="py-8 text-center opacity-60">Building your recommendations…</div>
+		{/if}
 	{/if}
 </main>
 
-{#snippet Shelf(title: { title: string; subtitle?: string }, items: DiscoveryItem[], circular = false)}
-	<section class="shelf">
-		<div class="section-heading">
-			<div>
-				<h2 class="text-title-lg font-bold">{title.title}</h2>
-				{#if title.subtitle}<p class="text-body-sm text-onSurfaceVariant">{title.subtitle}</p>{/if}
-			</div>
-		</div>
-		<div class="shelf-scroll" aria-label={title.title}>
-			{#each items as item, index (item.type + item.id)}
-				<article class="media-card shelf-card" class:circular={circular}>
-					<button class="art-button" onclick={() => void activate(item, index)} aria-label={item.name}>
-						<Artwork src={item.artUrl} alt={item.name} class={['aspect-square w-full', circular ? 'rounded-full' : 'rounded-2xl']} fallbackIcon={item.type === 'artist' ? 'person' : 'musicNote'} />
-					</button>
-					<div class="mt-2 truncate text-title-sm">{item.name}</div>
-					<div class="truncate text-body-sm text-onSurfaceVariant">{item.artist || item.genre || item.type}</div>
-					{#if item.type === 'song'}
-						<div class="card-actions">
-							<Button kind="blank" tooltip="Play" onclick={() => void activate(item, index)}><Icon type="play" /></Button>
-							<Button kind="blank" tooltip="Add to library" onclick={() => addToLibrary(item)}>+</Button>
-						</div>
-					{/if}
-				</article>
-			{/each}
-		</div>
-	</section>
-{/snippet}
 
 <style>
-	.discovery-shell { animation: fade-in 380ms var(--ease-standard); }
-	.discovery-hero { display: grid; grid-template-columns: 1fr auto; gap: 1rem 2rem; align-items: end; margin-bottom: 2.5rem; }
-	.discovery-hero-copy { min-width: 0; }
-	.hero-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
-	.discovery-search {
-		grid-column: 1 / -1;
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-		width: min(100%, 60rem);
-		padding: 0.35rem 0.45rem 0.35rem 0.85rem;
-		border: 1px solid color-mix(in srgb, var(--color-outlineVariant) 55%, transparent);
-		background: var(--color-surfaceContainerHigh);
-		border-radius: 1.5rem;
-		box-shadow: 0 8px 24px color-mix(in srgb, black 6%, transparent);
-		transition: border-color 180ms var(--ease-standard), box-shadow 180ms var(--ease-standard);
+	.discovery-page { animation: discovery-page-in 420ms var(--ease-standard); }
+	.discovery-heading, .discovery-search, .discovery-state, .discovery-detail, .discovery-section { animation: discovery-fade-up 480ms var(--ease-standard) both; }
+	.discovery-search { animation-delay: 60ms; }
+	.discovery-row, .discovery-card { animation: discovery-item-in 480ms var(--ease-standard) both; animation-delay: var(--discovery-delay, 0ms); }
+	.discovery-card { transition: transform 220ms var(--ease-standard), box-shadow 220ms var(--ease-standard), opacity 220ms var(--ease-standard); }
+	@media (hover: hover) { .discovery-card:hover { transform: translateY(-2px); } }
+	@media (max-width: 639px) {
+		.discovery-page { gap: 2rem; padding-left: 1rem; padding-right: 1rem; padding-top: 1.25rem; }
+		.discovery-search { top: 0.5rem; border-radius: 1.25rem; }
 	}
-	.discovery-search:focus-within { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-outlineVariant)); box-shadow: 0 10px 30px color-mix(in srgb, black 9%, transparent); }
-	.spotlight-grid { display: grid; grid-template-columns: 1.6fr 0.9fr; gap: 1rem; margin-bottom: 2rem; }
-	.spotlight-card, .latest-card, .empty-discovery, .detail-panel, .state-card {
-		border: 1px solid color-mix(in srgb, var(--color-outlineVariant) 45%, transparent);
-		background: var(--color-surfaceContainerLow);
-		border-radius: 1.75rem;
-	}
-	.spotlight-card { display: grid; grid-template-columns: minmax(10rem, 18rem) 1fr; gap: 1.25rem; padding: 1rem; overflow: hidden; }
-	.spotlight-art { min-width: 0; aspect-ratio: 1; }
-	.spotlight-content { padding: 1rem 1.25rem 1.25rem 0.5rem; align-self: center; }
-	.latest-card { padding: 1.25rem; display: flex; flex-direction: column; justify-content: center; }
-	.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 0.8rem; }
-	.shelf { margin-top: 2.4rem; }
-	.shelf-scroll { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(10.5rem, 12.5rem); gap: 0.85rem; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; padding: 0.1rem 0.1rem 0.65rem; scroll-snap-type: x proximity; }
-	.shelf-scroll::-webkit-scrollbar { display: none; }
-	.shelf-card { scroll-snap-align: start; }
-	.media-card { min-width: 0; }
-	.art-button { width: 100%; border: 0; padding: 0; background: transparent; text-align: left; cursor: pointer; transition: transform 180ms var(--ease-standard); }
-	.art-button:hover { transform: translateY(-2px); }
-	.card-actions { display: flex; align-items: center; gap: 0.15rem; min-height: 2.1rem; }
-	.result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-	.search-results { margin-top: 0.5rem; }
-	.state-card { min-height: 10rem; display: grid; place-items: center; padding: 2rem; text-align: center; color: var(--color-onSurfaceVariant); }
-	.mood-block { margin-top: 2.7rem; }
-	.mood-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
-	.mood-chip { display: flex; align-items: center; gap: 0.65rem; padding: 0.9rem 1rem; border-radius: 1.25rem; background: var(--color-surfaceContainerHigh); color: var(--color-onSurface); text-decoration: none; border: 1px solid color-mix(in srgb, var(--color-outlineVariant) 35%, transparent); transition: transform 180ms var(--ease-standard), background-color 180ms var(--ease-standard); }
-	.mood-chip:hover { transform: translateY(-1px); background: var(--color-surfaceContainerHighest); }
-	.mood-shelf { scroll-margin-top: 5rem; }
-	.empty-discovery { padding: 2.2rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; margin-bottom: 1rem; }
-	.empty-copy { max-width: 42rem; }
-	.empty-icon { display: inline-flex; width: 2.4rem; height: 2.4rem; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-secondaryContainer); margin-bottom: 0.75rem; }
-	.detail-panel { margin-top: 2.5rem; padding: 1rem; }
-	.detail-header { display: flex; align-items: center; gap: 1rem; }
-	.detail-list { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.15rem; }
-	.detail-row { display: flex; align-items: center; gap: 0.8rem; width: 100%; padding: 0.65rem 0.7rem; border: 0; border-radius: 1rem; background: transparent; color: inherit; text-align: left; cursor: pointer; }
-	.detail-row:hover { background: var(--color-surfaceContainerHighest); }
-	.circular :global(img), .circular :global(video) { border-radius: 9999px !important; }
-
-	@media (max-width: 767px) {
-		.discovery-hero { grid-template-columns: 1fr; align-items: start; }
-		.hero-actions { justify-content: flex-start; }
-		.spotlight-grid { grid-template-columns: 1fr; }
-		.spotlight-card { grid-template-columns: 7.25rem 1fr; padding: 0.7rem; gap: 0.9rem; }
-		.spotlight-content { padding: 0.25rem 0.45rem 0.25rem 0; }
-		.result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
-		.mood-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-		.empty-discovery { flex-direction: column; align-items: flex-start; }
-		.discovery-search :global(.m3-button-base) { min-width: 4.6rem; }
-	}
-
-	@media (min-width: 900px) {
-		.result-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-		.shelf-scroll { grid-auto-columns: minmax(12rem, 14rem); }
-	}
-
-	@media (min-width: 1280px) {
-		.result-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.discovery-shell, .art-button { animation: none !important; transition: none !important; }
-		.art-button:hover { transform: none; }
+		.discovery-page, .discovery-heading, .discovery-search, .discovery-state, .discovery-detail, .discovery-section, .discovery-row, .discovery-card { animation: none !important; transition: none !important; }
+		.discovery-card:hover { transform: none; }
 	}
-
-	@keyframes fade-in {
+	@keyframes discovery-page-in { from { opacity: 0; } to { opacity: 1; } }
+	@keyframes discovery-fade-up {
+		from { opacity: 0; transform: translateY(10px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	@keyframes discovery-item-in {
 		from { opacity: 0; transform: translateY(8px); }
 		to { opacity: 1; transform: translateY(0); }
 	}
