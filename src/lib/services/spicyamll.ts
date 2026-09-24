@@ -81,7 +81,7 @@ export const spicyamll = {
 	) => {
 		const url = new URL(`${API_BASE}/download`)
 		url.searchParams.set('song', String(song))
-		url.searchParams.set('codec', options.codec ?? 'atmos')
+		url.searchParams.set('codec', options.codec ?? 'aac')
 		url.searchParams.set('l', options.language ?? 'en-US')
 		return url.toString()
 	},
@@ -93,7 +93,7 @@ export const spicyamll = {
 		const url = new URL(`${API_BASE}/stream`)
 		url.searchParams.set('song', String(song))
 		url.searchParams.set('codec', options.codec ?? 'atmos')
-		url.searchParams.set('fallback', String(options.fallback ?? false))
+		url.searchParams.set('fallback', String(options.fallback ?? true))
 		url.searchParams.set('l', options.language ?? 'en-US')
 		url.searchParams.set('storefront', options.storefront ?? 'us')
 		url.searchParams.set('websupport', 'true')
