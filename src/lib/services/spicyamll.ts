@@ -50,7 +50,9 @@ const unwrap = <T>(value: unknown): T => {
 }
 
 export const spicyamll = {
-	search: (params: SpicyApiParams) => request<unknown>('/get/search', params).then(unwrap),
+	// Lyricsflow-compatible discovery search. This is the endpoint used by the recommendation model.
+	search: (params: SpicyApiParams) => request<unknown>('/search', params),
+	recommendations: (params: SpicyApiParams) => request<unknown>('/recommendations', params),
 	catalogSearch: (storefront: string, params: SpicyApiParams) =>
 		request<unknown>(`/get/v1/catalog/${encodeURIComponent(storefront)}/search`, params).then(unwrap),
 	artist: (params: SpicyApiParams) => request<unknown>('/get/artist', params).then(unwrap),
