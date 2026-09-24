@@ -27,6 +27,9 @@ export class PlayerStore {
 	readonly #audio = new Audio()
 	readonly #audioLoader = new AudioLoader((src) => {
 		this.#audio.src = src ?? ''
+		if (src) {
+			this.#audio.load()
+		}
 	})
 	readonly #queue = new QueueStore()
 	readonly equalizer = new EqualizerStore(this.#audio)
@@ -135,6 +138,23 @@ export class PlayerStore {
 			this.duration = 0
 
 			void this.#audioLoader.load(track.directory, track.file, track.url).then((result) => {
+				if (
+					result.status === 'loaded' &&
+					this.playing &&
+					this.activeTrack?.id === track.id &&
+					!this.#audio.paused
+				) {
+					return
+				}
+
+				if (result.status === 'loaded' && this.playing && this.activeTrack?.id === track.id) {
+					const playPromise = this.#audio.play()
+					playPromise?.catch((error) => {
+						console.warn('Remote audio playback failed after loading:', error)
+						this.playing = false
+					})
+				}
+
 				if (result.status === 'failed') {
 					const name = truncate(track.name, 30)
 					const errorMap = {
@@ -209,8 +229,10 @@ export class PlayerStore {
 				const playPromise = audio.play()
 				if (playPromise !== undefined) {
 					playPromise.catch((error) => {
-						console.warn('Audio playback error on iOS/Safari:', error)
-						this.playing = false
+						console.warn('Audio playback error:', error)
+						if (!this.#audioLoader.loading) {
+							this.playing = false
+						}
 					})
 				}
 			} else {
@@ -433,8 +455,11 @@ export class PlayerStore {
 			}
 			const playPromise = this.#audio.play()
 			if (playPromise !== undefined) {
-				playPromise.catch(() => {
-					// Controlled error fallback in effect
+				playPromise.catch((error) => {
+					console.warn('Audio playback request failed:', error)
+					if (!this.#audioLoader.loading) {
+						this.playing = false
+					}
 				})
 			}
 		} else {
