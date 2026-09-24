@@ -115,3 +115,49 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 			year: item.year as string | number | undefined,
 		}))
 }
+
+export const searchArtists = async (query: string) => {
+	const candidates = [
+		{ name: query },
+		{ query },
+		{ q: query },
+		{ keyword: query },
+	]
+	for (const params of candidates) {
+		try {
+			const value = normalizeTracks(await spicyamll.artist(params))
+			if (value.length) return value
+		} catch {
+			// Try the next documented/compatible query shape.
+		}
+	}
+	return []
+}
+
+export const searchAlbums = async (query: string) => {
+	const candidates = [{ name: query }, { query }, { q: query }, { keyword: query }]
+	for (const params of candidates) {
+		try {
+			const value = normalizeTracks(await spicyamll.album(params))
+			if (value.length) return value
+		} catch {}
+	}
+	return []
+}
+
+export const getSongsForArtist = async (artistId: string | number, artistName?: string) => {
+	const candidates = [
+		{ id: artistId },
+		{ artistId },
+		{ artist_id: artistId },
+		{ artist: artistId },
+		...(artistName ? [{ name: artistName }, { artist: artistName }] : []),
+	]
+	for (const params of candidates) {
+		try {
+			const value = normalizeTracks(await spicyamll.artistSongs(params))
+			if (value.length) return value
+		} catch {}
+	}
+	return []
+}
