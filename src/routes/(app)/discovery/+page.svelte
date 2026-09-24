@@ -416,11 +416,16 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 				<div class="text-title-lg font-bold">Recently Played</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 					{#each recentlyPlayed as item (item.id)}
-						<button class="min-w-0 text-left" onclick={() => void playDiscoveryItem(item, 0)}>
-							<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
-							<div class="mt-2 truncate text-title-sm">{item.name}</div>
-							<div class="truncate text-body-sm opacity-60">{item.artist}</div>
-						</button>
+						<div class="min-w-0">
+							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist}</div>
+							</button>
+							<div class="mt-1 flex gap-1">
+								<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+							</div>
+						</div>
 					{/each}
 				</div>
 			</section>
@@ -431,11 +436,17 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 				<div class="text-title-lg font-bold">Top Picks For You</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 					{#each topPicks as item (item.type + item.id)}
-						<button class="min-w-0 text-left" onclick={() => void playDiscoveryItem(item, 0)}>
-							<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
-							<div class="mt-2 truncate text-title-sm">{item.name}</div>
-							<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
-						</button>
+						<div class="min-w-0">
+							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
+							</button>
+							<div class="mt-1 flex gap-1">
+								<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+								{#if item.type === 'song'}<Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">+</Button>{/if}
+							</div>
+						</div>
 					{/each}
 				</div>
 			</section>
@@ -446,11 +457,16 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 				<div class="text-title-lg font-bold">Recommended For You</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 					{#each recommendations.slice(0, 20) as item (item.type + item.id)}
-						<button class="min-w-0 text-left" onclick={() => void playDiscoveryItem(item, 0)}>
-							<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
-							<div class="mt-2 truncate text-title-sm">{item.name}</div>
-							<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
-						</button>
+						<div class="min-w-0">
+							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || item.type}</div>
+							</button>
+							<div class="mt-1 flex gap-1">
+								{#if item.type === 'song'}<Button onclick={() => void playDiscoveryItem(item, 0)} kind="blank" tooltip="Play"><Icon type="play" /></Button><Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">+</Button>{:else if item.type === 'album'}<Button onclick={() => void viewAlbum(item)} kind="blank">View</Button>{:else}<Button onclick={() => void viewArtist(item.name, item.id)} kind="blank">View</Button>{/if}
+							</div>
+						</div>
 					{/each}
 				</div>
 			</section>
