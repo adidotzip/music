@@ -24,7 +24,7 @@ const request = async <T>(path: string, params: SpicyApiParams = {}): Promise<T>
 		}
 	}
 
- 	try {
+	try {
 		const response = await fetch(url, { headers: { Accept: 'application/json' } })
 		if (!response.ok) throw new Error(`SpicyAMLL ${response.status}: ${response.statusText}`)
 		return response.json() as Promise<T>
@@ -51,11 +51,13 @@ const unwrap = <T>(value: unknown): T => {
 
 export const spicyamll = {
 	search: (params: SpicyApiParams) => request<unknown>('/get/search', params).then(unwrap),
+	catalogSearch: (storefront: string, params: SpicyApiParams) =>
+		request<unknown>(`/get/v1/catalog/${encodeURIComponent(storefront)}/search`, params).then(unwrap),
 	artist: (params: SpicyApiParams) => request<unknown>('/get/artist', params).then(unwrap),
 	album: (params: SpicyApiParams) => request<unknown>('/get/album', params).then(unwrap),
 	playlist: (params: SpicyApiParams) => request<unknown>('/get/playlist', params).then(unwrap),
 	musicVideo: (params: SpicyApiParams) => request<unknown>('/get/musicvideo', params).then(unwrap),
-	musicVideoGet: (mvId: string | number) => request<unknown>('/get/musicvideo/get', { id: mvId }).then(unwrap),
+	musicVideoGet: (params: SpicyApiParams) => request<unknown>('/get/musicvideo/get', params).then(unwrap),
 	musicVideoById: (mvId: string | number) => request<unknown>(`/get/musicvideo/${encodeURIComponent(mvId)}`).then(unwrap),
 	musicVideoDownload: (params: SpicyApiParams) => request<unknown>('/get/musicvideo/download', params).then(unwrap),
 	musicVideoStream: (params: SpicyApiParams) => request<unknown>('/get/musicvideo/stream', params).then(unwrap),
@@ -77,8 +79,8 @@ export const spicyamll = {
 	) => {
 		const url = new URL(`${API_BASE}/stream`)
 		url.searchParams.set('song', String(song))
-		url.searchParams.set('codec', options.codec ?? 'aac')
-		url.searchParams.set('fallback', String(options.fallback ?? true))
+		url.searchParams.set('codec', options.codec ?? 'atmos')
+		url.searchParams.set('fallback', String(options.fallback ?? false))
 		url.searchParams.set('l', options.language ?? 'en-US')
 		url.searchParams.set('websupport', 'true')
 		return url.toString()
@@ -97,8 +99,12 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 		if (!value || typeof value !== 'object') return
 
 		const record = value as Record<string, unknown>
-		// Apple Music resources are commonly { id, type, attributes: {...} }.
-		if (record.id !== undefined || record.songId !== undefined || record.trackId !== undefined || record.musicId !== undefined) {
+		if (
+			record.id !== undefined ||
+			record.songId !== undefined ||
+			record.trackId !== undefined ||
+			record.musicId !== undefined
+		) {
 			items.push(record)
 			return
 		}
@@ -109,13 +115,17 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 
 	return items
 		.map((item, index) => {
-			const attributes = item.attributes && typeof item.attributes === 'object'
-				? item.attributes as Record<string, unknown>
-				: {}
-			const artwork = attributes.artwork && typeof attributes.artwork === 'object'
-				? attributes.artwork as Record<string, unknown>
-				: {}
-			const artworkUrl = String(artwork.url ?? item.image ?? item.artwork ?? item.cover ?? item.coverUrl ?? '')
+			const attributes =
+				item.attributes && typeof item.attributes === 'object'
+					? (item.attributes as Record<string, unknown>)
+					: {}
+			const artwork =
+				attributes.artwork && typeof attributes.artwork === 'object'
+					? (attributes.artwork as Record<string, unknown>)
+					: {}
+			const artworkUrl = String(
+				artwork.url ?? item.image ?? item.artwork ?? item.cover ?? item.coverUrl ?? '',
+			)
 				.replace('{w}', '600')
 				.replace('{h}', '600')
 				.replace('{f}', 'jpg')
@@ -128,39 +138,38 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 				id: Number(item.id ?? item.songId ?? item.song_id ?? item.trackId ?? item.musicId ?? index),
 				name: String(attributes.name ?? item.name ?? item.title ?? item.songName ?? 'Unknown'),
 				artist: artistName,
-				artists: artistName ? [artistName] : Array.isArray(item.artists) ? item.artists.map(String) : [],
+				artists: artistName
+					? [artistName]
+					: Array.isArray(item.artists)
+						? item.artists.map(String)
+						: [],
 				album: albumName,
 				albumName,
 				image: artworkUrl,
-				duration: Number(attributes.durationInMillis ?? item.duration ?? item.durationSeconds ?? 0) / (
-					attributes.durationInMillis !== undefined ? 1000 : 1
-				),
-				year: attributes.releaseDate ? String(attributes.releaseDate).slice(0, 4) : item.year as string | number | undefined,
+				duration:
+					Number(attributes.durationInMillis ?? item.duration ?? item.durationSeconds ?? 0) /
+					(attributes.durationInMillis !== undefined ? 1000 : 1),
+				year: attributes.releaseDate
+					? String(attributes.releaseDate).slice(0, 4)
+					: (item.year as string | number | undefined),
 			}
 		})
 		.filter((track) => Number.isFinite(track.id) && track.id > 0)
 }
 
 export const searchArtists = async (query: string) => {
-	const candidates = [
-		{ name: query },
-		{ query },
-		{ q: query },
-		{ keyword: query },
-	]
+	const candidates = [{ artist: query }, { name: query }, { query }, { q: query }]
 	for (const params of candidates) {
 		try {
 			const value = normalizeTracks(await spicyamll.artist(params))
 			if (value.length) return value
-		} catch {
-			// Try the next documented/compatible query shape.
-		}
+		} catch {}
 	}
 	return []
 }
 
 export const searchAlbums = async (query: string) => {
-	const candidates = [{ name: query }, { query }, { q: query }, { keyword: query }]
+	const candidates = [{ album: query }, { name: query }, { query }, { q: query }]
 	for (const params of candidates) {
 		try {
 			const value = normalizeTracks(await spicyamll.album(params))
@@ -172,10 +181,9 @@ export const searchAlbums = async (query: string) => {
 
 export const getSongsForArtist = async (artistId: string | number, artistName?: string) => {
 	const candidates = [
+		{ artist: artistId },
 		{ id: artistId },
 		{ artistId },
-		{ artist_id: artistId },
-		{ artist: artistId },
 		...(artistName ? [{ name: artistName }, { artist: artistName }] : []),
 	]
 	for (const params of candidates) {
@@ -188,12 +196,19 @@ export const getSongsForArtist = async (artistId: string | number, artistName?: 
 }
 
 export const searchCatalog = async (query: string) => {
-	const response = await spicyamll.search({
+	const params = {
 		term: query,
-		q: query,
-		query,
 		l: 'en-US',
 		limit: 25,
-	})
+		offset: 0,
+	}
+
+	try {
+		const response = await spicyamll.search(params)
+		const tracks = normalizeTracks(response)
+		if (tracks.length) return tracks
+	} catch {}
+
+	const response = await spicyamll.catalogSearch('us', params)
 	return normalizeTracks(response)
 }
