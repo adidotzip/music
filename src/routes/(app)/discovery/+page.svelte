@@ -541,25 +541,25 @@
 		{/if}
 
 		{#if madeForYou.length}
-			<Shelf title={sectionTitle('✨ Made for You', 'Personal picks based on your listening history.')} items={madeForYou} />
+			{@render Shelf(sectionTitle('✨ Made for You', 'Personal picks based on your listening history.'), madeForYou)}
 		{:else if loadingRecommendations}
 			<section class="state-card">Building your local recommendations…</section>
 		{/if}
 
 		{#if similarTracks.length}
-			<Shelf title={sectionTitle('Because You Like', 'More tracks that connect to artists you play a lot.')} items={similarTracks} />
+			{@render Shelf(sectionTitle('Because You Like', 'More tracks that connect to artists you play a lot.'), similarTracks)}
 		{/if}
 
 		{#if similarArtists.length}
-			<Shelf title={sectionTitle('Similar Artists')} items={similarArtists} circular />
+			{@render Shelf(sectionTitle('Similar Artists'), similarArtists, true)}
 		{/if}
 
 		{#if newMusic.length}
-			<Shelf title={sectionTitle('🆕 New Music', 'Recent releases around your taste.')} items={newMusic} />
+			{@render Shelf(sectionTitle('🆕 New Music', 'Recent releases around your taste.'), newMusic)}
 		{/if}
 
 		{#each genreShelves as shelf}
-			<Shelf title={sectionTitle(shelf.name, 'Explore a little outside your usual rotation.')} items={shelf.items} />
+			{@render Shelf(sectionTitle(shelf.name, 'Explore a little outside your usual rotation.'), shelf.items)}
 		{/each}
 
 		<section class="mood-block">
@@ -581,12 +581,12 @@
 
 		{#each moodShelves as shelf}
 			<section id="mood-{shelf.name.toLowerCase().replaceAll(' ', '-')}" class="mood-shelf">
-				<Shelf title={sectionTitle(shelf.name)} items={shelf.items} />
+				{@render Shelf(sectionTitle(shelf.name), shelf.items)}
 			</section>
 		{/each}
 
 		{#if explore.length}
-			<Shelf title={sectionTitle('🌎 Explore', 'Broader picks when you want to wander.')} items={explore} />
+			{@render Shelf(sectionTitle('🌎 Explore', 'Broader picks when you want to wander.'), explore)}
 		{/if}
 	{/if}
 
