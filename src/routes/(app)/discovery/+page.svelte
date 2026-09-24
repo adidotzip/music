@@ -4,7 +4,7 @@
 	import Header from '$lib/components/Header.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
-	import { getRecentlyPlayed, recordRecentTrack } from '$lib/services/library.ts'
+	import { getRecentlyPlayed } from '$lib/services/library.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
 	import { normalizeTracks, searchCatalog, spicyamll, getSongsForArtist } from '$lib/services/spicyamll.ts'
 
@@ -147,14 +147,6 @@
 			const normalized = normalizeTracks(detail)
 			if (normalized[0]) track = { ...item, ...normalized[0] }
 		} catch {}
-
-		recordRecentTrack({
-			trackId: track.id,
-			name: track.name,
-			artist: track.artist,
-			album: track.album || track.albumName,
-			artUrl: track.image,
-		})
 
 		const id = remoteId(track.id, index)
 		registerRemoteTrack({
