@@ -92,7 +92,6 @@ export class PlayerStore {
 		this.equalizer.init()
 
 		const audio = this.#audio
-		audio.crossOrigin = 'anonymous'
 
 		// Plain (non-$state) so reads inside the effect don't create subscriptions.
 		let prevTrackId: number | null = null
