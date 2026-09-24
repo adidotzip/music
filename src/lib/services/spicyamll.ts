@@ -50,6 +50,7 @@ const unwrap = <T>(value: unknown): T => {
 }
 
 export const spicyamll = {
+	search: (params: SpicyApiParams) => request<unknown>('/get/search', params).then(unwrap),
 	artist: (params: SpicyApiParams) => request<unknown>('/get/artist', params).then(unwrap),
 	album: (params: SpicyApiParams) => request<unknown>('/get/album', params).then(unwrap),
 	playlist: (params: SpicyApiParams) => request<unknown>('/get/playlist', params).then(unwrap),
@@ -160,4 +161,15 @@ export const getSongsForArtist = async (artistId: string | number, artistName?: 
 		} catch {}
 	}
 	return []
+}
+
+export const searchCatalog = async (query: string) => {
+	const response = await spicyamll.search({
+		term: query,
+		q: query,
+		query,
+		l: 'en-US',
+		limit: 25,
+	})
+	return normalizeTracks(response)
 }
