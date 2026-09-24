@@ -13,6 +13,7 @@
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
+	import { generateStableId } from '$lib/services/jiosaavn.ts'
 	import {
 		getSongsForArtist,
 		normalizeTracks,
@@ -48,17 +49,9 @@
 	let detailLoading = $state(false)
 	let detailTrackIds = $state<number[]>([])
 
-	let nextRemoteId = -1000
-	const trackIdMap = new Map<string, number>()
-
 	const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
 		const key = `spicyamll:${input.id}`
-		if (trackIdMap.has(key)) {
-			return trackIdMap.get(key)!
-		}
-
-		const id = nextRemoteId--
-		trackIdMap.set(key, id)
+		const id = generateStableId(key)
 
 		const isResource = 'artUrl' in input
 		const name = input.name || 'Unknown'
