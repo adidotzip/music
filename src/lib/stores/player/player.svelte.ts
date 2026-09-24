@@ -212,60 +212,6 @@ export class PlayerStore {
 			}
 		})
 
-	#preloadUpcoming = async (track: TrackData): Promise<void> => {
-		const queueIds = this.#queue.itemsIds
-		const start = this.#queue.activeTrackIndex
-		if (start < 0 || !track.album || track.album === UNKNOWN_ITEM) return
-
-		const upcomingIds = queueIds.slice(start + 1, start + 3)
-		const upcoming = await Promise.all(
-			upcomingIds.map((id) => getLibraryValue('tracks', id, true)),
-		)
-
-		const albumTracks = upcoming.filter(
-			(candidate): candidate is TrackData =>
-			!!candidate &&
-			candidate.album === track.album &&
-			candidate.artists?.some((artist) => track.artists?.includes(artist)),
-		)
-
-		const keepIds = new Set(albumTracks.map((candidate) => candidate.id))
-
-		for (const [id, entry] of this.#preloadedAudio) {
-			if (!keepIds.has(id)) {
-				entry.audio.src = ''
-				entry.audio.load()
-				if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
-				this.#preloadedAudio.delete(id)
-			}
-		}
-
-		for (const candidate of albumTracks) {
-			if (!this.#preloadedLyrics.has(candidate.id)) {
-				const promise = LyricsService.fetchLyrics(candidate).catch(() => null)
-				this.#preloadedLyrics.set(candidate.id, promise)
-			}
-
-			if (this.#preloadedAudio.has(candidate.id)) continue
-
-			let src = candidate.url
-			let objectUrl: string | undefined
-
-			if (!src && candidate.file instanceof File) {
-				objectUrl = URL.createObjectURL(candidate.file)
-				src = objectUrl
-			}
-
-			if (!src) continue
-
-			const audio = new Audio()
-			audio.preload = 'auto'
-			audio.src = src
-			audio.load()
-			this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
-		}
-	}
-
 		// Guarded by loading: prevents play() on an empty/stale src during file fetch.
 		$effect(() => {
 			if (this.#audioLoader.loading) {
@@ -456,6 +402,60 @@ export class PlayerStore {
 					this.seek(details.seekTime)
 				}
 			})
+		}
+	}
+
+	#preloadUpcoming = async (track: TrackData): Promise<void> => {
+		const queueIds = this.#queue.itemsIds
+		const start = this.#queue.activeTrackIndex
+		if (start < 0 || !track.album || track.album === UNKNOWN_ITEM) return
+
+		const upcomingIds = queueIds.slice(start + 1, start + 3)
+		const upcoming = await Promise.all(
+			upcomingIds.map((id) => getLibraryValue('tracks', id, true)),
+		)
+
+		const albumTracks = upcoming.filter(
+			(candidate): candidate is TrackData =>
+			!!candidate &&
+			candidate.album === track.album &&
+			candidate.artists?.some((artist) => track.artists?.includes(artist)),
+		)
+
+		const keepIds = new Set(albumTracks.map((candidate) => candidate.id))
+
+		for (const [id, entry] of this.#preloadedAudio) {
+			if (!keepIds.has(id)) {
+				entry.audio.src = ''
+				entry.audio.load()
+				if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
+				this.#preloadedAudio.delete(id)
+			}
+		}
+
+		for (const candidate of albumTracks) {
+			if (!this.#preloadedLyrics.has(candidate.id)) {
+				const promise = LyricsService.fetchLyrics(candidate).catch(() => null)
+				this.#preloadedLyrics.set(candidate.id, promise)
+			}
+
+			if (this.#preloadedAudio.has(candidate.id)) continue
+
+			let src = candidate.url
+			let objectUrl: string | undefined
+
+			if (!src && candidate.file instanceof File) {
+				objectUrl = URL.createObjectURL(candidate.file)
+				src = objectUrl
+			}
+
+			if (!src) continue
+
+			const audio = new Audio()
+			audio.preload = 'auto'
+			audio.src = src
+			audio.load()
+			this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
 		}
 	}
 
