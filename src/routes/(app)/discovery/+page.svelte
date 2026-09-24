@@ -4,32 +4,157 @@
 	import Header from '$lib/components/Header.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
+	import { getRecentlyPlayed, recordRecentTrack } from '$lib/services/library.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
-	import {
-		getSongsForArtist,
-		normalizeTracks,
-		searchCatalog,
-		spicyamll,
-	} from '$lib/services/spicyamll.ts'
+	import { normalizeTracks, searchCatalog, spicyamll, getSongsForArtist } from '$lib/services/spicyamll.ts'
+
+	type DiscoveryItem = {
+		type: 'song' | 'album' | 'artist'
+		id: string
+		name: string
+		artist: string
+		album: string
+		artUrl: string
+	}
 
 	const player = usePlayer()
-
 	let query = $state('')
 	let loading = $state(false)
+	let loadingRecommendations = $state(false)
 	let error = $state<string | null>(null)
 	let results = $state<ReturnType<typeof normalizeTracks>>([])
 	let searched = $state(false)
+	let topPicks = $state<DiscoveryItem[]>([])
+	let recommendations = $state<DiscoveryItem[]>([])
+	let recentlyPlayed = $state<DiscoveryItem[]>([])
 
 	const remoteId = (id: number, index: number) => -Math.max(1, Math.abs(id || index + 1))
 
+	const shuffle = <T,>(items: T[]) => {
+		const out = [...items]
+		for (let i = out.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1))
+			;[out[i], out[j]] = [out[j], out[i]]
+		}
+		return out
+	}
+
+	const dedupeItems = (items: DiscoveryItem[]) => {
+		const seen = new Set<string>()
+		return items.filter((item) => {
+			const key = `${item.type}:${item.id}`
+			if (seen.has(key)) return false
+			seen.add(key)
+			return true
+		})
+	}
+
+	const cleanArtUrl = (url: unknown) => {
+		if (typeof url !== 'string' || !url) return 'favicon.svg'
+		const value = url
+			.replace(/\{w\}/g, '600')
+			.replace(/\{h\}/g, '600')
+			.replace(/\{c\}/g, 'bb')
+			.replace(/\{f\}/g, 'jpg')
+			.replace(/\d+x\d+bb\./, '600x600bb.')
+		return /^https?:\/\//i.test(value) ? value : 'favicon.svg'
+	}
+
+	const parseRecommendationSearch = (input: unknown): DiscoveryItem[] => {
+		const root = input && typeof input === 'object' ? input as Record<string, unknown> : {}
+		const results = (root.results ?? (root.data && typeof root.data === 'object' ? (root.data as Record<string, unknown>).results : undefined)) as Record<string, unknown> | undefined
+		if (!results) return []
+
+		const parse = (key: 'songs' | 'albums' | 'artists', type: DiscoveryItem['type']) => {
+			const group = results[key]
+			const data = group && typeof group === 'object' ? (group as Record<string, unknown>).data : []
+			if (!Array.isArray(data)) return []
+			return data.map((value) => {
+				const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+				const attrs = item.attributes && typeof item.attributes === 'object' ? item.attributes as Record<string, unknown> : {}
+				const artwork = attrs.artwork && typeof attrs.artwork === 'object' ? attrs.artwork as Record<string, unknown> : {}
+				const id = String(attrs.trackId ?? attrs.id ?? item.trackId ?? item.id ?? item.artistId ?? '')
+				if (!id) return null
+				return {
+					type,
+					id,
+					name: String(attrs.name ?? item.name ?? item.title ?? item.trackName ?? 'Unknown'),
+					artist: String(attrs.artistName ?? item.artistName ?? item.artist ?? 'Unknown Artist'),
+					album: String(attrs.albumName ?? item.albumName ?? item.album ?? ''),
+					artUrl: cleanArtUrl(artwork.url ?? item.artworkUrl100 ?? item.artUrl ?? item.image ?? item.coverUrl),
+				}
+			}).filter((item): item is DiscoveryItem => Boolean(item))
+		}
+
+		return [...parse('songs', 'song'), ...parse('albums', 'album'), ...parse('artists', 'artist')]
+	}
+
+	const loadRecommendations = async () => {
+		loadingRecommendations = true
+		try {
+			const history = getRecentlyPlayed(100)
+			recentlyPlayed = history.slice(0, 10).map((track) => ({
+				type: 'song',
+				id: track.trackId || track.id,
+				name: track.name,
+				artist: track.artist,
+				album: track.album,
+				artUrl: cleanArtUrl(track.artUrl),
+			}))
+
+			if (!history.length) {
+				topPicks = []
+			} else {
+				const latest = history[0]
+				const latestItem: DiscoveryItem = {
+					type: 'song',
+					id: latest.trackId || latest.id,
+					name: latest.name,
+					artist: latest.artist,
+					album: latest.album,
+					artUrl: cleanArtUrl(latest.artUrl),
+				}
+				const artists = [...new Set(history.map((track) => track.artist.trim()).filter(Boolean))].slice(0, 4)
+				const groups = await Promise.all(artists.map(async (artist) => {
+					try { return parseRecommendationSearch(await spicyamll.search({ term: artist, limit: 15 })) } catch { return [] }
+				}))
+				topPicks = [latestItem, ...shuffle(dedupeItems(groups.flat()).filter((x) => !(x.type === 'song' && x.id === latestItem.id))).slice(0, 10)]
+			}
+
+			const listenedIds = new Set(history.map((track) => String(track.trackId || track.id)))
+			const artists = [...new Set(history.map((track) => track.artist.trim()).filter(Boolean))].slice(0, 8)
+			const queries = artists.length ? artists : ['Hits', 'Pop', 'Rock', 'Electronic']
+			const groups = await Promise.all([
+				...queries.map(async (term) => {
+					try { return parseRecommendationSearch(await spicyamll.search({ term, limit: 25 })) } catch { return [] }
+				}),
+				(async () => {
+					try { return parseRecommendationSearch(await spicyamll.recommendations({ name: 'search-landing' })) } catch { return [] }
+				})(),
+			])
+			recommendations = shuffle(dedupeItems(groups.flat()).filter((item) => item.type !== 'song' || !listenedIds.has(item.id))).slice(0, 90)
+		} catch (e) {
+			console.warn('[Discovery] Recommendations failed:', e)
+		} finally {
+			loadingRecommendations = false
+		}
+	}
+
 	const playTrack = async (item: ReturnType<typeof normalizeTracks>[number], index: number) => {
 		let track = item
-
 		try {
 			const detail = await spicyamll.song(item.id)
 			const normalized = normalizeTracks(detail)
 			if (normalized[0]) track = { ...item, ...normalized[0] }
 		} catch {}
+
+		recordRecentTrack({
+			trackId: track.id,
+			name: track.name,
+			artist: track.artist,
+			album: track.album || track.albumName,
+			artUrl: track.image,
+		})
 
 		const id = remoteId(track.id, index)
 		registerRemoteTrack({
@@ -46,62 +171,54 @@
 			discNo: 0,
 			discOf: 0,
 			language: undefined,
-			image: track.image
-				? { optimized: false, small: track.image, full: track.image }
-				: undefined,
+			image: track.image ? { optimized: false, small: track.image, full: track.image } : undefined,
 			primaryColor: undefined,
 			file: undefined,
 			directory: undefined,
 			fileName: undefined,
 			scannedAt: Date.now(),
-			url: spicyamll.streamUrl(track.id, {
-				codec: 'atmos',
-				fallback: false,
-				language: 'en-US',
-			}),
+			url: spicyamll.streamUrl(track.id, { codec: 'atmos', fallback: false, language: 'en-US' }),
 			favorite: false,
 			type: 'track',
 		})
-
 		player.playTrack(0, [id])
+		void loadRecommendations()
 	}
 
-	const dedupe = (tracks: ReturnType<typeof normalizeTracks>) =>
-		tracks.filter(
-			(item, index, array) =>
-				item.id > 0 && array.findIndex((candidate) => candidate.id === item.id) === index,
-		)
+	const playDiscoveryItem = async (item: DiscoveryItem, index: number) => {
+		if (item.type === 'song') {
+			const tracks = normalizeTracks(await spicyamll.song(item.id))
+			if (tracks[0]) return playTrack(tracks[0], index)
+		}
+
+		if (item.type === 'artist') {
+			const tracks = await getSongsForArtist(item.id, item.name)
+			if (tracks[0]) return playTrack(tracks[0], index)
+		}
+
+		if (item.type === 'album') {
+			const tracks = normalizeTracks(await spicyamll.album({ album: item.id, l: 'en-US' }))
+			if (tracks[0]) return playTrack(tracks[0], index)
+		}
+	}
 
 	const search = async () => {
 		const term = query.trim()
 		if (!term) return
-
 		loading = true
 		error = null
 		searched = true
 		results = []
 
 		try {
-			// Primary discovery search.
-			results = dedupe(await searchCatalog(term))
-
-			// If the catalog search does not return tracks, resolve the query
-			// as an artist using the documented artist detail endpoint, then
-			// load that artist's songs.
+			results = await searchCatalog(term)
 			if (!results.length) {
-				const artist = dedupe(normalizeTracks(await spicyamll.artist({ artist: term })))
-				if (artist[0]) {
-					results = dedupe(await getSongsForArtist(artist[0].id, artist[0].name))
-				}
+				const artist = normalizeTracks(await spicyamll.artist({ artist: term }))
+				if (artist[0]) results = await getSongsForArtist(artist[0].id, artist[0].name)
 			}
-
-			// Finally try the album detail endpoint if the query is an album.
-			if (!results.length) {
-				results = dedupe(normalizeTracks(await spicyamll.album({ album: term, l: 'en-US' })))
-			}
+			if (!results.length) results = normalizeTracks(await spicyamll.album({ album: term, l: 'en-US' }))
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unable to search SpicyAMLL'
-			results = []
 		} finally {
 			loading = false
 		}
@@ -113,6 +230,8 @@
 		const remaining = Math.floor(seconds % 60)
 		return `${minutes}:${remaining.toString().padStart(2, '0')}`
 	}
+
+	void loadRecommendations()
 </script>
 
 <Header title="Discovery" noBackButton>
