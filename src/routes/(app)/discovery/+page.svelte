@@ -122,7 +122,9 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		const id = remoteId(track.id, index)
 
 		registerRemoteTrack({
-			id,
+				id,
+			remoteId: Number(track.id),
+			streaming: true,
 			uuid: `spicyamll:${track.id}`,
 			name: track.name,
 			album: track.album || track.albumName || '~\\0unknown',
