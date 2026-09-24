@@ -7,16 +7,9 @@
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
 import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online-library.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
-	import { normalizeTracks, searchCatalog, spicyamll, getSongsForArtist } from '$lib/services/spicyamll.ts'
+	import { normalizeTracks, parseDiscoveryResults, searchArtists, searchDiscovery, spicyamll, getSongsForArtist, type DiscoveryResource } from '$lib/services/spicyamll.ts'
 
-	type DiscoveryItem = {
-		type: 'song' | 'album' | 'artist'
-		id: string
-		name: string
-		artist: string
-		album: string
-		artUrl: string
-	}
+	type DiscoveryItem = DiscoveryResource
 
 	const player = usePlayer()
 	let query = $state('')
@@ -30,10 +23,11 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	let recentlyPlayed = $state<DiscoveryItem[]>([])
 	let favoriteArtists = $state<string[]>([])
 	let downloading = $state<string[]>([])
-	let selectedAlbum = $state<DiscoveryTrack | null>(null)
+	let selectedAlbum = $state<DiscoveryItem | null>(null)
 	let albumTracks = $state<DiscoveryTrack[]>([])
-	let selectedArtist = $state<string | null>(null)
+	let selectedArtist = $state<DiscoveryItem | null>(null)
 	let artistTracks = $state<DiscoveryTrack[]>([])
+	let artistInfo = $state<DiscoveryItem | null>(null)
 
 	const remoteId = (id: number, index: number) => -Math.max(1, Math.abs(id || index + 1))
 
@@ -67,34 +61,7 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		return /^https?:\/\//i.test(value) ? value : 'favicon.svg'
 	}
 
-	const parseRecommendationSearch = (input: unknown): DiscoveryItem[] => {
-		const root = input && typeof input === 'object' ? input as Record<string, unknown> : {}
-		const results = (root.results ?? (root.data && typeof root.data === 'object' ? (root.data as Record<string, unknown>).results : undefined)) as Record<string, unknown> | undefined
-		if (!results) return []
-
-		const parse = (key: 'songs' | 'albums' | 'artists', type: DiscoveryItem['type']) => {
-			const group = results[key]
-			const data = group && typeof group === 'object' ? (group as Record<string, unknown>).data : []
-			if (!Array.isArray(data)) return []
-			return data.map((value) => {
-				const item = value && typeof value === 'object' ? value as Record<string, unknown> : {}
-				const attrs = item.attributes && typeof item.attributes === 'object' ? item.attributes as Record<string, unknown> : {}
-				const artwork = attrs.artwork && typeof attrs.artwork === 'object' ? attrs.artwork as Record<string, unknown> : {}
-				const id = String(attrs.trackId ?? attrs.id ?? item.trackId ?? item.id ?? item.artistId ?? '')
-				if (!id) return null
-				return {
-					type,
-					id,
-					name: String(attrs.name ?? item.name ?? item.title ?? item.trackName ?? 'Unknown'),
-					artist: String(attrs.artistName ?? item.artistName ?? item.artist ?? 'Unknown Artist'),
-					album: String(attrs.albumName ?? item.albumName ?? item.album ?? ''),
-					artUrl: cleanArtUrl(artwork.url ?? item.artworkUrl100 ?? item.artUrl ?? item.image ?? item.coverUrl),
-				}
-			}).filter((item): item is DiscoveryItem => Boolean(item))
-		}
-
-		return [...parse('songs', 'song'), ...parse('albums', 'album'), ...parse('artists', 'artist')]
-	}
+	const parseRecommendationSearch = (input: unknown): DiscoveryItem[] => parseDiscoveryResults(input)
 
 	const loadRecommendations = async () => {
 		loadingRecommendations = true
@@ -209,22 +176,35 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		}
 	}
 
-	const viewAlbum = async (item: DiscoveryTrack) => {
+type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
+
+	const viewAlbum = async (item: DiscoveryItem) => {
 		selectedAlbum = item
 		try {
-			albumTracks = normalizeTracks(await spicyamll.album({ album: item.id, l: 'en-US' }))
+			albumTracks = normalizeTracks(await spicyamll.album({ album: item.id, l: 'en-US', storefront: 'us' }))
 		} catch {
 			albumTracks = []
 		}
 	}
 
-	type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
-
-	const viewArtist = async (artist: string, item: DiscoveryTrack | undefined = undefined) => {
-		selectedArtist = artist
+	const viewArtist = async (artist: string, artistId?: string) => {
 		try {
-			if (item) artistTracks = await getSongsForArtist(item.id, artist)
-			else artistTracks = []
+			let id = artistId
+			let info: DiscoveryItem | null = artistId
+				? { type: 'artist', id: artistId, name: artist, artist: artist, album: '', artUrl: 'favicon.svg' }
+				: null
+			if (!id) {
+				const found = await searchArtists(artist)
+				id = found[0] ? String(found[0].id) : undefined
+				info = found[0] ? {
+					type: 'artist', id, name: found[0].name, artist: found[0].artist || artist,
+					album: '', artUrl: found[0].image || 'favicon.svg'
+				} : null
+			}
+			if (!id) return
+			selectedArtist = info
+			artistInfo = info
+			artistTracks = await getSongsForArtist(id, artist)
 		} catch {
 			artistTracks = []
 		}
@@ -236,6 +216,8 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	}
 
 	const playDiscoveryItem = async (item: DiscoveryItem, index: number) => {
+		if (item.type === 'album') return viewAlbum(item)
+		if (item.type === 'artist') return viewArtist(item.name, item.id)
 		if (item.type === 'song') {
 			const tracks = normalizeTracks(await spicyamll.song(item.id))
 			if (tracks[0]) return playTrack(tracks[0], index)
@@ -261,12 +243,8 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		results = []
 
 		try {
-			results = await searchCatalog(term)
-			if (!results.length) {
-				const artist = normalizeTracks(await spicyamll.artist({ artist: term }))
-				if (artist[0]) results = await getSongsForArtist(artist[0].id, artist[0].name)
-			}
-			if (!results.length) results = normalizeTracks(await spicyamll.album({ album: term, l: 'en-US' }))
+			results = await searchDiscovery(term)
+
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unable to search SpicyAMLL'
 		} finally {
