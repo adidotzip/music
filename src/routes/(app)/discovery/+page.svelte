@@ -30,10 +30,10 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	let recentlyPlayed = $state<DiscoveryItem[]>([])
 	let favoriteArtists = $state<string[]>([])
 	let downloading = $state<string[]>([])
-	let selectedAlbum = $state<ReturnType<typeof normalizeTracks>[number] | null>(null)
-	let albumTracks = $state<ReturnType<typeof normalizeTracks>>([])
+	let selectedAlbum = $state<DiscoveryTrack | null>(null)
+	let albumTracks = $state<DiscoveryTrack[]>([])
 	let selectedArtist = $state<string | null>(null)
-	let artistTracks = $state<ReturnType<typeof normalizeTracks>>([])
+	let artistTracks = $state<DiscoveryTrack[]>([])
 
 	const remoteId = (id: number, index: number) => -Math.max(1, Math.abs(id || index + 1))
 
@@ -185,7 +185,7 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	void loadRecommendations()
 	}
 
-	const addSong = async (item: ReturnType<typeof normalizeTracks>[number]) => {
+	const addSong = async (item: DiscoveryTrack) => {
 		if (downloading.includes(String(item.id))) return
 		downloading = [...downloading, String(item.id)]
 		try {
@@ -209,7 +209,7 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		}
 	}
 
-	const viewAlbum = async (item: ReturnType<typeof normalizeTracks>[number]) => {
+	const viewAlbum = async (item: DiscoveryTrack) => {
 		selectedAlbum = item
 		try {
 			albumTracks = normalizeTracks(await spicyamll.album({ album: item.id, l: 'en-US' }))
@@ -218,7 +218,9 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		}
 	}
 
-	const viewArtist = async (artist: string, item?: ReturnType<typeof normalizeTracks>[number]) => {
+	type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
+
+	const viewArtist = async (artist: string, item: DiscoveryTrack | undefined = undefined) => {
 		selectedArtist = artist
 		try {
 			if (item) artistTracks = await getSongsForArtist(item.id, artist)
