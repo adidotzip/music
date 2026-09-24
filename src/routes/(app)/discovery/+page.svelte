@@ -118,21 +118,9 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	}
 
 	const playTrack = async (item: ReturnType<typeof normalizeTracks>[number], index: number) => {
-		let track = item
-		try {
-			const detail = await spicyamll.song(item.id)
-			const normalized = normalizeTracks(detail)
-			if (normalized[0]) track = { ...item, ...normalized[0] }
-		} catch {}
-
-		const db = await getDatabase()
-		const localTrack = await db.getFromIndex('tracks', 'uuid', `spicyamll:${track.id}`)
-		if (localTrack) {
-			player.playTrack(0, [localTrack.id])
-			return
-		}
-
+		const track = item
 		const id = remoteId(track.id, index)
+
 		registerRemoteTrack({
 			id,
 			uuid: `spicyamll:${track.id}`,
@@ -153,13 +141,18 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 			directory: undefined,
 			fileName: undefined,
 			scannedAt: Date.now(),
-			url: spicyamll.streamUrl(track.id, { codec: 'atmos', fallback: false, language: 'en-US' }),
+			url: spicyamll.streamUrl(track.id, {
+				codec: 'atmos',
+				fallback: false,
+				language: 'en-US',
+				storefront: 'us',
+			}),
 			favorite: false,
 			type: 'track',
 		})
+
 		player.playTrack(0, [id])
-		favoriteArtists = getFavoriteArtistIds()
-	void loadRecommendations()
+		return id
 	}
 
 	const addSong = async (item: DiscoveryTrack) => {
@@ -240,8 +233,14 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		if (item.type === 'album') return viewAlbum(item)
 		if (item.type === 'artist') return viewArtist(item.name, item.id)
 		if (item.type === 'song') {
-			const tracks = normalizeTracks(await spicyamll.song(item.id))
-			if (tracks[0]) return playTrack(tracks[0], index)
+			const track = normalizeTracks({
+				id: item.id,
+				name: item.name,
+				artist: item.artist,
+				album: item.album,
+				image: item.artUrl,
+			})[0]
+			if (track) return playTrack(track, index)
 		}
 
 		if (item.type === 'artist') {
