@@ -9,7 +9,7 @@
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { getDatabase } from '$lib/db/database.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
-import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online-library.ts'
+import { downloadAlbumToLibrary, downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online-library.ts'
 	import { usePlayer } from '$lib/stores/player/use-store.ts'
 	import { normalizeTracks, parseDiscoveryResults, searchArtists, searchDiscovery, spicyamll, getSongsForArtist, type DiscoveryResource } from '$lib/services/spicyamll.ts'
 
@@ -27,6 +27,7 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	let recentlyPlayed = $state<DiscoveryItem[]>([])
 	let favoriteArtists = $state<string[]>([])
 	let downloading = $state<string[]>([])
+	let downloadingAlbums = $state<string[]>([])
 	let selectedAlbum = $state<DiscoveryItem | null>(null)
 	let albumTracks = $state<DiscoveryTrack[]>([])
 	let selectedArtist = $state<DiscoveryItem | null>(null)
@@ -174,6 +175,24 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		player.playTrack(0, ids, shuffleQueue ? { shuffle: true } : undefined)
 	}
 
+	const addAlbum = async (item: DiscoveryItem) => {
+		if (item.type !== 'album' || downloadingAlbums.includes(String(item.id))) return
+		downloadingAlbums = [...downloadingAlbums, String(item.id)]
+		error = null
+		try {
+			await downloadAlbumToLibrary(item.id, {
+				name: item.name,
+				artist: item.artist,
+				year: undefined,
+				artUrl: item.artUrl,
+			})
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Unable to download album'
+		} finally {
+			downloadingAlbums = downloadingAlbums.filter((id) => id !== String(item.id))
+		}
+	}
+
 	const addSong = async (item: DiscoveryTrack) => {
 		if (downloading.includes(String(item.id))) return
 		downloading = [...downloading, String(item.id)]
@@ -214,7 +233,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	const viewAlbum = async (item: DiscoveryItem) => {
 		selectedAlbum = item
 		try {
-			albumTracks = normalizeTracks(await spicyamll.album({ album: item.id, l: 'en-US', storefront: 'us' }))
+			albumTracks = await spicyamll.albumTracks(item.id)
 		} catch {
 			albumTracks = []
 		}
@@ -438,6 +457,12 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 				<Artwork src={selectedAlbum.artUrl || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
 				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
 				{#if albumTracks.length}<Button onclick={() => void playTrackCollection(albumTracks)}>Play</Button>{/if}
+				<Button
+					onclick={() => void addAlbum(selectedAlbum)}
+					disabled={downloadingAlbums.includes(String(selectedAlbum.id))}
+				>
+					{downloadingAlbums.includes(String(selectedAlbum.id)) ? 'Downloading…' : 'Download Album'}
+				</Button>
 				<Button onclick={() => { selectedAlbum = null; albumTracks = [] }} kind="blank">Close</Button>
 			</div>
 			<div class="mt-4 flex flex-col gap-1">
