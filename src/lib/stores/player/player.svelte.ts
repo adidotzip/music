@@ -28,6 +28,7 @@ export class PlayerStore {
 
 	readonly #audio = new Audio()
 	readonly #audioLoader = new AudioLoader((src) => {
+		this.#audio.preload = src ? 'auto' : 'metadata'
 		this.#audio.src = src ?? ''
 		if (src) {
 			this.#audio.load()
