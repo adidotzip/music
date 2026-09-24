@@ -16,31 +16,61 @@ export interface SpicyTrack {
 	[key: string]: unknown
 }
 
+const API_CACHE_TTL = {
+	search: 5 * 60_000,
+	recommendations: 10 * 60_000,
+	album: 30 * 60_000,
+	artist: 30 * 60_000,
+	default: 5 * 60_000,
+} as const
+
+const responseCache = new Map<string, { expiresAt: number; value: unknown }>()
+const pendingRequests = new Map<string, Promise<unknown>>()
+
+const getCacheTtl = (path: string) => {
+	if (path.includes('recommendations')) return API_CACHE_TTL.recommendations
+	if (path.includes('album')) return API_CACHE_TTL.album
+	if (path.includes('artist')) return API_CACHE_TTL.artist
+	if (path === '/search' || path.includes('/catalog/')) return API_CACHE_TTL.search
+	return API_CACHE_TTL.default
+}
+
 const request = async <T>(path: string, params: SpicyApiParams = {}): Promise<T> => {
 	const url = new URL(`${API_BASE}${path}`)
 	for (const [key, value] of Object.entries(params)) {
-		if (value !== undefined && value !== null && value !== '') {
-			url.searchParams.set(key, String(value))
-		}
+		if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value))
 	}
 
-	try {
-		const response = await fetch(url, { headers: { Accept: 'application/json' } })
-		if (!response.ok) throw new Error(`SpicyAMLL ${response.status}: ${response.statusText}`)
-		return response.json() as Promise<T>
-	} catch (directError) {
-		const proxy = new URL(`${API_BASE}/proxy`)
-		proxy.searchParams.set('url', url.toString())
+	const key = url.toString()
+	const cached = responseCache.get(key)
+	if (cached && cached.expiresAt > Date.now()) return cached.value as T
+	if (cached) responseCache.delete(key)
+
+	const pending = pendingRequests.get(key)
+	if (pending) return pending as Promise<T>
+
+	const promise = (async () => {
 		try {
+			const response = await fetch(url, { headers: { Accept: 'application/json' } })
+			if (!response.ok) throw new Error(`SpicyAMLL ${response.status}: ${response.statusText}`)
+			const value = await response.json()
+			responseCache.set(key, { value, expiresAt: Date.now() + getCacheTtl(path) })
+			return value
+		} catch (directError) {
+			if (!(directError instanceof TypeError)) throw directError
+			const proxy = new URL(`${API_BASE}/proxy`)
+			proxy.searchParams.set('url', url.toString())
 			const response = await fetch(proxy, { headers: { Accept: 'application/json' } })
 			if (!response.ok) throw new Error(`SpicyAMLL proxy ${response.status}: ${response.statusText}`)
-			return response.json() as Promise<T>
-		} catch {
-			throw directError
+			const value = await response.json()
+			responseCache.set(key, { value, expiresAt: Date.now() + getCacheTtl(path) })
+			return value
 		}
-	}
-}
+	})()
 
+	pendingRequests.set(key, promise)
+	try { return await promise as T } finally { pendingRequests.delete(key) }
+}
 const unwrap = <T>(value: unknown): T => {
 	if (value && typeof value === 'object') {
 		const record = value as Record<string, unknown>
