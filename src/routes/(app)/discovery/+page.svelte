@@ -1,4 +1,15 @@
-<script lang="ts">
+<s
+	const addDiscoverySong = async (item: DiscoveryItem) => {
+		const track = normalizeTracks({
+			id: item.id,
+			name: item.name,
+			artist: item.artist,
+			album: item.album,
+			image: item.artUrl,
+		})[0]
+		if (track) await addSong(track)
+	}
+cript lang="ts">
 	import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
@@ -16,7 +27,7 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	let loading = $state(false)
 	let loadingRecommendations = $state(false)
 	let error = $state<string | null>(null)
-	let results = $state<ReturnType<typeof normalizeTracks>>([])
+	let results = $state<DiscoveryItem[]>([])
 	let searched = $state(false)
 	let topPicks = $state<DiscoveryItem[]>([])
 	let recommendations = $state<DiscoveryItem[]>([])
@@ -330,11 +341,11 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 					<div class="flex shrink-0 items-center gap-1">
 						{#if item.type === 'song'}
 							<Button onclick={() => void playDiscoveryItem(item, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
-							<Button onclick={() => void addSong(normalizeTracks({ id: item.id, name: item.name, artist: item.artist, album: item.album, image: item.artUrl })[0])} kind="blank" tooltip="Add to library">{downloading.includes(item.id) ? '…' : '+'}</Button>
+							<Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">{downloading.includes(item.id) ? '…' : '+'}</Button>
 						{:else if item.type === 'album'}
-							<Button onclick={() => void viewAlbum(item)} kind="blank" tooltip="View album"><Icon type="album" /></Button>
+							<Button onclick={() => void viewAlbum(item)} kind="blank" tooltip="View album"><Icon type="musicNote" /></Button>
 						{:else}
-							<Button onclick={() => void viewArtist(item.name, item.id)} kind="blank" tooltip="View artist"><Icon type="artist" /></Button>
+							<Button onclick={() => void viewArtist(item.name, item.id)} kind="blank" tooltip="View artist"><Icon type="musicNote" /></Button>
 						{/if}
 					</div>
 				</article>
@@ -361,7 +372,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		</section>
 	{/if}
 
-	{#if selectedArtist.name}
+	{#if selectedArtist}
 		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
 			<div class="flex items-center justify-between gap-4"><div><div class="text-title-lg font-bold">{selectedArtist.name}</div><div class="text-body-sm opacity-60">Artist</div></div><Button onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }} kind="blank">Close</Button></div>
 			<div class="mt-4 flex flex-col gap-1">{#each artistTracks as track, index (track.id)}<div class="flex items-center gap-3 rounded-xl p-2"><div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.album}</div></div><Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button><Button onclick={() => void addSong(track)} kind="blank">+</Button></div>{/each}</div>
