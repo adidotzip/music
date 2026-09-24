@@ -425,7 +425,9 @@ export class PlayerStore {
 
 		const threshold = Math.min(timeThreshold, totalDuration * percentageThreshold)
 		if (totalDuration > 0 && playedTime >= threshold) {
-			void dbAddToPlayHistory(trackId)
+			if (!track?.streaming) {
+				void dbAddToPlayHistory(trackId)
+			}
 			if (track) {
 				recordRecentTrack({
 					trackId: track.id,
