@@ -28,6 +28,9 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 	let selectedArtist = $state<DiscoveryItem | null>(null)
 	let artistTracks = $state<DiscoveryTrack[]>([])
 	let artistInfo = $state<DiscoveryItem | null>(null)
+	let songResults = $derived(results.filter((item) => item.type === 'song'))
+	let albumResults = $derived(results.filter((item) => item.type === 'album'))
+	let artistResults = $derived(results.filter((item) => item.type === 'artist'))
 
 	const remoteId = (id: number, index: number) => -Math.max(1, Math.abs(id || index + 1))
 
@@ -326,37 +329,63 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			<div>Try a different artist, album, or song.</div>
 		</div>
 	{:else if results.length > 0}
-		<section class="flex flex-col gap-2">
-			{#each results as item, index (item.type + ':' + item.id)}
-				<article class="flex items-center gap-4 rounded-2xl p-3 transition-colors hover:bg-surfaceContainerHighest">
-					<button class="shrink-0" onclick={() => void playDiscoveryItem(item, index)} aria-label={item.type === 'song' ? 'Play song' : item.type === 'album' ? 'View album' : 'View artist'}>
-						<Artwork src={item.artUrl} alt={item.name} class="size-16 rounded-xl" fallbackIcon="musicNote" />
-					</button>
-					<div class="min-w-0 grow">
-						<div class="truncate text-title-md">{item.name}</div>
-						<div class="truncate text-body-sm opacity-65">{item.type === 'artist' ? 'Artist' : item.artist || 'Unknown Artist'}</div>
-						{#if item.album}<div class="truncate text-body-sm opacity-50">{item.album}</div>{/if}
-						<div class="mt-1 flex gap-3 text-body-sm">
-							<button class="opacity-60 hover:opacity-100" onclick={() => void playDiscoveryItem(item, index)}>
-								{item.type === 'song' ? 'Play' : item.type === 'album' ? 'View album' : 'View artist'}
+		<section class="flex flex-col gap-8">
+			{#if songResults.length}
+				<div class="flex flex-col gap-2">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg font-bold">Songs</h2>
+						<span class="text-body-sm opacity-50">{songResults.length}</span>
+					</div>
+					{#each songResults as item, index (item.id)}
+						<article class="group flex items-center gap-3 rounded-2xl px-3 py-2 hover:bg-surfaceContainerHighest">
+							<Artwork src={item.artUrl} alt={item.name} class="size-14 shrink-0 rounded-xl" fallbackIcon="musicNote" />
+							<div class="min-w-0 grow">
+								<div class="truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || 'Unknown Artist'}</div>
+							</div>
+							<div class="hidden shrink-0 gap-1 group-hover:flex sm:flex">
+								<Button onclick={() => void playDiscoveryItem(item, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
+								<Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">{downloading.includes(item.id) ? '…' : '+'}</Button>
+							</div>
+						</article>
+					{/each}
+				</div>
+			{/if}
+
+			{#if albumResults.length}
+				<div class="flex flex-col gap-3">
+					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Albums</h2><span class="text-body-sm opacity-50">{albumResults.length}</span></div>
+					<div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
+						{#each albumResults as item (item.id)}
+							<button class="min-w-0 text-left" onclick={() => void viewAlbum(item)}>
+								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
+								<div class="mt-2 truncate text-title-sm">{item.name}</div>
+								<div class="truncate text-body-sm opacity-60">{item.artist || 'Unknown Artist'}</div>
 							</button>
-							{#if item.type === 'artist'}
-								<button class="opacity-60 hover:opacity-100" onclick={() => toggleArtist(item.id)}>{favoriteArtists.includes(item.id) ? '★ Following' : '☆ Follow'}</button>
-							{/if}
-						</div>
+						{/each}
 					</div>
-					<div class="flex shrink-0 items-center gap-1">
-						{#if item.type === 'song'}
-							<Button onclick={() => void playDiscoveryItem(item, index)} kind="blank" tooltip="Play"><Icon type="play" /></Button>
-							<Button onclick={() => void addDiscoverySong(item)} kind="blank" tooltip="Add to library">{downloading.includes(item.id) ? '…' : '+'}</Button>
-						{:else if item.type === 'album'}
-							<Button onclick={() => void viewAlbum(item)} kind="blank" tooltip="View album"><Icon type="musicNote" /></Button>
-						{:else}
-							<Button onclick={() => void viewArtist(item.name, item.id)} kind="blank" tooltip="View artist"><Icon type="musicNote" /></Button>
-						{/if}
+				</div>
+			{/if}
+
+			{#if artistResults.length}
+				<div class="flex flex-col gap-3">
+					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Artists</h2><span class="text-body-sm opacity-50">{artistResults.length}</span></div>
+					<div class="flex flex-col gap-1">
+						{#each artistResults as item (item.id)}
+							<div class="flex items-center gap-3 rounded-2xl p-3 hover:bg-surfaceContainerHighest">
+								<button class="shrink-0" onclick={() => void viewArtist(item.name, item.id)} aria-label="View artist">
+									<Artwork src={item.artUrl} alt={item.name} class="size-14 rounded-full" fallbackIcon="musicNote" />
+								</button>
+								<button class="min-w-0 grow text-left" onclick={() => void viewArtist(item.name, item.id)}>
+									<div class="truncate text-title-sm">{item.name}</div>
+									<div class="text-body-sm opacity-60">{item.genre || 'Artist'}</div>
+								</button>
+								<Button onclick={() => toggleArtist(item.id)} kind="blank">{favoriteArtists.includes(item.id) ? '★' : '☆'}</Button>
+							</div>
+						{/each}
 					</div>
-				</article>
-			{/each}
+				</div>
+			{/if}
 		</section>
 	{/if}
 
