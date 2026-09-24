@@ -205,7 +205,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		}
 	}
 
-	const viewArtist = async (artist: string, artistId?: string) => {
+	const viewArtist = async (artist: string, artistId: string | undefined) => {
 		try {
 			let id = artistId
 			let info: DiscoveryItem | null = artistId
