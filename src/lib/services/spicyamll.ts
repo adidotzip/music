@@ -88,13 +88,14 @@ export const spicyamll = {
 
 	streamUrl: (
 		song: string | number,
-		options: { codec?: string; fallback?: boolean; language?: string } = {},
+		options: { codec?: string; fallback?: boolean; language?: string; storefront?: string } = {},
 	) => {
 		const url = new URL(`${API_BASE}/stream`)
 		url.searchParams.set('song', String(song))
 		url.searchParams.set('codec', options.codec ?? 'atmos')
 		url.searchParams.set('fallback', String(options.fallback ?? false))
 		url.searchParams.set('l', options.language ?? 'en-US')
+		url.searchParams.set('storefront', options.storefront ?? 'us')
 		url.searchParams.set('websupport', 'true')
 		return url.toString()
 	},
