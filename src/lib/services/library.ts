@@ -241,7 +241,7 @@ function getRawHistory(): RecentTrack[] {
  * Replaying a song moves it to the front instead of creating duplicates.
  */
 export function recordRecentTrack(track: Record<string, unknown>) {
-	const id = songId(track)
+const id = String(track.remoteId ?? songId(track))
 	if (!id || !isBrowser()) return
 
 	const history = getRawHistory().filter((item) => String(item.id) !== id)
