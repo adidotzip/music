@@ -154,8 +154,11 @@ const parseDiscoveryGroup = (
 			: {}
 
 		const id = String(
-			attrs.trackId ?? attrs.collectionId ?? attrs.artistId ??
-			attrs.id ?? item.trackId ?? item.collectionId ?? item.artistId ?? item.id ?? '',
+			type === 'song'
+				? (attrs.trackId ?? item.trackId ?? attrs.id ?? item.id ?? '')
+				: type === 'album'
+					? (attrs.collectionId ?? item.collectionId ?? attrs.id ?? item.id ?? '')
+					: (attrs.artistId ?? item.artistId ?? attrs.id ?? item.id ?? ''),
 		)
 		if (!id) return null
 
