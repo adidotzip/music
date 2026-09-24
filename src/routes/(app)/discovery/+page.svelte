@@ -5,6 +5,7 @@
 	import IconButton from '$lib/components/IconButton.svelte'
 	import MenuButton from '$lib/components/MenuButton.svelte'
 	import Separator from '$lib/components/Separator.svelte'
+	import Spinner from '$lib/components/Spinner.svelte'
 	import { goto } from '$app/navigation'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
@@ -24,7 +25,7 @@ import { getFavoriteArtistIds, toggleFavoriteArtist } from '$lib/services/online
 	let topPicks = $state<DiscoveryItem[]>([])
 	let recommendations = $state<DiscoveryItem[]>([])
 	let recentlyPlayed = $state<DiscoveryItem[]>([])
-	let favoriteArtists = $state<string[]>([])
+	let favoriteArtists = $state<string[]>(getFavoriteArtistIds())
 	let selectedAlbum = $state<DiscoveryItem | null>(null)
 	let albumTracks = $state<DiscoveryTrack[]>([])
 	let selectedArtist = $state<DiscoveryItem | null>(null)
@@ -255,6 +256,8 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	}
 
 	void loadRecommendations()
+
+	const pageStagger = (index: number) => ({ '--discovery-delay': `${Math.min(index, 8) * 45}ms` })
 </script>
 
 {#snippet discoverySidebar()}
@@ -289,15 +292,17 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 
 {@render discoverySidebar()}
 
-<main class="mx-auto flex w-full max-w-(--app-max-content-width) flex-col gap-8 px-4 pt-8 pb-32 sm:pl-20">
-	<section class="flex flex-col gap-3">
-		<div class="text-headline-large font-bold">Discover music</div>
-		<div class="text-body-lg opacity-70">
-			Search songs, artists and albums from the Apple Music catalog.
+<main class="discovery-page mx-auto flex w-full max-w-(--app-max-content-width) flex-col gap-10 px-4 pt-6 pb-32 sm:pl-24 sm:pr-6 sm:pt-8">
+	<section class="flex flex-col gap-5">
+		<div class="discovery-heading flex flex-col gap-1">
+			<div class="text-headline-large font-bold">Discover music</div>
+			<div class="text-body-lg opacity-70">
+				Search songs, artists and albums from the Apple Music catalog.
+			</div>
 		</div>
 
 		<form
-			class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex w-full max-w-250 items-center gap-1 rounded-lg border border-primary/10 bg-surfaceContainerHighest px-2 @sm:gap-2"
+			class="@container discovery-search sticky top-2 z-5 mt-2 flex w-full max-w-250 self-end items-center gap-1 rounded-2xl border border-outlineVariant/50 bg-surfaceContainerHighest px-2 shadow-xs transition-[border-color,box-shadow,background-color] duration-200 @sm:gap-2 focus-within:border-primary/30 focus-within:shadow-md"
 			onsubmit={(event) => {
 				event.preventDefault()
 				void search()
@@ -306,7 +311,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			<Icon type="magnify" class="ml-2 shrink-0 opacity-60" />
 			<input
 				bind:value={query}
-				class="h-12 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
+				class="h-12 min-w-0 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
 				placeholder="Search tracks, artists, albums"
 				aria-label="Search music"
 			/>
@@ -325,11 +330,15 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	</section>
 
 	{#if error}
-		<div class="rounded-2xl border border-error/30 bg-errorContainer p-4 text-onErrorContainer">
+		<div class="discovery-state rounded-2xl border border-error/30 bg-errorContainer p-4 text-onErrorContainer">
 			{error}
 		</div>
 	{:else if loading}
-		<div class="flex min-h-50 items-center justify-center opacity-70">Searching the catalog…</div>
+		<div class="discovery-state flex min-h-60 flex-col items-center justify-center gap-4 text-center opacity-70" aria-live="polite">
+			<Spinner class="size-10" />
+			<div class="text-title-md">Searching the catalog…</div>
+			<div class="text-body-sm opacity-70">Finding songs, artists, and albums</div>
+		</div>
 	{:else if searched && results.length === 0}
 		<div class="flex min-h-50 flex-col items-center justify-center gap-2 text-center opacity-70">
 			<Icon type="magnify" class="size-20" />
@@ -337,15 +346,15 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			<div>Try a different artist, album, or song.</div>
 		</div>
 	{:else if results.length > 0}
-		<section class="flex flex-col gap-8">
+		<section class="flex flex-col gap-10">
 			{#if songResults.length}
-				<div class="flex flex-col gap-2">
+				<div class="discovery-section flex flex-col gap-2">
 					<div class="flex items-center justify-between">
 						<h2 class="text-title-lg font-bold">Songs</h2>
 						<span class="text-body-sm opacity-50">{songResults.length}</span>
 					</div>
 					{#each songResults as item, index (item.id)}
-						<article class="group flex items-center gap-3 rounded-2xl px-3 py-2 hover:bg-surfaceContainerHighest">
+						<article class="discovery-row group flex items-center gap-3 rounded-2xl px-3 py-2 hover:bg-surfaceContainerHighest" style={pageStagger(index)}>
 							<Artwork src={item.artUrl} alt={item.name} class="size-14 shrink-0 rounded-xl" fallbackIcon="musicNote" />
 							<div class="min-w-0 grow">
 								<div class="truncate text-title-sm">{item.name}</div>
@@ -361,11 +370,11 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			{/if}
 
 			{#if albumResults.length}
-				<div class="flex flex-col gap-3">
+				<div class="discovery-section flex flex-col gap-3">
 					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Albums</h2><span class="text-body-sm opacity-50">{albumResults.length}</span></div>
 					<div class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
-						{#each albumResults as item (item.id)}
-							<button class="min-w-0 text-left" onclick={() => void viewAlbum(item)}>
+						{#each albumResults as item, index (item.id)}
+							<button class="discovery-card min-w-0 text-left" style={pageStagger(index)} onclick={() => void viewAlbum(item)}>
 								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
 								<div class="mt-2 truncate text-title-sm">{item.name}</div>
 								<div class="truncate text-body-sm opacity-60">{item.artist || 'Unknown Artist'}</div>
@@ -376,11 +385,11 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			{/if}
 
 			{#if artistResults.length}
-				<div class="flex flex-col gap-3">
+				<div class="discovery-section flex flex-col gap-3">
 					<div class="flex items-center justify-between"><h2 class="text-title-lg font-bold">Artists</h2><span class="text-body-sm opacity-50">{artistResults.length}</span></div>
 					<div class="flex flex-col gap-1">
-						{#each artistResults as item (item.id)}
-							<div class="flex items-center gap-3 rounded-2xl p-3 hover:bg-surfaceContainerHighest">
+						{#each artistResults as item, index (item.id)}
+							<div class="discovery-row flex items-center gap-3 rounded-2xl p-3 hover:bg-surfaceContainerHighest" style={pageStagger(index)}>
 								<button class="shrink-0" onclick={() => void viewArtist(item.name, item.id)} aria-label="View artist">
 									<Artwork src={item.artUrl} alt={item.name} class="size-14 rounded-full" fallbackIcon="musicNote" />
 								</button>
@@ -398,7 +407,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	{/if}
 
 	{#if selectedAlbum}
-		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
+		<section class="discovery-detail rounded-3xl bg-surfaceContainerHighest p-5">
 			<div class="flex items-center gap-4">
 				<Artwork src={selectedAlbum.artUrl || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
 				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
@@ -417,7 +426,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	{/if}
 
 	{#if selectedArtist}
-		<section class="@container flex flex-col gap-4">
+		<section class="discovery-detail @container flex flex-col gap-4">
 			<div class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row">
 				<Artwork
 					src={selectedArtist.artUrl}
@@ -474,12 +483,12 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 	{/if}
 	{#if !searched}
 		{#if recentlyPlayed.length}
-			<section class="flex flex-col gap-3">
+			<section class="discovery-section flex flex-col gap-3">
 				<div class="text-title-lg font-bold">Recently Played</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 					{#each recentlyPlayed as item (item.id)}
 						<div class="min-w-0">
-							<button class="block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
+							<button class="discovery-card block w-full text-left" onclick={() => void playDiscoveryItem(item, 0)}>
 								<Artwork src={item.artUrl} alt={item.name} class="aspect-square w-full rounded-2xl" fallbackIcon="musicNote" />
 								<div class="mt-2 truncate text-title-sm">{item.name}</div>
 								<div class="truncate text-body-sm opacity-60">{item.artist}</div>
@@ -494,7 +503,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		{/if}
 
 		{#if topPicks.length}
-			<section class="flex flex-col gap-3">
+			<section class="discovery-section flex flex-col gap-3">
 				<div class="text-title-lg font-bold">Top Picks For You</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 					{#each topPicks as item (item.type + item.id)}
@@ -515,7 +524,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		{/if}
 
 		{#if recommendations.length}
-			<section class="flex flex-col gap-3">
+			<section class="discovery-section flex flex-col gap-3">
 				<div class="text-title-lg font-bold">Recommended For You</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
 					{#each recommendations.slice(0, 20) as item (item.type + item.id)}
@@ -537,3 +546,30 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 		{/if}
 	{/if}
 </main>
+
+
+<style>
+	.discovery-page { animation: discovery-page-in 420ms var(--ease-standard); }
+	.discovery-heading, .discovery-search, .discovery-state, .discovery-detail, .discovery-section { animation: discovery-fade-up 480ms var(--ease-standard) both; }
+	.discovery-search { animation-delay: 60ms; }
+	.discovery-row, .discovery-card { animation: discovery-item-in 480ms var(--ease-standard) both; animation-delay: var(--discovery-delay, 0ms); }
+	.discovery-card { transition: transform 220ms var(--ease-standard), box-shadow 220ms var(--ease-standard), opacity 220ms var(--ease-standard); }
+	@media (hover: hover) { .discovery-card:hover { transform: translateY(-2px); } }
+	@media (max-width: 639px) {
+		.discovery-page { gap: 2rem; padding-left: 1rem; padding-right: 1rem; padding-top: 1.25rem; }
+		.discovery-search { top: 0.5rem; border-radius: 1.25rem; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.discovery-page, .discovery-heading, .discovery-search, .discovery-state, .discovery-detail, .discovery-section, .discovery-row, .discovery-card { animation: none !important; transition: none !important; }
+		.discovery-card:hover { transform: none; }
+	}
+	@keyframes discovery-page-in { from { opacity: 0; } to { opacity: 1; } }
+	@keyframes discovery-fade-up {
+		from { opacity: 0; transform: translateY(10px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+	@keyframes discovery-item-in {
+		from { opacity: 0; transform: translateY(8px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+</style>
