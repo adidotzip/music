@@ -165,6 +165,15 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		return id
 	}
 
+	const playTrackCollection = async (tracks: DiscoveryTrack[], shuffleQueue = false) => {
+		if (!tracks.length) return
+		const ids: number[] = []
+		for (const [index, track] of tracks.entries()) {
+			ids.push(await playTrack(track, index, false))
+		}
+		player.playTrack(0, ids, shuffleQueue ? { shuffle: true } : undefined)
+	}
+
 	const addSong = async (item: DiscoveryTrack) => {
 		if (downloading.includes(String(item.id))) return
 		downloading = [...downloading, String(item.id)]
@@ -428,7 +437,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			<div class="flex items-center gap-4">
 				<Artwork src={selectedAlbum.artUrl || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
 				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
-				{#if albumTracks.length}<Button onclick={() => void playTrack(albumTracks[0], 0)}>Play</Button>{/if}
+				{#if albumTracks.length}<Button onclick={() => void playTrackCollection(albumTracks)}>Play</Button>{/if}
 				<Button onclick={() => { selectedAlbum = null; albumTracks = [] }} kind="blank">Close</Button>
 			</div>
 			<div class="mt-4 flex flex-col gap-1">
@@ -467,17 +476,14 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 						<Button
 							kind="filled"
 							disabled={artistTracks.length === 0}
-							onclick={() => void playTrack(artistTracks[0]!, 0)}
+							onclick={() => void playTrackCollection(artistTracks)}
 						>
 							Play
 						</Button>
 						<Button
 							kind="flat"
 							disabled={artistTracks.length === 0}
-							onclick={async () => {
-							for (const [index, track] of artistTracks.entries()) await playTrack(track, index, false)
-							player.playTrack(0, artistTracks.map((track, index) => remoteId(track.id, index)), { shuffle: true })
-						}}
+							onclick={() => void playTrackCollection(artistTracks, true)}
 						>
 							Shuffle <Icon type="shuffle" />
 						</Button>
