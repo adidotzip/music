@@ -1,6 +1,6 @@
 import { getDatabase } from '$lib/db/database.ts'
 import { dispatchDatabaseChangedEvent } from '$lib/db/events.ts'
-import type { Track } from '$lib/library/types.ts'
+import type { Album, Track } from '$lib/library/types.ts'
 import { spicyamll } from './spicyamll.ts'
 
 const ARTIST_FAVORITES_KEY = 'adi_music_favorite_artists'
@@ -86,15 +86,19 @@ export async function downloadSongToLibrary(songId: string | number, metadata?: 
 	const id = Number(songId)
 	if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid song ID')
 
-	const existing = await getDatabase()
-	const existingTracks = await existing.getAll('tracks')
+	const db = await getDatabase()
+	const existingTracks = await db.getAll('tracks')
 	const found = existingTracks.find((track) => track.uuid === `spicyamll:${id}`)
 	if (found) return found
 
-	const response = await fetch(spicyamll.downloadUrl(id, { codec: 'atmos', language: 'en-US' }))
+	// Use AAC for the local library. The reference downloader uses the same
+	// /download endpoint, while AAC keeps the stored File browser-compatible.
+	const response = await fetch(spicyamll.downloadUrl(id, { codec: 'aac', language: 'en-US' }))
 	if (!response.ok) throw new Error(`Download failed: ${response.status}`)
 	const blob = await response.blob()
-	const name = metadata?.name || `track-${id}`
+	if (!blob.size) throw new Error('Download returned an empty file')
+
+	const name = String(metadata?.name || `track-${id}`).replace(/[\\/:*?"<>|]/g, '_')
 	const file = new File([blob], `${name}.m4a`, { type: blob.type || 'audio/mp4' })
 
 	const track: Omit<Track, 'id'> = {
@@ -105,10 +109,10 @@ export async function downloadSongToLibrary(songId: string | number, metadata?: 
 		year: metadata?.year || '~\\0unknown',
 		duration: Number(metadata?.duration || 0),
 		genre: metadata?.genre || [],
-		trackNo: metadata?.trackNo || 0,
-		trackOf: metadata?.trackOf || 0,
-		discNo: metadata?.discNo || 0,
-		discOf: metadata?.discOf || 0,
+		trackNo: Number(metadata?.trackNo || 0),
+		trackOf: Number(metadata?.trackOf || 0),
+		discNo: Number(metadata?.discNo || 0),
+		discOf: Number(metadata?.discOf || 0),
 		language: metadata?.language,
 		image: metadata?.image,
 		file,
@@ -118,7 +122,54 @@ export async function downloadSongToLibrary(songId: string | number, metadata?: 
 		url: undefined,
 	}
 
-	const trackId = await existing.add('tracks', track)
+	const trackId = await db.add('tracks', track)
 	dispatchDatabaseChangedEvent({ operation: 'add', storeName: 'tracks', key: trackId, value: { ...track, id: trackId } })
 	return { ...track, id: trackId }
+}
+
+export async function downloadAlbumToLibrary(
+	albumId: string | number,
+	metadata?: { name?: string; artist?: string; year?: string; artUrl?: string },
+) {
+	const id = Number(albumId)
+	if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid album ID')
+
+	const tracks = await spicyamll.albumTracks(id)
+	if (!tracks.length) throw new Error('Album contains no downloadable tracks')
+
+	const results: Track[] = []
+	for (let index = 0; index < tracks.length; index++) {
+		const track = tracks[index]
+		results.push(await downloadSongToLibrary(track.id, {
+			name: track.name,
+			album: track.album || metadata?.name || '~\\0unknown',
+			artists: track.artists?.length ? track.artists : [track.artist || metadata?.artist || 'Unknown Artist'],
+			year: track.year ? String(track.year) : (metadata?.year || '~\\0unknown'),
+			duration: track.duration || 0,
+			genre: [],
+			trackNo: index + 1,
+			trackOf: tracks.length,
+			discNo: 1,
+			discOf: 1,
+			image: track.image ? { optimized: false, small: track.image, full: track.image } : undefined,
+		}))
+	}
+
+	// Also create the native album record so the album appears in Library > Albums.
+	const existingAlbums = await db.getAll('albums')
+	const uuid = `spicyamll:album:${id}`
+	const existingAlbum = existingAlbums.find((album) => album.uuid === uuid)
+	if (!existingAlbum) {
+		const album: Omit<Album, 'id'> = {
+			uuid,
+			name: metadata?.name || results[0]?.album || `Album ${id}`,
+			artists: [metadata?.artist || results[0]?.artists?.[0] || 'Unknown Artist'],
+			year: metadata?.year,
+			image: undefined,
+		}
+		const albumDbId = await db.add('albums', album)
+		dispatchDatabaseChangedEvent({ operation: 'add', storeName: 'albums', key: albumDbId, value: { ...album, id: albumDbId } })
+	}
+
+	return results
 }
