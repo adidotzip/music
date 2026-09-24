@@ -89,7 +89,9 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 	const array = Array.isArray(value)
 		? value
 		: value && typeof value === 'object'
-			? Object.values(value as Record<string, unknown>).find(Array.isArray) ?? []
+			? ('id' in value || 'songId' in value || 'trackId' in value || 'musicId' in value || 'name' in value || 'title' in value)
+				? [value]
+				: Object.values(value as Record<string, unknown>).find(Array.isArray) ?? []
 			: []
 
 	return array
