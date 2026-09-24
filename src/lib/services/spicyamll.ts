@@ -75,6 +75,17 @@ export const spicyamll = {
 	convert: (params: SpicyApiParams) => request<unknown>('/get/convert', params).then(unwrap),
 	animatedArt: (params: SpicyApiParams) => request<unknown>('/get/animatedart', params).then(unwrap),
 
+	downloadUrl: (
+		song: string | number,
+		options: { codec?: string; language?: string } = {},
+	) => {
+		const url = new URL(`${API_BASE}/download`)
+		url.searchParams.set('song', String(song))
+		url.searchParams.set('codec', options.codec ?? 'atmos')
+		url.searchParams.set('l', options.language ?? 'en-US')
+		return url.toString()
+	},
+
 	streamUrl: (
 		song: string | number,
 		options: { codec?: string; fallback?: boolean; language?: string } = {},
