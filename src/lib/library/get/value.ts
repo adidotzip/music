@@ -6,10 +6,21 @@ import { FAVORITE_PLAYLIST_ID, FAVORITE_PLAYLIST_UUID, type LibraryStoreName } f
 import { getSongDetails } from '$lib/services/jiosaavn.ts'
 
 const idToUuidMap = new Map<number, string>()
+const remoteTrackMap = new Map<number, TrackData>()
 
 /** @public */
 export const registerRemoteId = (id: number, uuid: string) => {
 	idToUuidMap.set(id, uuid)
+}
+
+/** @public */
+export const registerRemoteTrack = (track: Omit<TrackData, 'id'> & { id: number }) => {
+	remoteTrackMap.set(track.id, track as TrackData)
+}
+
+/** @public */
+export const unregisterRemoteTrack = (id: number) => {
+	remoteTrackMap.delete(id)
 }
 
 type CacheKey<Store extends LibraryStoreName> = `${Store}:${string}`
@@ -55,6 +66,11 @@ export interface TrackData extends Track {
 const trackConfig: QueryConfig<TrackData> = {
 	fetch: async (id) => {
 		if (id < 0) {
+			const remote = remoteTrackMap.get(id)
+			if (remote) {
+				return remote
+			}
+
 			const uuid = idToUuidMap.get(id)
 			if (uuid) {
 				const details = await getSongDetails(uuid)
