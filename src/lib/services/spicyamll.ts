@@ -86,35 +86,59 @@ export const spicyamll = {
 }
 
 export const normalizeTracks = (input: unknown): SpicyTrack[] => {
-	const value = unwrap<unknown>(input)
-	const array = Array.isArray(value)
-		? value
-		: value && typeof value === 'object'
-			? ('id' in value || 'songId' in value || 'trackId' in value || 'musicId' in value || 'name' in value || 'title' in value)
-				? [value]
-				: Object.values(value as Record<string, unknown>).find(Array.isArray) ?? []
-			: []
+	const root = unwrap<unknown>(input)
+	const items: Record<string, unknown>[] = []
 
-	return array
-		.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
-		.map((item, index) => ({
-			...item,
-			id: Number(item.id ?? item.songId ?? item.song_id ?? item.musicId ?? index),
-			name: String(item.name ?? item.title ?? item.songName ?? 'Unknown'),
-			artist: String(item.artist ?? item.artistName ?? ''),
-			artists: Array.isArray(item.artists)
-				? item.artists.map(String)
-				: item.artist
-					? [String(item.artist)]
-					: item.artistName
-						? [String(item.artistName)]
-						: [],
-			album: String(item.album ?? item.albumName ?? ''),
-			albumName: String(item.albumName ?? item.album ?? ''),
-			image: String(item.image ?? item.artwork ?? item.cover ?? item.coverUrl ?? ''),
-			duration: Number(item.duration ?? item.durationSeconds ?? 0),
-			year: item.year as string | number | undefined,
-		}))
+	const collect = (value: unknown) => {
+		if (Array.isArray(value)) {
+			for (const item of value) collect(item)
+			return
+		}
+		if (!value || typeof value !== 'object') return
+
+		const record = value as Record<string, unknown>
+		// Apple Music resources are commonly { id, type, attributes: {...} }.
+		if (record.id !== undefined || record.songId !== undefined || record.trackId !== undefined || record.musicId !== undefined) {
+			items.push(record)
+			return
+		}
+		for (const child of Object.values(record)) collect(child)
+	}
+
+	collect(root)
+
+	return items
+		.map((item, index) => {
+			const attributes = item.attributes && typeof item.attributes === 'object'
+				? item.attributes as Record<string, unknown>
+				: {}
+			const artwork = attributes.artwork && typeof attributes.artwork === 'object'
+				? attributes.artwork as Record<string, unknown>
+				: {}
+			const artworkUrl = String(artwork.url ?? item.image ?? item.artwork ?? item.cover ?? item.coverUrl ?? '')
+				.replace('{w}', '600')
+				.replace('{h}', '600')
+				.replace('{f}', 'jpg')
+
+			const artistName = String(attributes.artistName ?? item.artist ?? item.artistName ?? '')
+			const albumName = String(attributes.albumName ?? item.album ?? item.albumName ?? '')
+
+			return {
+				...item,
+				id: Number(item.id ?? item.songId ?? item.song_id ?? item.trackId ?? item.musicId ?? index),
+				name: String(attributes.name ?? item.name ?? item.title ?? item.songName ?? 'Unknown'),
+				artist: artistName,
+				artists: artistName ? [artistName] : Array.isArray(item.artists) ? item.artists.map(String) : [],
+				album: albumName,
+				albumName,
+				image: artworkUrl,
+				duration: Number(attributes.durationInMillis ?? item.duration ?? item.durationSeconds ?? 0) / (
+					attributes.durationInMillis !== undefined ? 1000 : 1
+				),
+				year: attributes.releaseDate ? String(attributes.releaseDate).slice(0, 4) : item.year as string | number | undefined,
+			}
+		})
+		.filter((track) => Number.isFinite(track.id) && track.id > 0)
 }
 
 export const searchArtists = async (query: string) => {
