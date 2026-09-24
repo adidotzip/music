@@ -350,6 +350,16 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 								{#if item.duration} · {formatDuration(item.duration)}{/if}
 							</div>
 						{/if}
+						<div class="mt-1 flex gap-3 text-body-sm">
+							{#if item.album || item.albumName}
+								<button class="opacity-60 hover:opacity-100" onclick={() => void viewAlbum(item)}>View album</button>
+							{/if}
+							{#if item.artist}
+								<button class="opacity-60 hover:opacity-100" onclick={() => void viewArtist(item.artist, item)}>
+									{favoriteArtists.includes(String(item.id)) ? '★' : '☆'} {item.artist}
+								</button>
+							{/if}
+						</div>
 					</div>
 					<div class="flex shrink-0 items-center gap-1">
 						<Button onclick={() => void playTrack(item, index)} kind="blank" tooltip="Play">
