@@ -143,19 +143,15 @@ export class PlayerStore {
 			this.duration = 0
 
 			void this.#audioLoader.load(track.directory, track.file, track.url).then((result) => {
-				if (
-					result.status === 'loaded' &&
-					this.playing &&
-					this.activeTrack?.id === track.id &&
-					!this.#audio.paused
-				) {
-					return
-				}
-
+				// playTrack() sets the desired state to playing before the async
+				// source load finishes. Start playback as soon as the source is ready.
 				if (result.status === 'loaded' && this.playing && this.activeTrack?.id === track.id) {
+					if (this.equalizer.enabled) {
+						void this.equalizer.resumeContext()
+					}
 					const playPromise = this.#audio.play()
 					playPromise?.catch((error) => {
-						console.warn('Remote audio playback failed after loading:', error)
+						console.warn('Audio playback failed after loading:', error)
 						this.playing = false
 					})
 				}
