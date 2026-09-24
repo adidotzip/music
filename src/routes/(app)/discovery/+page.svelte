@@ -243,15 +243,6 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			if (track) return playTrack(track, index)
 		}
 
-		if (item.type === 'artist') {
-			const tracks = await getSongsForArtist(item.id, item.name)
-			if (tracks[0]) return playTrack(tracks[0], index)
-		}
-
-		if (item.type === 'album') {
-			const tracks = normalizeTracks(await spicyamll.album({ album: item.id, l: 'en-US' }))
-			if (tracks[0]) return playTrack(tracks[0], index)
-		}
 	}
 
 	const search = async () => {
@@ -393,6 +384,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 			<div class="flex items-center gap-4">
 				<Artwork src={selectedAlbum.artUrl || undefined} alt={selectedAlbum.name} class="size-24 rounded-2xl" fallbackIcon="musicNote" />
 				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedAlbum.name}</div><div class="opacity-65">{selectedAlbum.artist || 'Unknown Artist'}</div></div>
+				{#if albumTracks.length}<Button onclick={() => void playTrack(albumTracks[0], 0)}>Play</Button>{/if}
 				<Button onclick={() => { selectedAlbum = null; albumTracks = [] }} kind="blank">Close</Button>
 			</div>
 			<div class="mt-4 flex flex-col gap-1">
@@ -409,8 +401,13 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 
 	{#if selectedArtist}
 		<section class="rounded-3xl bg-surfaceContainerHighest p-5">
-			<div class="flex items-center justify-between gap-4"><div><div class="text-title-lg font-bold">{selectedArtist.name}</div><div class="text-body-sm opacity-60">Artist</div></div><Button onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }} kind="blank">Close</Button></div>
-			<div class="mt-4 flex flex-col gap-1">{#each artistTracks as track, index (track.id)}<div class="flex items-center gap-3 rounded-xl p-2"><div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.album}</div></div><Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button><Button onclick={() => void addSong(track)} kind="blank">+</Button></div>{/each}</div>
+			<div class="flex items-center gap-4">
+				<Artwork src={selectedArtist.artUrl} alt={selectedArtist.name} class="size-24 shrink-0 rounded-full" fallbackIcon="musicNote" />
+				<div class="min-w-0 grow"><div class="text-title-lg font-bold">{selectedArtist.name}</div><div class="text-body-sm opacity-60">{selectedArtist.genre || 'Artist'}</div>{#if selectedArtist.bio}<div class="mt-1 line-clamp-2 text-body-sm opacity-60">{selectedArtist.bio}</div>{/if}</div>
+				<Button onclick={() => toggleArtist(selectedArtist.id)} kind="blank">{favoriteArtists.includes(selectedArtist.id) ? 'Following' : 'Follow'}</Button>
+				<Button onclick={() => { selectedArtist = null; artistInfo = null; artistTracks = [] }} kind="blank">Close</Button>
+			</div>
+			<div class="mt-5 flex flex-col gap-1">{#each artistTracks as track, index (track.id)}<div class="flex items-center gap-3 rounded-xl p-2 hover:bg-surface"><div class="min-w-0 grow"><div class="truncate">{track.name}</div><div class="text-body-sm opacity-60">{track.album}</div></div><Button onclick={() => void playTrack(track, index)} kind="blank"><Icon type="play" /></Button><Button onclick={() => void addSong(track)} kind="blank">+</Button></div>{/each}</div>
 		</section>
 	{/if}
 	{#if !searched}
