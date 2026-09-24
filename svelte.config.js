@@ -61,6 +61,9 @@ const config = {
 
 					// Artwork proxy
 					'https://artwork.m8tec.top',
+
+					// SpicyAMLL / Discovery artwork
+					'https://api.spicyamll.online',
 				],
 
 				'media-src': [
@@ -78,6 +81,9 @@ const config = {
 
 					// Deezer previews
 					'https://cdns-preview-*.dzcdn.net',
+
+					// SpicyAMLL streaming
+					'https://api.spicyamll.online',
 				],
 
 				'font-src': ['self'],
@@ -121,6 +127,9 @@ const config = {
 					'https://*.itunes.apple.com',
 					'https://mvod.itunes.apple.com',
 					'https://*.mzstatic.com',
+
+					// SpicyAMLL API + streaming
+					'https://api.spicyamll.online',
 
 					// Deezer API
 					'https://api.deezer.com',
