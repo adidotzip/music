@@ -503,6 +503,7 @@ export class PlayerStore {
 			if (track) {
 				recordRecentTrack({
 					trackId: track.id,
+					remoteId: track.remoteId,
 					name: track.name,
 					artist: track.artists?.[0] ?? 'Unknown Artist',
 					album: track.album,
