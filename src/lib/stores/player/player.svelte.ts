@@ -6,7 +6,9 @@ import { clamp } from '$lib/helpers/utils/clamp.ts'
 import { debounce } from '$lib/helpers/utils/debounce.ts'
 import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
 import { throttle } from '$lib/helpers/utils/throttle.ts'
-import { createTrackQuery, type TrackData } from '$lib/library/get/value-queries.ts'
+import { getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
+import { createTrackQuery } from '$lib/library/get/value-queries.ts'
+import { LyricsService } from '$lib/lyrics/LyricsService.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
 import { recordRecentTrack } from '$lib/services/library.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
@@ -74,6 +76,9 @@ export class PlayerStore {
 	set volume(value: number) {
 		this.#volume = clamp(value, 0, 100)
 	}
+
+	#preloadedAudio = new Map<number, { audio: HTMLAudioElement; objectUrl?: string }>()
+	#preloadedLyrics = new Map<number, Promise<unknown>>()
 
 	#activeTrackQuery: QueryResult<TrackData | undefined> = createTrackQuery(
 		() => this.#queue.itemsIds[this.#queue.activeTrackIndex] ?? -1,
@@ -183,6 +188,7 @@ export class PlayerStore {
 			})
 
 			if (track) {
+				void this.#preloadUpcoming(track)
 				this.animatedArtworkSrc = undefined
 				this.animatedArtworkTallSrc = undefined
 				this.animatedArtworkLoaded = false
@@ -209,6 +215,60 @@ export class PlayerStore {
 				this.animatedArtworkLoaded = false
 			}
 		})
+
+	#preloadUpcoming = async (track: TrackData): Promise<void> => {
+		const queueIds = this.#queue.itemsIds
+		const start = this.#queue.activeTrackIndex
+		if (start < 0 || !track.album || track.album === UNKNOWN_ITEM) return
+
+		const upcomingIds = queueIds.slice(start + 1, start + 3)
+		const upcoming = await Promise.all(
+			upcomingIds.map((id) => getLibraryValue('tracks', id, true)),
+		)
+
+		const albumTracks = upcoming.filter(
+			(candidate): candidate is TrackData =>
+			!!candidate &&
+			candidate.album === track.album &&
+			candidate.artists?.some((artist) => track.artists?.includes(artist)),
+		)
+
+		const keepIds = new Set(albumTracks.map((candidate) => candidate.id))
+
+		for (const [id, entry] of this.#preloadedAudio) {
+			if (!keepIds.has(id)) {
+				entry.audio.src = ''
+				entry.audio.load()
+				if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
+				this.#preloadedAudio.delete(id)
+			}
+		}
+
+		for (const candidate of albumTracks) {
+			if (!this.#preloadedLyrics.has(candidate.id)) {
+				const promise = LyricsService.fetchLyrics(candidate).catch(() => null)
+				this.#preloadedLyrics.set(candidate.id, promise)
+			}
+
+			if (this.#preloadedAudio.has(candidate.id)) continue
+
+			let src = candidate.url
+			let objectUrl: string | undefined
+
+			if (!src && candidate.file instanceof File) {
+				objectUrl = URL.createObjectURL(candidate.file)
+				src = objectUrl
+			}
+
+			if (!src) continue
+
+			const audio = new Audio()
+			audio.preload = 'auto'
+			audio.src = src
+			audio.load()
+			this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
+		}
+	}
 
 		// Guarded by loading: prevents play() on an empty/stale src during file fetch.
 		$effect(() => {
