@@ -121,7 +121,11 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 		}
 	}
 
-	const playTrack = async (item: ReturnType<typeof normalizeTracks>[number], index: number) => {
+	const playTrack = async (
+		item: ReturnType<typeof normalizeTracks>[number],
+		index: number,
+		startPlayback = true,
+	) => {
 		const track = item
 		const id = remoteId(track.id, index)
 
@@ -157,7 +161,7 @@ import { downloadSongToLibrary, getFavoriteArtistIds, toggleFavoriteArtist } fro
 			type: 'track',
 		})
 
-		player.playTrack(0, [id])
+		if (startPlayback) player.playTrack(0, [id])
 		return id
 	}
 
@@ -471,7 +475,7 @@ type DiscoveryTrack = ReturnType<typeof normalizeTracks>[number]
 							kind="flat"
 							disabled={artistTracks.length === 0}
 							onclick={async () => {
-							for (const [index, track] of artistTracks.entries()) await playTrack(track, index)
+							for (const [index, track] of artistTracks.entries()) await playTrack(track, index, false)
 							player.playTrack(0, artistTracks.map((track, index) => remoteId(track.id, index)), { shuffle: true })
 						}}
 						>
