@@ -2,68 +2,39 @@
 	import { onMount } from 'svelte'
 
 	const player = usePlayer()
-	let button: HTMLButtonElement
 
-	const isTypingTarget = (target: EventTarget | null) => {
-		if (!(target instanceof HTMLElement)) return false
-		return (
-			target.isContentEditable ||
-			target instanceof HTMLInputElement ||
-			target instanceof HTMLTextAreaElement ||
-			target instanceof HTMLSelectElement
-		)
+	let button: HTMLButtonElement
+	let setPlayerIcon: ((el: HTMLButtonElement, name: 'play' | 'pause') => void) | undefined
+
+	function syncIcon() {
+		if (!button || !setPlayerIcon) return
+		setPlayerIcon(button, player.playing ? 'pause' : 'play')
 	}
 
 	onMount(async () => {
-		const { initPlayerButton, setPlayerIcon } = await import(
+		const aero = await import(
 			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
 		)
 
-		initPlayerButton(button)
-		setPlayerIcon(button, player.playing ? 'pause' : 'play')
+		setPlayerIcon = aero.setPlayerIcon
+		aero.initPlayerButton(button)
+		syncIcon()
 
-		const syncIcon = () => setPlayerIcon(button, player.playing ? 'pause' : 'play')
-
-		const handlePressEnd = () => {
+		const handlePress = () => {
 			player.togglePlay()
 			syncIcon()
 		}
 
-		button.addEventListener('pressend', handlePressEnd)
-
-		// Keep Space as the music-player shortcut even when the AeroUI button
-		// itself does not have focus. Do not hijack text fields or editable UI.
-		const handleGlobalKeydown = (event: KeyboardEvent) => {
-			if (event.key !== ' ' || event.repeat || player.isQueueEmpty || isTypingTarget(event.target)) {
-				return
-			}
-
-			if (event.target instanceof Node && button.contains(event.target)) {
-				// AeroUI owns keyboard presses while the button or its injected
-				// label is focused. Do not toggle a second time here.
-				return
-			}
-
-			event.preventDefault()
-			player.togglePlay()
-			syncIcon()
-		}
-
-		window.addEventListener('keydown', handleGlobalKeydown)
+		button.addEventListener('pressend', handlePress)
 
 		return () => {
-			button.removeEventListener('pressend', handlePressEnd)
-			window.removeEventListener('keydown', handleGlobalKeydown)
+			button.removeEventListener('pressend', handlePress)
 		}
 	})
 
 	$effect(() => {
-		if (!button) return
-		void import(
-			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
-		).then(({ setPlayerIcon }) => {
-			setPlayerIcon(button, player.playing ? 'pause' : 'play')
-		})
+		player.playing
+		syncIcon()
 	})
 </script>
 
