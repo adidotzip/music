@@ -1,49 +1,32 @@
 <script lang="ts">
 	const { class: className }: { class?: ClassValue } = $props()
 	const player = usePlayer()
-
-	const handleKeydown = (event: KeyboardEvent) => {
-		if (player.isQueueEmpty) return
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault()
-			player.playNext()
-		}
-	}
 </script>
 
-<div class={['aero-skip-control', className]}>
-	<aero-skip-label
-		class="adi-aero-skip-label"
-		direction="next"
-		label={m.playerPlayNextTrack()}
-		disabled={player.isQueueEmpty}
-		role="button"
-		tabindex={player.isQueueEmpty ? -1 : 0}
-		aria-disabled={player.isQueueEmpty}
-		onclick={player.playNext}
-		onkeydown={handleKeydown}
-	></aero-skip-label>
-</div>
+<button
+	class={['aero-player aero-transport-button', className]}
+	aria-label={m.playerPlayNextTrack()}
+	disabled={player.isQueueEmpty}
+	onclick={player.playNext}
+>
+	<span class="aero-skip" data-direction="forward" data-size="24" aria-hidden="true"></span>
+</button>
 
 <style lang="postcss">
 	@reference '../../../../app.css';
 
-	.aero-skip-control {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: --spacing(11);
-		height: --spacing(11);
-		color: var(--color-onSecondaryContainer);
+	.aero-transport-button {
+		--player-size: --spacing(11);
+		--player-icon: --spacing(6);
+		--player-label: var(--color-onSecondaryContainer);
+		--player-pressed: var(--color-onSecondaryContainer);
+		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 12%, transparent);
+		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
+		flex: 0 0 auto;
 	}
 
-	.adi-aero-skip-label {
-		--aero-button-color: transparent;
-		--aero-button-foreground: var(--color-onSecondaryContainer);
-		--aero-button-hover-color: color-mix(in srgb, var(--color-onSecondaryContainer) 8%, transparent);
-		--aero-button-active-color: color-mix(in srgb, var(--color-onSecondaryContainer) 16%, transparent);
-		--aero-button-disabled-opacity: 0.38;
-		width: --spacing(11);
-		height: --spacing(11);
+	.aero-transport-button :global(.aero-skip) {
+		--skip-size: --spacing(6);
+		color: inherit;
 	}
 </style>
