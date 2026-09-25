@@ -19,36 +19,40 @@
 	let artistArt = $state<string | undefined>()
 	let songs = $state<any[]>([])
 	let albums = $state<any[]>([])
-	let songIds = $derived(songs.map((song) => {
-		const id = generateStableId(`spicyamll:${song.id}`)
-		registerRemoteTrack({
-			id,
-			remoteId: Number(song.id) || 0,
-			streaming: true,
-			uuid: `spicyamll:${song.id}`,
-			name: song.name,
-			album: song.album || 'Unknown Album',
-			artists: song.artist ? [song.artist] : [artist],
-			year: 'Unknown',
-			duration: song.duration || 0,
-			genre: [],
-			trackNo: 0,
-			trackOf: 0,
-			discNo: 0,
-			discOf: 0,
-			language: undefined,
-			image: song.artUrl ? { optimized: false, small: song.artUrl, full: song.artUrl } : undefined,
-			primaryColor: undefined,
-			file: undefined,
-			directory: undefined,
-			fileName: undefined,
-			scannedAt: Date.now(),
-			url: spicyamll.streamUrl(song.id, { codec: 'aac', fallback: true, language: 'en-US' }),
-			favorite: false,
-			type: 'track',
+	let songIds = $state<number[]>([])
+
+	const registerSongs = () => {
+		songIds = songs.map((song) => {
+			const id = generateStableId(`spicyamll:${song.id}`)
+			registerRemoteTrack({
+				id,
+				remoteId: Number(song.id) || 0,
+				streaming: true,
+				uuid: `spicyamll:${song.id}`,
+				name: song.name,
+				album: song.album || 'Unknown Album',
+				artists: song.artist ? [song.artist] : [artist],
+				year: 'Unknown',
+				duration: song.duration || 0,
+				genre: [],
+				trackNo: 0,
+				trackOf: 0,
+				discNo: 0,
+				discOf: 0,
+				language: undefined,
+				image: song.artUrl ? { optimized: false, small: song.artUrl, full: song.artUrl } : undefined,
+				primaryColor: undefined,
+				file: undefined,
+				directory: undefined,
+				fileName: undefined,
+				scannedAt: Date.now(),
+				url: spicyamll.streamUrl(song.id, { codec: 'aac', fallback: true, language: 'en-US' }),
+				favorite: false,
+				type: 'track',
+			})
+			return id
 		})
-		return id
-	}))
+	}
 
 	const load = async () => {
 		loading = true
@@ -59,6 +63,7 @@
 			artistArt = profile.artUrl
 			songs = profile.songs
 			albums = profile.albums
+			registerSongs()
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unable to load artist profile.'
 		} finally {
@@ -92,13 +97,9 @@
 				<h1 class="truncate text-display-sm font-bold">{artist}</h1>
 				<div class="mt-2 text-body-md text-onSurfaceVariant">{songs.length} songs • {albums.length} albums</div>
 			</div>
-			<Button
-			kind="filled"
-			disabled={songIds.length === 0}
-			onclick={() => player.playTrack(0, songIds)}
-		>
-			Play
-		</Button>
+			<Button kind="filled" disabled={songIds.length === 0} onclick={() => player.playTrack(0, songIds)}>
+				Play
+			</Button>
 		</section>
 
 		{#if songs.length}
@@ -121,5 +122,5 @@
 				</div>
 			</section>
 		{/if}
-	</main>
-{/if}
+	{/if}
+</main>
