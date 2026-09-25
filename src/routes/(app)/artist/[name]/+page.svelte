@@ -11,6 +11,8 @@
 	import { spicyamll } from '$lib/services/spicyamll.ts'
 	import { onMount } from 'svelte'
 
+	const menu = useMenu()
+
 	const player = usePlayer()
 
 	let loading = $state(true)
@@ -173,7 +175,24 @@
 											{song.album || artist}{song.year ? ` • ${song.year}` : ''}
 										</div>
 									</div>
-									<span class="shrink-0 px-1 text-onSurfaceVariant/70">•••</span>
+									<button
+								class="interactable size-10 shrink-0 justify-center rounded-full text-onSurfaceVariant"
+								aria-label="More options"
+								onclick={(event) => {
+									e.stopPropagation()
+									const trackId = songIds[index]
+									if (trackId === undefined) return
+									menu.showFromEvent(
+										e,
+										[
+											{ label: 'Play', action: () => playTopSong(index) },
+											{ label: 'Play next', action: () => player.playNextTrack(trackId) },
+											{ label: 'Add to queue', action: () => player.addToQueue(trackId) },
+										],
+										{ anchor: true, preferredAlignment: { horizontal: 'right', vertical: 'bottom' } },
+									)
+								}}
+								>•••</button>
 								</button>
 							{/each}
 						</div>
