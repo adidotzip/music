@@ -105,6 +105,7 @@ html {
 	--app-max-content-width: --spacing(400);
 	--mktg-content-max-width: --spacing(300);
 	--m3v-source: #d34539;
+	--m3v-source: #d34539;
 }
 
 html.dark {
