@@ -9,6 +9,20 @@ const idToUuidMap = new Map<number, string>()
 const remoteTrackMap = new Map<number, TrackData>()
 const REMOTE_TRACK_STORAGE_PREFIX = 'adi_music_remote_track:'
 
+const LOCAL_TRACK_ALIAS_PREFIX = 'adi_music_local_track_alias:'
+
+const getPersistedLocalTrackAlias = (sourceId: number): number | undefined => {
+	if (typeof window === 'undefined' || sourceId >= 0) return undefined
+
+	try {
+		const id = Number(localStorage.getItem(LOCAL_TRACK_ALIAS_PREFIX + sourceId) || '')
+		return Number.isFinite(id) && id > 0 ? id : undefined
+	} catch {
+		return undefined
+	}
+}
+
+
 const recoverRemoteTrack = async (id: number): Promise<TrackData | undefined> => {
 	if (typeof window === 'undefined' || id >= 0) return undefined
 
