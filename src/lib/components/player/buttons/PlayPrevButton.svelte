@@ -24,7 +24,6 @@
 		bind:this={skip}
 		class="aero-skip"
 		data-direction="backward"
-		data-size="24"
 		aria-hidden="true"
 	></span>
 </button>
