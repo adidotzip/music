@@ -13,30 +13,34 @@ const isBrowser = () => typeof window !== 'undefined'
 
 export const getCachedDiscoveryRecommendations = (): DiscoveryRecommendationCache | null => {
 	if (!isBrowser()) return null
-	 try {
-	  const raw = localStorage.getItem(CACHE_KEY)
-	  if (!raw) return null
-	   const cached = JSON.parse(raw) as Partial<DiscoveryRecommendationCache>
-	  if (
-	    !cached.cachedAt ||
-	    !Array.isArray(cached.topPicks) ||
-	    !Array.isArray(cached.recommendations)
-	  ) {
-	    localStorage.removeItem(CACHE_KEY)
-	    return null
-	  }
-	   if (Date.now() - cached.cachedAt >= CACHE_TTL_MS) {
-	    localStorage.removeItem(CACHE_KEY)
-	    return null
-	  }
-	   return {
-	    cachedAt: cached.cachedAt,
-	    topPicks: cached.topPicks,
-	    recommendations: cached.recommendations,
-	  }
+
+	try {
+		const raw = localStorage.getItem(CACHE_KEY)
+		if (!raw) return null
+
+		const cached = JSON.parse(raw) as Partial<DiscoveryRecommendationCache>
+		if (
+			!cached.cachedAt ||
+			!Array.isArray(cached.topPicks) ||
+			!Array.isArray(cached.recommendations)
+		) {
+			localStorage.removeItem(CACHE_KEY)
+			return null
+		}
+
+		if (Date.now() - cached.cachedAt >= CACHE_TTL_MS) {
+			localStorage.removeItem(CACHE_KEY)
+			return null
+		}
+
+		return {
+			cachedAt: cached.cachedAt,
+			topPicks: cached.topPicks,
+			recommendations: cached.recommendations,
+		}
 	} catch {
-	  localStorage.removeItem(CACHE_KEY)
-	  return null
+		localStorage.removeItem(CACHE_KEY)
+		return null
 	}
 }
 
@@ -45,15 +49,17 @@ export const cacheDiscoveryRecommendations = (
 	recommendations: DiscoveryResource[],
 ): void => {
 	if (!isBrowser()) return
-	 try {
-	  const value: DiscoveryRecommendationCache = {
-	    cachedAt: Date.now(),
-	    topPicks,
-	    recommendations,
-	  }
-	   localStorage.setItem(CACHE_KEY, JSON.stringify(value))
+
+	try {
+		const value: DiscoveryRecommendationCache = {
+			cachedAt: Date.now(),
+			topPicks,
+			recommendations,
+		}
+
+		localStorage.setItem(CACHE_KEY, JSON.stringify(value))
 	} catch {
-	  // Quota/private-mode failures should not prevent Discovery from loading.
+		// Quota/private-mode failures should not prevent Discovery from loading.
 	}
 }
 
