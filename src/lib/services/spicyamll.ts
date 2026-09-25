@@ -231,7 +231,7 @@ export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
 	...parseDiscoveryGroup(input, 'artist'),
 ]
 
-export const searchDiscovery = async (query: string, limit = 100) => {
+export const searchDiscovery = async (query: string, limit = 25) => {
 	// Search songs separately so albums/artists cannot consume the song result
 	// budget when the upstream API applies a shared limit.
 	const [songsResponse, otherResponse] = await Promise.all([
