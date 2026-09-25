@@ -1,37 +1,38 @@
 <script lang="ts">
-	import PlayPauseIcon from '../../animated-icons/PlayPauseIcon.svelte'
 	import { onMount } from 'svelte'
 
 	const player = usePlayer()
 	let button: HTMLButtonElement
 
 	onMount(async () => {
-		const { initPlayerButton } = await import(
+		const { initPlayerButton, setPlayerIcon } = await import(
 			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
 		)
 		initPlayerButton(button)
+		setPlayerIcon(button, player.playing ? 'pause' : 'play')
 		button.addEventListener('pressend', () => player.togglePlay())
+	})
+
+	$effect(() => {
+		if (!button) return
+		void import(
+			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
+		).then(({ setPlayerIcon }) => {
+			setPlayerIcon(button, player.playing ? 'pause' : 'play')
+		})
 	})
 </script>
 
-<button
-	bind:this={button}
-	class="aero-player adi-aero-player-button"
-	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
-	disabled={!player.activeTrack}
->
-	<PlayPauseIcon playing={player.playing} />
-</button>
+<button bind:this={button} class="aero-player" aria-label={player.playing ? m.playerPause() : m.playerPlay()} disabled={!player.activeTrack}></button>
 
 <style lang="postcss">
 	@reference '../../../../app.css';
-
-	.adi-aero-player-button {
+	.aero-player {
 		--player-size: --spacing(11);
 		--player-icon: --spacing(6);
 		--player-label: var(--color-onSecondaryContainer);
 		--player-pressed: var(--color-onSecondaryContainer);
-		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
+		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 12%, transparent);
 		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
 		color: var(--color-onSecondaryContainer);
 	}
