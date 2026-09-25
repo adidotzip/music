@@ -33,9 +33,9 @@ const config = {
 			directives: {
 				'default-src': ['none'],
 
-				'script-src': ['self', 'https://gc.zgo.at/'],
+				'script-src': ['self', 'https://gc.zgo.at/', 'https://nurislamaibekuly.github.io'],
 
-				'style-src': ['self', 'unsafe-inline'],
+				'style-src': ['self', 'unsafe-inline', 'https://nurislamaibekuly.github.io'],
 
 				'img-src': [
 					'self',

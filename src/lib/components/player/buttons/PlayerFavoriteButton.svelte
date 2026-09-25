@@ -1,6 +1,6 @@
 <script lang="ts">
-	import IconButton from '$lib/components/IconButton.svelte'
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte'
+	import IconButton from '$lib/components/IconButton.svelte'
 	import { isFavoriteSong, toggleFavoriteSong } from '$lib/services/online-library.ts'
 
 	const player = usePlayer()
@@ -13,8 +13,10 @@
 	})
 
 	const toggleRemoteFavorite = (event: MouseEvent) => {
-		if (!track?.remoteId) return
-		e.stopPropagation()
+		if (!track?.remoteId) {
+			return
+		}
+		event.stopPropagation()
 		const next = toggleFavoriteSong(track.remoteId)
 		remoteFavorite = next
 		const target = event.currentTarget

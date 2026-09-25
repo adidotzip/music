@@ -49,7 +49,7 @@
 	let animationFrameId: number | null = null
 
 	const runAudioReaction = () => {
-		if (!enabled || !kawarpInstance) {
+		if (!(enabled && kawarpInstance)) {
 			if (animationFrameId) {
 				cancelAnimationFrame(animationFrameId)
 				animationFrameId = null
@@ -190,12 +190,10 @@
 			if (!animationFrameId) {
 				runAudioReaction()
 			}
-		} else {
-			if (animationFrameId) {
+		} else if (animationFrameId) {
 				cancelAnimationFrame(animationFrameId)
 				animationFrameId = null
 			}
-		}
 
 		return () => {
 			if (animationFrameId) {
