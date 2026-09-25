@@ -44,15 +44,6 @@
     let recommendations = $state<DiscoveryItem[]>([])
     let recentlyPlayed = $state<DiscoveryItem[]>([])
 
-    let selectedDetail = $state<{
-        type: 'album' | 'artist'
-        id: string
-        name: string
-        artist?: string
-        artUrl?: string
-    } | null>(null)
-    let detailLoading = $state(false)
-    let detailTrackIds = $state<number[]>([])
 
     const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
         const key = `spicyamll:${input.id}`
@@ -213,7 +204,6 @@
         error = null
         searched = true
         results = []
-        selectedDetail = null
 
         try {
             results = await searchDiscovery(term)
@@ -225,23 +215,13 @@
     }
 
     const viewAlbum = async (album: DiscoveryItem) => {
-        selectedDetail = {
-            type: 'album',
-            id: album.id,
+        persistSearchState()
+        const params = new URLSearchParams({
             name: album.name,
-            artist: album.artist,
-            artUrl: album.artUrl,
-        }
-        detailLoading = true
-        detailTrackIds = []
-        try {
-            const tracks = await spicyamll.albumTracks(album.id)
-            detailTrackIds = tracks.map((t) => getOrRegisterRemoteTrack(t))
-        } catch {
-            detailTrackIds = []
-        } finally {
-            detailLoading = false
-        }
+            artist: album.artist || '',
+            art: album.artUrl || '',
+        })
+        await goto(`/album/${encodeURIComponent(album.id)}?${params.toString()}`)
     }
 
     const viewArtist = async (artist: DiscoveryItem) => {
@@ -368,20 +348,16 @@
 {useSetOverlaySnippet('bottom-bar', () => layoutBottom)}
 
 <Header
-    title={selectedDetail ? selectedDetail.name : 'Discovery'}
+    title="Discovery"
     onback={
-        selectedDetail
+        searched
             ? () => {
-                  selectedDetail = null
+                  query = ''
+                  results = []
+                  searched = false
+                  error = null
               }
-            : searched
-              ? () => {
-                    query = ''
-                    results = []
-                    searched = false
-                    error = null
-                }
-              : undefined
+            : undefined
     }
 />
 
@@ -422,89 +398,7 @@
         </form>
     {/if}
 
-    {#if selectedDetail}
-        <div class="@container flex grow flex-col pb-4">
-            <section
-                class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row"
-            >
-                <Artwork
-                    src={selectedDetail.artUrl}
-                    fallbackIcon={selectedDetail.type === 'album' ? 'album' : 'person'}
-                    class="h-49 shrink-0 rounded-2xl @2xl:h-full"
-                />
-
-                <div
-                    class="relative z-0 flex size-full flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh"
-                >
-                    <div class="flex grow flex-col p-4">
-                        <div class="flex items-center gap-2">
-                            <Icon
-                                type={selectedDetail.type === 'album' ? 'album' : 'person'}
-                                class="size-10 text-onSurface/54"
-                            />
-                            <h1 class="text-headline-md">{selectedDetail.name}</h1>
-                        </div>
-
-                        {#if selectedDetail.artist}
-                            <div class="grid w-full overflow-hidden text-body-lg">
-                                <div class="truncate">
-                                    {selectedDetail.artist}
-                                </div>
-                            </div>
-                        {/if}
-
-                        <div class="mt-1 text-onSurfaceVariant">
-                            {m.libraryTracksCount({ count: detailTrackIds.length })}
-                        </div>
-                    </div>
-
-                    <div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
-                        <Button
-                            kind="filled"
-                            class="my-1"
-                            disabled={detailTrackIds.length === 0}
-                            onclick={() => {
-                                player.playTrack(0, detailTrackIds)
-                            }}
-                        >
-                            {m.play()}
-                        </Button>
-
-                        <Button
-                            kind="flat"
-                            class="my-1 mr-auto"
-                            disabled={detailTrackIds.length === 0}
-                            onclick={() => {
-                                player.playTrack(0, detailTrackIds, {
-                                    shuffle: true,
-                                })
-                            }}
-                        >
-                            {m.shuffle()}
-                            <Icon type="shuffle" />
-                        </Button>
-
-                        <Button
-                            kind="blank"
-                            onclick={() => {
-                                selectedDetail = null
-                            }}
-                        >
-                            {m.dismiss()}
-                        </Button>
-                    </div>
-                </div>
-            </section>
-
-            {#if detailLoading}
-                <div class="flex min-h-40 items-center justify-center">
-                    <Spinner class="size-8" />
-                </div>
-            {:else}
-                <TracksListContainer items={detailTrackIds} />
-            {/if}
-        </div>
-    {:else if error}
+    {#if error}
         <div class="my-auto flex flex-col items-center p-8 text-center text-error">
             <div class="text-title-lg">{error}</div>
         </div>
