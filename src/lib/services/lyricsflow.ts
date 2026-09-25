@@ -146,27 +146,21 @@ export const getLyricsflowArtistProfile = async (
 	// /artist is used for the canonical artist identity and PFP.
 	const artist = await requestArtist(artistId)
 
-	if (!artist) {
-		const fallbackName = artistName?.trim()
-		if (!fallbackName) throw new Error('Unable to load artist profile.')
+	let discovery: DiscoveryResource[] = []
+	let fallbackArtist: DiscoveryResource | undefined
 
-		const discovery = await searchDiscovery(fallbackName)
-		const fallbackSongs = discovery.filter(
-			(item) => item.type === 'song' && item.artist.toLowerCase() === fallbackName.toLowerCase(),
-		)
-		const artistResult = discovery.find(
-			(item) => item.type === 'artist' && item.name.toLowerCase() === fallbackName.toLowerCase(),
-		)
-
-		return {
-			name: artistResult?.name || fallbackName,
-			artUrl: artistResult?.artUrl,
-			songs: fallbackSongs,
-			albums: [],
+	if (!artist && artistName?.trim()) {
+		try {
+			discovery = await searchDiscovery(artistName.trim())
+			fallbackArtist = discovery.find(
+				(item) => item.type === 'artist' && item.name.toLowerCase() === artistName.trim().toLowerCase(),
+			)
+		} catch {
+			// The SpicyAMLL catalog endpoints below can still resolve by ID.
 		}
 	}
 
-	const name = artist.attributes?.name || artistName || artistId
+	const name = artist?.attributes?.name || fallbackArtist?.name || artistName?.trim() || artistId
 
 	// Use the exact SpicyAMLL artist catalog endpoints requested for the
 	// complete songs and albums lists.
