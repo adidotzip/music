@@ -196,24 +196,32 @@
 			{/if}
 
 			{#if albums.length}
-				<section class="flex flex-col gap-4">
-					<h2 class="text-title-lg font-bold">Albums</h2>
-					<div class="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+				<section class="flex flex-col gap-5">
+					<div class="flex items-end justify-between gap-4">
+						<div>
+							<h2 class="text-headline-sm font-bold">Albums</h2>
+							<p class="mt-1 text-body-sm text-onSurfaceVariant">{albums.length} releases</p>
+						</div>
+					</div>
+
+					<div class="grid min-w-0 grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 						{#each albums as album (album.id)}
 							<a
 								href={`/album/${encodeURIComponent(album.id)}?name=${encodeURIComponent(album.name)}&artist=${encodeURIComponent(album.artist || artist)}&art=${encodeURIComponent(album.artUrl)}`}
-								class="interactable group min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh"
+								class="interactable group flex-col min-w-0 rounded-2xl bg-surfaceContainerHigh p-2"
 							>
-								<div class="aspect-square w-full min-w-0 overflow-hidden">
+								<div class="relative aspect-square w-full overflow-hidden rounded-xl">
 									<Artwork
 										src={album.artUrl}
 										fallbackIcon="album"
-										class="size-full rounded-none"
+										class="size-full rounded-xl transition-transform duration-300 group-hover:scale-[1.02]"
 									/>
 								</div>
-								<div class="min-w-0 p-3">
+								<div class="min-w-0 px-1 pb-1 pt-3">
 									<div class="truncate text-body-md font-medium">{album.name}</div>
-									<div class="truncate text-body-sm text-onSurfaceVariant">{album.artist || artist}</div>
+									<div class="mt-0.5 truncate text-body-sm text-onSurfaceVariant">
+										{album.artist || artist}
+									</div>
 								</div>
 							</a>
 						{/each}
