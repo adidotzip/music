@@ -352,7 +352,7 @@
         tooltip="Discovery"
         class={['flex shrink-0 items-center justify-center', className]}
     >
-        <div class="flex items-center justify-center rounded-full bg-secondaryContainer p-2 text-onSecondaryContainer">
+        <div class="flex items-center justify-center rounded-full bg-surfaceContainerHighest p-2 text-onSurface">
             <Icon type="compass" />
         </div>
     </Button>
@@ -397,7 +397,7 @@
 <main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
     {#if !selectedDetail}
         <form
-            class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex w-full max-w-125 items-center gap-1 rounded-lg border border-primary/10 bg-surfaceContainerHighest px-2 @sm:gap-2"
+            class="@container sticky top-2 z-1 mt-2 mb-6 ml-auto flex w-full max-w-125 items-center gap-1 rounded-2xl border border-primary/10 bg-surfaceContainerHigh px-2 @sm:gap-2"
             onsubmit={(event) => {
                 event.preventDefault()
                 void search()
@@ -551,7 +551,7 @@
                         {#each albumResults as item (item.id)}
                             <button
                                 type="button"
-                                class="interactable flex flex-col overflow-hidden rounded-lg bg-surfaceContainerHigh text-left"
+                                class="interactable flex flex-col overflow-hidden rounded-2xl bg-surfaceContainerHigh text-left"
                                 onclick={() => void viewAlbum(item)}
                             >
                                 <Artwork
@@ -559,7 +559,7 @@
                                     fallbackIcon="album"
                                     class="aspect-square w-full rounded-[inherit]"
                                 />
-                                <div class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant">
+                                <div class="flex min-h-18 w-full flex-col justify-center overflow-hidden px-3 py-3 text-center text-onSurfaceVariant">
                                     <div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
                                     <div class="truncate text-body-sm text-onSurfaceVariant">{item.artist || 'Unknown Artist'}</div>
                                 </div>
