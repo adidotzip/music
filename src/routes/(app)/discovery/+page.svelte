@@ -228,7 +228,7 @@
     }
 
     onMount(() => {
-        if (isOnline) void loadRecommendations()
+        void loadRecommendations()
     })
 </script>
 
