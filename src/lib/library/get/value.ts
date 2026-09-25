@@ -9,6 +9,23 @@ const idToUuidMap = new Map<number, string>()
 const remoteTrackMap = new Map<number, TrackData>()
 const REMOTE_TRACK_STORAGE_PREFIX = 'adi_music_remote_track:'
 
+const persistLocalTrackRemoteAlias = (sourceId: number, localTrackId: number) => {
+	if (typeof window === 'undefined' || sourceId >= 0) return
+	try {
+		localStorage.setItem(`adi_music_local_track_alias:${sourceId}`, String(localTrackId))
+	} catch {}
+}
+
+const getPersistedLocalTrackAlias = (sourceId: number): number | undefined => {
+	if (typeof window === 'undefined' || sourceId >= 0) return undefined
+	try {
+		const value = Number(localStorage.getItem(`adi_music_local_track_alias:${sourceId}`) || '')
+		return Number.isFinite(value) && value > 0 ? value : undefined
+	} catch {
+		return undefined
+	}
+}
+
 const recoverRemoteTrack = async (id: number): Promise<TrackData | undefined> => {
 	if (typeof window === 'undefined' || id >= 0) return undefined
 
@@ -157,6 +174,12 @@ export interface TrackData extends Track {
 const trackConfig: QueryConfig<TrackData> = {
 	fetch: async (id) => {
 		if (id < 0) {
+			const localAlias = getPersistedLocalTrackAlias(id)
+			if (localAlias) {
+				const localTrack = await trackConfig.fetch(localAlias)
+				if (localTrack) return localTrack
+			}
+
 			const remote = remoteTrackMap.get(id) ?? getPersistedRemoteTrack(id)
 			if (remote) {
 				remoteTrackMap.set(id, remote)
