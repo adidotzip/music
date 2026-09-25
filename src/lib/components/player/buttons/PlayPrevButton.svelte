@@ -35,9 +35,6 @@
 	disabled={player.isQueueEmpty}
 >
 	<span bind:this={skip} class="aero-skip" data-direction="backward" aria-hidden="true"></span>
-	<svg class="aero-fallback-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-		<path d="M6 6h2v12H6zm3.5 6 8.5 6V6l-8.5 6z"/>
-	</svg>
 </button>
 
 <style lang="postcss">
@@ -50,15 +47,4 @@
 		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 55%, transparent);
 	}
 
-	.aero-fallback-icon {
-		width: 1.5rem;
-		height: 1.5rem;
-		color: var(--player-label);
-		pointer-events: none;
-	}
-
-	/* Hidden once AeroUI initialises the button (it injects its own icon structure) */
-	.aero-player[data-aero-init] .aero-fallback-icon {
-		display: none;
-	}
 </style>
