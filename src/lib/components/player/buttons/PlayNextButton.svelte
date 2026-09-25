@@ -16,17 +16,21 @@
 	@reference '../../../../app.css';
 
 	.aero-transport-button {
-		--player-size: --spacing(11);
-		--player-icon: --spacing(6);
+		width: --spacing(11);
+		height: --spacing(11);
+		padding: 0;
+		border-radius: var(--radius-full);
+		background: transparent;
+		color: var(--color-onSecondaryContainer);
 		--player-label: var(--color-onSecondaryContainer);
 		--player-pressed: var(--color-onSecondaryContainer);
-		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 12%, transparent);
+		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
 		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
 		flex: 0 0 auto;
 	}
 
 	.aero-transport-button :global(.aero-skip) {
 		--skip-size: --spacing(6);
-		color: inherit;
+		color: currentColor;
 	}
 </style>
