@@ -370,6 +370,19 @@
 {useSetOverlaySnippet('bottom-bar', () => layoutBottom)}
 
 <Header title={selectedDetail ? selectedDetail.name : 'Discovery'} noBackButton>
+	{#if !selectedDetail && searched}
+		<IconButton
+			icon="backArrow"
+			tooltip="Back to Discovery"
+			class="mr-auto"
+			onclick={() => {
+				query = ''
+				results = []
+				searched = false
+				error = null
+			}}
+		/>
+	{/if}
 	{#if selectedDetail}
 		<IconButton
 			icon="backArrow"
