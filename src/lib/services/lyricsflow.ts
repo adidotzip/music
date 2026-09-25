@@ -72,13 +72,19 @@ export const getLyricsflowArtistProfile = async (
 		const fallbackName = artistName?.trim()
 		if (!fallbackName) throw new Error('Unable to load artist profile.')
 
-		const fallback = (await searchDiscovery(fallbackName)).filter(
+		const discovery = await searchDiscovery(fallbackName)
+		const fallback = discovery.filter(
 			(item) => item.type === 'song' && item.artist.toLowerCase() === fallbackName.toLowerCase(),
+		)
+		const artistResult = discovery.find(
+			(item) => item.type === 'artist' && item.name.toLowerCase() === fallbackName.toLowerCase(),
 		)
 
 		return {
-			name: fallbackName,
-			artUrl: fallback[0]?.artUrl,
+			name: artistResult?.name || fallbackName,
+			// Never use a song's album artwork as the artist PFP. Prefer the
+			// dedicated artist resource returned by discovery.
+			artUrl: artistResult?.artUrl,
 			songs: fallback,
 			albums: [],
 		}
