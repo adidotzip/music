@@ -1,24 +1,42 @@
 <script lang="ts">
+	import { onMount } from 'svelte'
+
 	const player = usePlayer()
+
+	let button: HTMLButtonElement
+
+	const updateIcon = async () => {
+		if (!button) return
+
+		const { setPlayerIcon } = await import(
+			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
+		)
+
+		setPlayerIcon(button, player.playing ? 'pause' : 'play')
+	}
+
+	onMount(() => {
+		void updateIcon()
+	})
+
+	$effect(() => {
+		player.playing
+		player.activeTrack
+		void updateIcon()
+	})
 </script>
 
 <button
+	bind:this={button}
 	class="aero-player adi-aero-player-button"
 	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
 	aria-pressed={player.playing}
 	disabled={!player.activeTrack}
 	onclick={() => player.togglePlay()}
 >
-	{#if player.playing}
-		<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-			<rect x="5.27" y="3" width="5.45" height="18" rx="1.3" />
-			<rect x="13.28" y="3" width="5.45" height="18" rx="1.3" />
-		</svg>
-	{:else}
-		<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-			<path d="M4 6.8 4 17.2Q4 21 7.31 19.14L18.26 12.98Q20 12 18.26 11.02L7.31 4.86Q4 3 4 6.8Z" />
-		</svg>
-	{/if}
+	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+		<path d="M4 6.8 4 17.2Q4 21 7.31 19.14L18.26 12.98Q20 12 18.26 11.02L7.31 4.86Q4 3 4 6.8Z" />
+	</svg>
 </button>
 
 <style lang="postcss">
@@ -51,6 +69,7 @@
 	}
 
 	.adi-aero-player-button:disabled {
+		cursor: default;
 		background-color: var(--color-primary);
 	}
 </style>
