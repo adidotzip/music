@@ -11,6 +11,7 @@
 			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
 		)
 		initPlayerButton(button)
+		button.addEventListener('pressend', () => player.playNext())
 	})
 </script>
 
@@ -20,7 +21,6 @@
 	class={['aero-player aero-transport-button', className]}
 	aria-label={m.playerPlayNextTrack()}
 	disabled={player.isQueueEmpty}
-	onclick={player.playNext}
 >
 	<PlayPreviousNextIcon type="next" />
 </button>
