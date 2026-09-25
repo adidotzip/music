@@ -5,34 +5,36 @@
 
 	let button: HTMLButtonElement
 
-	const updateIcon = async () => {
-		if (!button) return
-
-		const { setPlayerIcon } = await import(
+	onMount(async () => {
+		const { initPlayerButton, setPlayerIcon } = await import(
 			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
 		)
 
+		initPlayerButton(button)
 		setPlayerIcon(button, player.playing ? 'pause' : 'play')
-	}
 
-	onMount(() => {
-		void updateIcon()
+		button.addEventListener('pressend', handlePress)
 	})
 
+	function handlePress() {
+		player.togglePlay()
+	}
+
 	$effect(() => {
-		player.playing
-		player.activeTrack
-		void updateIcon()
+		if (!button) return
+		void import(
+			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
+		).then(({ setPlayerIcon }) => {
+			setPlayerIcon(button, player.playing ? 'pause' : 'play')
+		})
 	})
 </script>
 
 <button
 	bind:this={button}
-	class="aero-player adi-aero-icon-player-button"
+	class="aero-player"
 	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
-	aria-pressed={player.playing}
 	disabled={!player.activeTrack}
-	onclick={() => player.togglePlay()}
 >
 	<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 		<path d="M4 6.8 4 17.2Q4 21 7.31 19.14L18.26 12.98Q20 12 18.26 11.02L7.31 4.86Q4 3 4 6.8Z" />
@@ -42,12 +44,10 @@
 <style lang="postcss">
 	@reference '../../../../app.css';
 
-	/* Keep AeroUI's native player geometry and interaction styling.
-	 * Only map AeroUI's color tokens to Adi Music's theme. */
 	.aero-player {
 		--player-label: var(--color-onSecondaryContainer);
 		--player-pressed: var(--color-onSecondaryContainer);
 		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
-		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
+		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 55%, transparent);
 	}
 </style>
