@@ -2,7 +2,6 @@
     import { onMount } from 'svelte'
     import { goto } from '$app/navigation'
     import Artwork from '$lib/components/Artwork.svelte'
-    import BackButton from '$lib/components/BackButton.svelte'
     import Button from '$lib/components/Button.svelte'
     import Header from '$lib/components/Header.svelte'
     import IconButton from '$lib/components/IconButton.svelte'
@@ -368,27 +367,23 @@
 
 {useSetOverlaySnippet('bottom-bar', () => layoutBottom)}
 
-<Header title={selectedDetail ? selectedDetail.name : 'Discovery'} noBackButton>
-    {#if !selectedDetail && searched}
-        <BackButton
-            class="mr-auto"
-            onback={() => {
-                query = ''
-                results = []
-                searched = false
-                error = null
-            }}
-        />
-    {/if}
-    {#if selectedDetail}
-        <BackButton
-            class="mr-auto"
-            onback={() => {
-                selectedDetail = null
-            }}
-        />
-    {/if}
-</Header>
+<Header
+    title={selectedDetail ? selectedDetail.name : 'Discovery'}
+    onback={
+        selectedDetail
+            ? () => {
+                  selectedDetail = null
+              }
+            : searched
+              ? () => {
+                    query = ''
+                    results = []
+                    searched = false
+                    error = null
+                }
+              : undefined
+    }
+/>
 
 <div class="desktop-sidebar fixed z-1 mt-20 hidden h-max w-max flex-col items-center gap-2 sm:flex [@media(max-height:500px)]:mt-2">
     {@render navItemsSnippet('h-14 w-20')}
@@ -397,7 +392,7 @@
 <main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
     {#if !selectedDetail}
         <form
-            class="@container sticky top-2 z-1 mt-2 mb-6 ml-auto flex w-full max-w-125 items-center gap-1 rounded-2xl border border-primary/10 bg-surfaceContainerHigh px-2 @sm:gap-2"
+            class="@container sticky top-2 z-1 mt-2 mb-6 ml-auto flex w-full max-w-125 items-center gap-1 rounded-full bg-surfaceContainerHigh px-2 @sm:gap-2"
             onsubmit={(event) => {
                 event.preventDefault()
                 void search()
@@ -408,7 +403,7 @@
                 type="text"
                 name="search"
                 placeholder="Search tracks, artists, albums"
-                class="h-12 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
+                class="h-12 w-60 grow bg-transparent pl-3 text-body-md placeholder:text-onSurfaceVariant focus:outline-none"
             />
 
             <IconButton icon="magnify" tooltip="Search" type="submit" />
@@ -579,7 +574,7 @@
                         {#each artistResults as item (item.id)}
                             <button
                                 type="button"
-                                class="interactable flex flex-col overflow-hidden rounded-lg bg-surfaceContainerHigh text-left"
+                                class="interactable flex flex-col overflow-hidden rounded-2xl bg-surfaceContainerHigh text-left"
                                 onclick={() => void viewArtist(item)}
                             >
                                 <Artwork
@@ -587,7 +582,7 @@
                                     fallbackIcon="person"
                                     class="aspect-square w-full rounded-[inherit]"
                                 />
-                                <div class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant">
+                                <div class="flex min-h-18 w-full flex-col justify-center overflow-hidden px-3 py-3 text-center text-onSurfaceVariant">
                                     <div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
                                 </div>
                             </button>
