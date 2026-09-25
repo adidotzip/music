@@ -56,7 +56,7 @@ import { browser } from '$app/environment'
         const artistName = isResource ? input.artist : input.artist
         const albumName = isResource ? input.album : input.album
         const imageUrl = isResource ? input.artUrl : input.image
-        const rawDuration = !isResource && input.duration ? input.duration : 0
+        const rawDuration = isResource ? input.duration ?? 0 : input.duration ?? 0
         const yearStr = !isResource && input.year ? String(input.year) : UNKNOWN_ITEM
 
         registerRemoteTrack({
