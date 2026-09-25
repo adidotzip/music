@@ -1,6 +1,14 @@
 <script lang="ts">
 	const player = usePlayer()
 	const { class: className }: { class?: ClassValue } = $props()
+
+	const handleKeydown = (event: KeyboardEvent) => {
+		if (player.isQueueEmpty) return
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault()
+			player.playPrev()
+		}
+	}
 </script>
 
 <div class={['aero-skip-control', className]}>
@@ -9,12 +17,16 @@
 		direction="previous"
 		label={m.playerPlayPreviousTrack()}
 		disabled={player.isQueueEmpty}
+		role="button"
+		tabindex={player.isQueueEmpty ? -1 : 0}
+		aria-disabled={player.isQueueEmpty}
 		onclick={player.playPrev}
+		onkeydown={handleKeydown}
 	></aero-skip-label>
 </div>
 
 <style lang="postcss">
-	@reference '../../../app.css';
+	@reference '../../../../app.css';
 
 	.aero-skip-control {
 		display: inline-flex;
