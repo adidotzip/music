@@ -94,13 +94,10 @@
 		const detailsViewId: RouteId = '/(app)/library/[[slug=libraryEntities]]/[uuid]'
 		const shouldReplace = page.route.id === detailsViewId
 
-		const resolvedHref =
-			type === 'artists'
-				? '/artist/' + encodeURIComponent(item.name)
-				: resolve('/(app)/library/[[slug=libraryEntities]]/[uuid]', {
-					slug: type,
-					uuid: item.uuid,
-				})
+		const resolvedHref = resolve('/(app)/library/[[slug=libraryEntities]]/[uuid]', {
+			slug: type,
+			uuid: item.uuid,
+		})
 
 		return {
 			href: resolvedHref,
