@@ -117,7 +117,7 @@
 	opacity: 0;
 		transform: scale(0.667);
 		transition:
-		opacity 350ms cubic-bezier(0.2, 0, 0, 1),
+			opacity 350ms cubic-bezier(0.2, 0, 0, 1),
 			transform 350ms cubic-bezier(0.2, 0, 0, 1);
 	}
 
