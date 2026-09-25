@@ -1,4 +1,4 @@
-import { searchDiscovery, type DiscoveryResource } from './spicyamll.ts'
+import { getSongsForArtist, searchDiscovery, type DiscoveryResource } from './spicyamll.ts'
 
 const API_BASE_URL = (
 	import.meta.env.PUBLIC_LYRICSFLOW_API_URL ||
@@ -91,12 +91,50 @@ export const getLyricsflowArtistProfile = async (
 	}
 
 	const name = artist.attributes?.name || artistName || artistId
-	const songs = (artist.relationships?.songs?.data ?? [])
+	const catalogSongs = (artist.relationships?.songs?.data ?? [])
 		.map((item) => mapResource(item, 'song', name))
 		.filter((item): item is DiscoveryResource => !!item)
+
+	// /artist can expose only a partial relationship. Fetch the complete artist
+	// catalog separately so the profile does not stop after the first few tracks.
+	let songs = catalogSongs
+	try {
+		const completeSongs = await getSongsForArtist(artistId, name)
+		const normalized = completeSongs
+			.filter((song) => !song.artist || song.artist.toLowerCase() === name.toLowerCase())
+			.map((song) => ({
+				type: 'song' as const,
+				id: String(song.id),
+				name: song.name,
+				artist: song.artist || name,
+				album: song.album || song.albumName || '',
+				artUrl: artworkUrl(song.image || song.artwork || song.cover || song.coverUrl, 600),
+			}))
+		const seen = new Set<string>()
+		songs = [...normalized, ...catalogSongs].filter((song) => {
+			if (seen.has(song.id)) return false
+			seen.add(song.id)
+			return true
+		})
+	} catch {
+		// Keep the /artist relationship results if the catalog request fails.
+	}
+
 	let albums = (artist.relationships?.albums?.data ?? [])
 		.map((item) => mapResource(item, 'album', name))
 		.filter((item): item is DiscoveryResource => !!item)
+
+	// Album relationship entries can contain only IDs. Use discovery to enrich
+	// them with names/artwork without changing the primary artist endpoint.
+	if (!albums.length) {
+		try {
+			albums = (await searchDiscovery(name))
+				.filter((item) => item.type === 'album' && (!item.artist || item.artist.toLowerCase() === name.toLowerCase()))
+				.slice(0, 25)
+		} catch {
+			// Albums are optional and should never make the artist page fail.
+		}
+	}
 
 	return {
 		name,
