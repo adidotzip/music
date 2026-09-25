@@ -3,6 +3,7 @@
 	import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
+	import Icon from '$lib/components/icon/Icon.svelte'
 	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
 	import Spinner from '$lib/components/Spinner.svelte'
 	import { generateStableId } from '$lib/services/jiosaavn.ts'
@@ -22,8 +23,8 @@
 	let artistNameHint = $state('')
 	let artist = $state('')
 	let artistArt = $state<string | undefined>()
-	let songs = $state<any[]>([])
-	let albums = $state<any[]>([])
+	let songs = $state<DiscoveryResource[]>([])
+	let albums = $state<DiscoveryResource[]>([])
 	let songIds = $state<number[]>([])
 
 	const registerSongs = () => {
@@ -102,193 +103,99 @@
 
 <Header title={artist || 'Artist'} />
 
-<main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:px-6 md:px-8">
+<main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
 	{#if loading}
-		<div
-			in:fade={{ duration: 250 }}
-			out:fade={{ duration: 150 }}
-			class="my-auto flex min-h-80 flex-col items-center justify-center gap-3 text-onSurfaceVariant"
-		>
-			<Spinner class="size-10 animate-spin" />
-			<div class="animate-pulse text-body-md">Loading artist profile...</div>
+		<div class="my-auto flex min-h-80 items-center justify-center">
+			<Spinner class="size-8" />
 		</div>
 	{:else if error}
-		<div
-			in:scale={{ duration: 300, start: 0.95, easing: cubicOut }}
-			out:fade={{ duration: 150 }}
-			class="my-auto flex flex-col items-center justify-center gap-3 text-center"
-		>
-			<div class="text-title-lg">{error}</div>
+		<div class="my-auto flex flex-col items-center justify-center gap-3 text-center">
+			<div class="text-title-lg text-error">{error}</div>
 			<Button onclick={() => void load()}>Retry</Button>
 		</div>
 	{:else}
-		<div
-			in:fade={{ duration: 300 }}
-			class="flex flex-col gap-10 pb-8"
-		>
-			<!-- Hero Header -->
-			<section
-				in:fly={{ y: 20, duration: 400, easing: cubicOut }}
-				class="flex items-center gap-4 border-b border-outline/10 pb-6 sm:gap-6"
-			>
+		<div class="flex flex-col gap-6 pb-4">
+			<section class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row">
 				<Artwork
 					src={artistArt}
 					fallbackIcon="person"
-					class="size-20 shrink-0 rounded-full shadow-lg transition-transform duration-500 hover:scale-105 sm:size-28"
+					class="size-49 shrink-0 rounded-full @2xl:size-52"
 				/>
-				<div class="min-w-0 flex-1">
-					<div class="text-label-lg font-medium text-onSurfaceVariant">Artist</div>
-					<h1 class="truncate text-headline-lg font-bold text-onSurface sm:text-display-md">{artist}</h1>
+
+				<div class="relative z-0 flex size-full flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh">
+					<div class="flex grow flex-col p-4">
+						<div class="flex items-center gap-2">
+							<Icon type="person" class="size-10 text-onSurface/54" />
+							<h1 class="truncate text-headline-md">{artist}</h1>
+						</div>
+						<div class="mt-1 text-onSurfaceVariant">
+							{songs.length} songs • {albums.length} {albums.length === 1 ? 'album' : 'albums'}
+						</div>
+					</div>
+
+					<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
+						<Button
+							kind="filled"
+							class="my-1"
+							disabled={songIds.length === 0}
+							onclick={() => playSong(0)}
+						>
+							{m.play()}
+						</Button>
+						<Button
+							kind="flat"
+							class="my-1 mr-auto"
+							disabled={songIds.length === 0}
+							onclick={() => {
+								player.playTrack(0, songIds, { shuffle: true })
+							}}
+						>
+							{m.shuffle()}
+							<Icon type="shuffle" />
+						</Button>
+					</div>
 				</div>
 			</section>
 
-			<section class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-				<!-- Latest Release -->
-				<div
-					in:fly={{ y: 20, duration: 400, delay: 100, easing: cubicOut }}
-					class="flex flex-col gap-4"
-				>
-					<h2 class="text-title-lg font-bold">Latest Release</h2>
-					<div class="group/card flex flex-col gap-4 rounded-3xl border border-outline/10 bg-surfaceContainerHigh/50 p-4 transition-all duration-300 hover:bg-surfaceContainerHigh hover:shadow-xl">
-						<div class="overflow-hidden rounded-2xl">
-							<Artwork
-								src={latestArtwork}
-								fallbackIcon="album"
-								class="aspect-square w-full rounded-2xl transition-transform duration-500 ease-out group-hover/card:scale-105"
-							/>
-						</div>
-						<div class="flex items-center justify-between gap-3">
-							<div class="min-w-0 flex-1">
-								<div class="truncate text-body-sm text-onSurfaceVariant">{latestArtist}</div>
-								<h3 class="truncate text-headline-sm font-bold">{latestName}</h3>
-							</div>
-							<Button
-								kind="filled"
-								disabled={!songIds.length}
-								onclick={() => playSong(0)}
-								class="shrink-0 transition-transform active:scale-95"
-							>
-								Play
-							</Button>
-						</div>
-					</div>
-				</div>
-
-				<!-- Top Songs -->
-				<div
-					in:fly={{ y: 20, duration: 400, delay: 150, easing: cubicOut }}
-					class="flex min-w-0 flex-col gap-4"
-				>
-					<div class="flex items-center justify-between">
-						<h2 class="text-title-lg font-bold">Top Songs</h2>
-						<span class="text-body-sm text-onSurfaceVariant">{songs.length} songs</span>
-					</div>
-
-					{#if songs.length}
-						<div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
-							{#each songs.slice(0, 10) as song, index (song.id)}
-								<div
-									role="button"
-									tabindex="0"
-									style="--delay: {index * 30}ms"
-									class="stagger-animate interactable group flex min-w-0 items-center gap-3 rounded-2xl bg-surfaceContainerHigh p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-surfaceContainerHighest hover:shadow-md active:translate-y-0"
-									onclick={() => playTopSong(index)}
-									onkeydown={(event) => {
-										if (event.key === 'Enter' || event.key === ' ') {
-											event.preventDefault()
-											playTopSong(index)
-										}
-									}}
-								>
-									<Artwork
-										src={song.artUrl}
-										fallbackIcon="musicNote"
-										class="size-14 shrink-0 rounded-xl transition-transform duration-300 group-hover:scale-105"
-									/>
-									<div class="min-w-0 flex-1">
-										<div class="truncate text-body-lg font-bold transition-colors group-hover:text-primary">{song.name}</div>
-										<div class="truncate text-body-md text-onSurfaceVariant">
-											{song.album || artist}{song.year ? ` • ${song.year}` : ''}
-										</div>
-									</div>
-									<button
-										type="button"
-										class="interactable flex size-10 shrink-0 items-center justify-center rounded-full text-onSurfaceVariant transition-colors hover:bg-outline/10 hover:text-onSurface"
-										aria-label="More options"
-										onclick={(event) => {
-											event.stopPropagation()
-											const trackId = songIds[index]
-											if (trackId === undefined) return
-											menu.showFromEvent(
-												event,
-												[
-													{ label: 'Play', action: () => playTopSong(index) },
-													{ label: 'Play next', action: () => player.playNextTrack(trackId) },
-													{ label: 'Add to queue', action: () => player.addToQueue(trackId) },
-												],
-												{ anchor: true, preferredAlignment: { horizontal: 'right', vertical: 'bottom' } },
-											)
-										}}
-									>
-										<span class="text-base font-bold leading-none">•••</span>
-									</button>
-								</div>
-							{/each}
-						</div>
-					{:else}
-						<div class="rounded-2xl bg-surfaceContainerHigh p-6 text-body-md text-onSurfaceVariant">
-							No songs found for this artist.
-						</div>
-					{/if}
-				</div>
-			</section>
-
-			<!-- All Songs -->
 			{#if songs.length}
-				<section
-					in:fly={{ y: 20, duration: 400, delay: 200, easing: cubicOut }}
-					class="flex flex-col gap-3"
-				>
+				<section class="flex flex-col gap-3">
 					<div class="flex items-center justify-between">
-						<h2 class="text-title-lg font-bold">All Songs</h2>
-						<Button kind="flat" onclick={() => playSong(0)}>Play All</Button>
+						<h2 class="text-title-lg">Top Songs</h2>
+						<span class="text-body-sm text-onSurfaceVariant">{Math.min(songs.length, 10)} of {songs.length}</span>
+					</div>
+					<TracksListContainer items={songIds.slice(0, 10)} />
+				</section>
+
+				<section class="flex flex-col gap-3">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg">All Songs</h2>
+						<Button kind="flat" onclick={() => playSong(0)}>{m.play()}</Button>
 					</div>
 					<TracksListContainer items={songIds} />
 				</section>
 			{/if}
 
-			<!-- Albums Grid -->
 			{#if albums.length}
-				<section
-					in:fly={{ y: 20, duration: 400, delay: 250, easing: cubicOut }}
-					class="flex flex-col gap-5"
-				>
-					<div class="flex items-end justify-between gap-4">
-						<div>
-							<h2 class="text-headline-sm font-bold">Albums</h2>
-							<p class="mt-1 text-body-sm text-onSurfaceVariant">{albums.length} releases</p>
-						</div>
+				<section class="flex flex-col gap-3">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg">Albums</h2>
+						<span class="text-body-sm text-onSurfaceVariant">{albums.length}</span>
 					</div>
 
-					<div class="grid min-w-0 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-						{#each albums as album, index (album.id)}
+					<div class="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{#each albums as album (album.id)}
 							<a
 								href={`/album/${encodeURIComponent(album.id)}?name=${encodeURIComponent(album.name)}&artist=${encodeURIComponent(album.artist || artist)}&art=${encodeURIComponent(album.artUrl)}`}
-								style="--delay: {index * 40}ms"
-								class="stagger-animate interactable group flex min-w-0 flex-col rounded-2xl bg-surfaceContainerHigh p-3 transition-all duration-300 hover:-translate-y-1 hover:bg-surfaceContainerHighest hover:shadow-lg active:translate-y-0"
+								class="interactable flex min-w-0 flex-col overflow-hidden rounded-2xl bg-surfaceContainerHigh text-left"
 							>
-								<div class="relative aspect-square w-full overflow-hidden rounded-xl">
-									<Artwork
-										src={album.artUrl}
-										fallbackIcon="album"
-										class="size-full rounded-xl transition-transform duration-500 ease-out group-hover:scale-105"
-									/>
-								</div>
-								<div class="min-w-0 px-1 pb-1 pt-3">
-									<div class="truncate text-body-md font-medium transition-colors group-hover:text-primary">{album.name}</div>
-									<div class="mt-0.5 truncate text-body-sm text-onSurfaceVariant">
-										{album.artist || artist}
-									</div>
+								<Artwork
+									src={album.artUrl}
+									fallbackIcon="album"
+									class="aspect-square w-full rounded-[inherit]"
+								/>
+								<div class="flex min-h-18 w-full flex-col justify-center overflow-hidden px-3 py-3">
+									<div class="truncate text-body-md">{album.name}</div>
+									<div class="truncate text-body-sm text-onSurfaceVariant">{album.artist || artist}</div>
 								</div>
 							</a>
 						{/each}
@@ -298,27 +205,3 @@
 		</div>
 	{/if}
 </main>
-
-<style>
-	@keyframes fadeInUp {
-		from {
-			opacity: 0;
-			transform: translateY(12px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	.stagger-animate {
-		animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-		animation-delay: var(--delay, 0ms);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.stagger-animate {
-			animation: none !important;
-		}
-	}
-</style>
