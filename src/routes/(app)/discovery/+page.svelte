@@ -2,11 +2,11 @@
     import { onMount } from 'svelte'
     import { goto } from '$app/navigation'
     import Artwork from '$lib/components/Artwork.svelte'
+    import BackButton from '$lib/components/BackButton.svelte'
     import Button from '$lib/components/Button.svelte'
     import Header from '$lib/components/Header.svelte'
-    import Icon from '$lib/components/icon/Icon.svelte'
-    import BackButton from '$lib/components/BackButton.svelte'
     import IconButton from '$lib/components/IconButton.svelte'
+    import Icon from '$lib/components/icon/Icon.svelte'
     import MenuButton from '$lib/components/MenuButton.svelte'
     import Separator from '$lib/components/Separator.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
@@ -14,22 +14,20 @@
     import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte'
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
     import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-    import { getRecentlyPlayed } from '$lib/services/library.ts'
-    import { usePlayer } from '$lib/player/index.svelte' // Fixed: Missing player store import
-    import * as m from '$lib/paraglide/messages.js' // Fixed: Missing i18n messages import
     import {
         cacheDiscoveryRecommendations,
         getCachedDiscoveryRecommendations,
     } from '$lib/services/discovery-cache.ts'
     import { generateStableId } from '$lib/services/jiosaavn.ts'
+    import { getRecentlyPlayed } from '$lib/services/library.ts'
     import {
+        type DiscoveryResource,
+        type DiscoveryTrack,
         getSongsForArtist,
         normalizeTracks,
         parseDiscoveryResults,
         searchDiscovery,
         spicyamll,
-        type DiscoveryResource,
-        type DiscoveryTrack,
     } from '$lib/services/spicyamll.ts'
 
     type DiscoveryItem = DiscoveryResource
@@ -170,9 +168,7 @@
                 recommendations = cached.recommendations
                 return
             }
-            if (!history.length) {
-                topPicks = []
-            } else {
+            if (history.length) {
                 const latest = history[0]
                 const latestItem: DiscoveryItem = {
                     type: 'song',
@@ -187,6 +183,8 @@
                     try { return parseRecommendationSearch(await spicyamll.search({ term: artist, limit: 15 })) } catch { return [] }
                 }))
                 topPicks = [latestItem, ...shuffle(dedupeItems(groups.flat()).filter((x) => !(x.type === 'song' && x.id === latestItem.id))).slice(0, 10)]
+            } else {
+                topPicks = []
             }
 
             const listenedIds = new Set(history.map((track) => String(track.trackId || track.id)))
@@ -277,7 +275,7 @@
                 results?: unknown
                 searched?: unknown
             }
-            if (!saved.searched || !Array.isArray(saved.results)) return
+            if (!(saved.searched && Array.isArray(saved.results))) return
             query = typeof saved.query === 'string' ? saved.query : ''
             results = saved.results as DiscoveryItem[]
             searched = true
