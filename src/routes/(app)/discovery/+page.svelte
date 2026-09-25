@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
 	import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
@@ -13,6 +14,10 @@
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 	import { getRecentlyPlayed } from '$lib/services/library.ts'
+	import {
+		cacheDiscoveryRecommendations,
+		getCachedDiscoveryRecommendations,
+	} from '$lib/services/discovery-cache.ts'
 	import { generateStableId } from '$lib/services/jiosaavn.ts'
 	import {
 		getSongsForArtist,
@@ -145,7 +150,9 @@
 	const loadRecommendations = async () => {
 		loadingRecommendations = true
 		try {
+			const cached = getCachedDiscoveryRecommendations()
 			const history = getRecentlyPlayed(100)
+
 			recentlyPlayed = history.slice(0, 10).map((track) => ({
 				type: 'song',
 				id: String(track.trackId || track.id),
@@ -155,6 +162,11 @@
 				artUrl: cleanArtUrl(track.artUrl),
 			}))
 
+			if (cached) {
+				topPicks = cached.topPicks
+				recommendations = cached.recommendations
+				return
+			}
 			if (!history.length) {
 				topPicks = []
 			} else {
@@ -186,6 +198,7 @@
 				})(),
 			])
 			recommendations = shuffle(dedupeItems(groups.flat()).filter((item) => item.type !== 'song' || !listenedIds.has(item.id))).slice(0, 90)
+			cacheDiscoveryRecommendations(topPicks, recommendations)
 		} catch (e) {
 			console.warn('[Discovery] Recommendations failed:', e)
 		} finally {
@@ -249,6 +262,52 @@
 			detailLoading = false
 		}
 	}
+
+	const SEARCH_STATE_KEY = 'adi_music_discovery_search_v1'
+	let restoreSearchDone = false
+
+	const persistSearchState = () => {
+		if (typeof window === 'undefined' || !searched || !results.length) return
+		try {
+			window.sessionStorage.setItem(
+				SEARCH_STATE_KEY,
+				JSON.stringify({ query, results, searched: true }),
+			)
+		} catch {
+			// Ignore storage failures.
+		}
+	}
+
+	const restoreSearchState = () => {
+		if (typeof window === 'undefined' || restoreSearchDone) return
+		restoreSearchDone = true
+		try {
+			const raw = window.sessionStorage.getItem(SEARCH_STATE_KEY)
+			if (!raw) return
+			const saved = JSON.parse(raw) as {
+				query?: unknown
+				results?: unknown
+				searched?: unknown
+			}
+			if (!saved.searched || !Array.isArray(saved.results)) return
+			query = typeof saved.query === 'string' ? saved.query : ''
+			results = saved.results as DiscoveryItem[]
+			searched = true
+		} catch {
+			window.sessionStorage.removeItem(SEARCH_STATE_KEY)
+		}
+	}
+
+	$effect(() => {
+		if (searched && results.length > 0) {
+			persistSearchState()
+		}
+	})
+
+	onMount(() => {
+		restoreSearchState()
+		return () => {}
+	})
 
 	void loadRecommendations()
 </script>
@@ -480,7 +539,14 @@
 						<h2 class="text-title-lg font-bold text-onSurface">Songs</h2>
 						<span class="text-body-sm text-onSurfaceVariant/70">{songResults.length}</span>
 					</div>
-					<TracksListContainer items={songTrackIds} />
+					<TracksListContainer
+						items={songTrackIds}
+						onItemClick={({ index, items }) => {
+							// Discovery owns the search result state. Start playback directly,
+							// without navigating to another route.
+							player.playTrack(index, items)
+						}}
+					/>
 				</section>
 			{/if}
 

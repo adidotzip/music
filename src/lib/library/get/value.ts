@@ -157,6 +157,12 @@ export interface TrackData extends Track {
 const trackConfig: QueryConfig<TrackData> = {
 	fetch: async (id) => {
 		if (id < 0) {
+			const localAlias = getPersistedLocalTrackAlias(id)
+			if (localAlias) {
+				const localTrack = await trackConfig.fetch(localAlias)
+				if (localTrack) return localTrack
+			}
+
 			const remote = remoteTrackMap.get(id) ?? getPersistedRemoteTrack(id)
 			if (remote) {
 				remoteTrackMap.set(id, remote)
