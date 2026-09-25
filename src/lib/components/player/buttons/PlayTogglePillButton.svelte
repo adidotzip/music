@@ -10,6 +10,7 @@
 			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
 		)
 		initPlayerButton(button)
+		button.addEventListener('pressend', () => player.togglePlay())
 	})
 </script>
 
@@ -18,7 +19,6 @@
 	class="aero-player adi-aero-player-button"
 	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
 	disabled={!player.activeTrack}
-	onclick={() => player.togglePlay()}
 >
 	<PlayPauseIcon playing={player.playing} />
 </button>
