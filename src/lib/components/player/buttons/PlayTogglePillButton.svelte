@@ -1,49 +1,52 @@
 <script lang="ts">
 	const player = usePlayer()
-
-	const handleKeydown = (event: KeyboardEvent) => {
-		if (!player.activeTrack) return
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault()
-			player.togglePlay()
-		}
-	}
 </script>
 
-<div class="aero-player-control aero-player-control--play">
-	<aero-player-button
-		class="adi-aero-player-button"
-		aria-label={player.playing ? m.playerPause() : m.playerPlay()}
-		aria-pressed={player.playing}
-		aria-disabled={!player.activeTrack}
-		disabled={!player.activeTrack}
-		role="button"
-		tabindex={player.activeTrack ? 0 : -1}
-		onclick={() => player.togglePlay()}
-		onkeydown={handleKeydown}
-	>
-		<span slot="play" aria-hidden="true"></span>
-		<span slot="pause" aria-hidden="true"></span>
-	</aero-player-button>
-</div>
+<button
+	class="aero-player adi-aero-player-button"
+	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
+	aria-pressed={player.playing}
+	disabled={!player.activeTrack}
+	onclick={() => player.togglePlay()}
+>
+	{#if player.playing}
+		<span class="aero-icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="currentColor">
+				<rect x="5.27" y="3" width="5.45" height="18" rx="1.3" />
+				<rect x="13.28" y="3" width="5.45" height="18" rx="1.3" />
+			</svg>
+		</span>
+	{:else}
+		<span class="aero-icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="currentColor">
+				<path d="M4 6.8 4 17.2Q4 21 7.31 19.14L18.26 12.98Q20 12 18.26 11.02L7.31 4.86Q4 3 4 6.8Z" />
+			</svg>
+		</span>
+	{/if}
+</button>
 
 <style lang="postcss">
 	@reference '../../../../app.css';
 
-	.aero-player-control {
+	.adi-aero-player-button {
+		--player-size: --spacing(12);
+		--player-icon: --spacing(6);
+		--player-label: var(--color-onPrimary);
+		--player-pressed: var(--color-onPrimary);
+		--player-tint: color-mix(in srgb, var(--color-onPrimary) 14%, transparent);
+		--player-disabled: color-mix(in srgb, var(--color-onPrimary) 38%, transparent);
+		flex: 0 0 auto;
+	}
+
+	.aero-icon {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--color-onPrimary);
 	}
 
-	.adi-aero-player-button {
-		--aero-button-color: var(--color-primary);
-		--aero-button-foreground: var(--color-onPrimary);
-		--aero-button-disabled-opacity: 0.38;
-		width: --spacing(18);
-		height: --spacing(11);
-		border-radius: var(--radius-full);
-		flex: 0 0 auto;
+	.aero-icon > svg {
+		width: var(--player-icon);
+		height: var(--player-icon);
+		display: block;
 	}
 </style>
