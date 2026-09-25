@@ -1,6 +1,17 @@
 <script lang="ts">
+	import { onMount } from 'svelte'
+
 	const { class: className }: { class?: ClassValue } = $props()
 	const player = usePlayer()
+
+	let skip: HTMLSpanElement
+
+	onMount(async () => {
+		const { initSkipLabel } = await import(
+			'https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js'
+		)
+		initSkipLabel(skip)
+	})
 </script>
 
 <button
@@ -9,7 +20,13 @@
 	disabled={player.isQueueEmpty}
 	onclick={player.playPrev}
 >
-	<span class="aero-skip" data-direction="backward" data-size="24" aria-hidden="true"></span>
+	<span
+		bind:this={skip}
+		class="aero-skip"
+		data-direction="backward"
+		data-size="24"
+		aria-hidden="true"
+	></span>
 </button>
 
 <style lang="postcss">
@@ -32,5 +49,12 @@
 	.aero-transport-button :global(.aero-skip) {
 		--skip-size: --spacing(6);
 		color: currentColor;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.aero-transport-button :global(.aero-skip svg) {
+		display: block;
 	}
 </style>
