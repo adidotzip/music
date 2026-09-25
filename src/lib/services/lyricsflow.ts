@@ -59,8 +59,12 @@ const mapAppleMusicItem = (item: any, type: 'song' | 'album'): DiscoveryResource
 			attributes?.artist?.name ??
 			'',
 		),
-		album: type === 'song' ? String(attributes?.albumName ?? '') : undefined,
-		artUrl: artwork,
+		album: String(
+			type === 'song'
+				? (attributes?.albumName ?? '')
+				: (attributes?.name ?? name),
+		),
+		artUrl: artwork || 'favicon.svg',
 	} as DiscoveryResource
 }
 
