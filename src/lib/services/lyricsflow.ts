@@ -65,18 +65,22 @@ const requestSpicyArtistResource = async <T>(
 	path: string,
 	artistId: string,
 ): Promise<T | null> => {
-	try {
-		const response = await fetch(
-			`${SPICYAMLL_API}${path}?artist=${encodeURIComponent(artistId)}`,
-			{ headers: { Accept: 'application/json' } },
-		)
-		if (!response.ok) return null
-		return (await response.json()) as T
-	} catch {
-		return null
+	// SpicyAMLL normally expects the numeric Apple Music artist ID as `artist`.
+	// Retry compatible parameter names so a 400 from one deployment does not
+	// make the entire artist profile fail.
+	for (const key of ['artist', 'artistId', 'id'] as const) {
+		try {
+			const url = new URL(SPICYAMLL_API + path)
+			url.searchParams.set(key, artistId)
+			const response = await fetch(url, { headers: { Accept: 'application/json' } })
+			if (!response.ok) continue
+			return (await response.json()) as T
+		} catch {
+			// Try the next compatible parameter name.
+		}
 	}
+	return null
 }
-
 const extractItems = (value: unknown): unknown[] => {
 	if (Array.isArray(value)) return value
 	if (!value || typeof value !== 'object') return []
