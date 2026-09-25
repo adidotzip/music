@@ -84,7 +84,12 @@ const recoverRemoteTrack = async (id: number): Promise<TrackData | undefined> =>
 		}
 
 		registerRemoteTrack(recovered)
-		return recovered
+		const db = await getDatabase()
+		const favorite = await db.getFromIndex('playlistEntries', 'playlistTrack', [
+			FAVORITE_PLAYLIST_ID,
+			id,
+		])
+		return { ...recovered, favorite: !!favorite }
 	} catch {
 		return undefined
 	}
