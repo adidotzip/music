@@ -97,16 +97,9 @@ const createPlaylistTracksPageQuery = (
 
 			const values = await db.getAllFromIndex('playlistEntries', 'playlistId', playlistId)
 
-			const tracksIds: number[] = []
+			const tracksIds = values.map((value) => value.trackId)
 			const playlistIdMap: Record<number, number> = {}
 			for (const value of values) {
-				// Remote tracks use negative IDs and live outside IndexedDB's tracks store.
-				// Keep their metadata in the remote-track cache so Favorites can restore them.
-				if (value.trackId < 0) {
-					const track = await getLibraryValue('tracks', value.trackId, true)
-					if (!track) continue
-				}
-				tracksIds.push(value.trackId)
 				playlistIdMap[value.trackId] = value.id
 			}
 			return { tracksIds, playlistIdMap }
