@@ -179,25 +179,38 @@ export const getLyricsflowArtistProfile = async (
 
 	// If an endpoint returns an envelope containing the artist relationship
 	// rather than a direct array, still keep the profile usable.
-	if (!songs.length) {
-		try {
-			songs = (artist.relationships?.songs?.data ?? [])
-				.map((item) => mapResource(item, 'song', name))
-				.filter((item): item is DiscoveryResource => !!item)
-		} catch {}
+	if (!songs.length && artist?.relationships?.songs?.data) {
+		songs = artist.relationships.songs.data
+			.map((item) => mapResource(item, 'song', name))
+			.filter((item): item is DiscoveryResource => !!item)
 	}
 
-	if (!albums.length) {
-		try {
-			albums = (artist.relationships?.albums?.data ?? [])
-				.map((item) => mapResource(item, 'album', name))
-				.filter((item): item is DiscoveryResource => !!item)
-		} catch {}
+	if (!albums.length && artist?.relationships?.albums?.data) {
+		albums = artist.relationships.albums.data
+			.map((item) => mapResource(item, 'album', name))
+			.filter((item): item is DiscoveryResource => !!item)
+	}
+
+	if (!songs.length && discovery.length) {
+		songs = discovery.filter(
+			(item) => item.type === 'song' && item.artist.toLowerCase() === name.toLowerCase(),
+		)
+	}
+	if (!albums.length && discovery.length) {
+		albums = discovery.filter(
+			(item) => item.type === 'album' && item.artist.toLowerCase() === name.toLowerCase(),
+		)
+	}
+
+	if (!songs.length && !albums.length && !artist && !fallbackArtist) {
+		throw new Error('Unable to load artist profile.')
 	}
 
 	return {
 		name,
-		artUrl: artworkUrl(artist.attributes?.artwork?.url, 1200),
+		artUrl: artist?.attributes?.artwork?.url
+			? artworkUrl(artist.attributes.artwork.url, 1200)
+			: fallbackArtist?.artUrl,
 		songs,
 		albums,
 	}
