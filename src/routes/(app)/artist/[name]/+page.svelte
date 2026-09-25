@@ -110,6 +110,18 @@
 		</div>
 	{:else}
 		<div class="flex flex-col gap-10 pb-8">
+			<section class="flex items-center gap-4 border-b border-outline/10 pb-6">
+				<Artwork
+					src={artistArt}
+					fallbackIcon="person"
+					class="size-20 shrink-0 rounded-full sm:size-24"
+				/>
+				<div class="min-w-0">
+					<div class="text-label-lg text-onSurfaceVariant">Artist</div>
+					<h1 class="truncate text-display-sm font-bold text-onSurface">{artist}</h1>
+					<div class="text-body-sm text-onSurfaceVariant">{songs.length} songs • {albums.length} albums</div>
+				</div>
+			</section>
 			<section class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
 				<div class="flex flex-col gap-4">
 					<h1 class="text-title-lg font-bold">Latest Release</h1>
