@@ -52,7 +52,11 @@ const request = async <T>(path: string, params: SpicyApiParams = {}): Promise<T>
 	const promise = (async () => {
 		try {
 			const response = await fetch(url, { headers: { Accept: 'application/json' } })
-			if (!response.ok) throw new Error(`SpicyAMLL ${response.status}: ${response.statusText}`)
+			if (!response.ok) {
+				let detail = ''
+				try { detail = (await response.text()).slice(0, 300) } catch {}
+				throw new Error(`SpicyAMLL ${response.status}: ${response.statusText}${detail ? ` - ${detail}` : ''}`)
+			}
 			const value = await response.json()
 			responseCache.set(key, { value, expiresAt: Date.now() + getCacheTtl(path) })
 			return value
@@ -259,21 +263,42 @@ export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
 ]
 
 export const searchDiscovery = async (query: string, limit = 100) => {
-	const params = {
-		term: query,
-		l: 'en-US',
-		limit,
-		offset: 0,
-		types: 'songs,albums,artists',
+	const attempts: SpicyApiParams[] = [
+		{ term: query, limit, offset: 0 },
+		{ term: query, l: 'en-US', limit, offset: 0 },
+		{ term: query, types: 'songs,albums,artists', limit, offset: 0 },
+	]
+
+	let lastError: unknown = null
+
+	// Do not send the combined legacy parameter set by default. Current
+	// SpicyAMLL deployments can reject unsupported search parameters with 400.
+	for (const params of attempts) {
+		try {
+			const response = await spicyamll.catalogSearch('us', params)
+			const results = parseDiscoveryResults(response)
+			if (results.length) return results
+		} catch (error) {
+			lastError = error
+		}
 	}
 
-	try {
-		const response = await spicyamll.catalogSearch('us', params)
-		const results = parseDiscoveryResults(response)
-		if (results.length) return results
-	} catch {}
+	// Compatibility fallback for older SpicyAMLL deployments.
+	for (const params of [
+		{ term: query, limit },
+		{ q: query, limit },
+		{ query, limit },
+	]) {
+		try {
+			const response = await spicyamll.search(params)
+			const results = parseDiscoveryResults(response)
+			if (results.length) return results
+		} catch (error) {
+			lastError = error
+		}
+	}
 
-	return parseDiscoveryResults(await spicyamll.search(params))
+	throw lastError instanceof Error ? lastError : new Error('SpicyAMLL search failed')
 }
 
 export const normalizeTracks = (input: unknown): SpicyTrack[] => {
