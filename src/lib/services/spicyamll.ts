@@ -262,11 +262,13 @@ export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
 	...parseCatalogResources(input),
 ]
 
-export const searchDiscovery = async (query: string, limit = 100) => {
+export const searchDiscovery = async (query: string, limit = 50) => {
+	// Apple Music Catalog Search rejects limit values above 50.
+	const safeLimit = Math.min(Math.max(1, limit), 50)
 	const attempts: SpicyApiParams[] = [
-		{ term: query, limit, offset: 0 },
-		{ term: query, l: 'en-US', limit, offset: 0 },
-		{ term: query, types: 'songs,albums,artists', limit, offset: 0 },
+		{ term: query, limit: safeLimit, offset: 0 },
+		{ term: query, l: 'en-US', limit: safeLimit, offset: 0 },
+		{ term: query, types: 'songs,albums,artists', limit: safeLimit, offset: 0 },
 	]
 
 	let lastError: unknown = null
@@ -285,9 +287,9 @@ export const searchDiscovery = async (query: string, limit = 100) => {
 
 	// Compatibility fallback for older SpicyAMLL deployments.
 	for (const params of [
-		{ term: query, limit },
-		{ q: query, limit },
-		{ query, limit },
+		{ term: query, limit: safeLimit },
+		{ q: query, limit: safeLimit },
+		{ query, limit: safeLimit },
 	]) {
 		try {
 			const response = await spicyamll.search(params)
