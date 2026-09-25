@@ -553,6 +553,14 @@ export class PlayerStore {
 		}
 	}
 
+	addToQueue = (trackId: number): void => {
+		this.#queue.addToQueue(trackId)
+	}
+
+	playNextTrack = (trackId: number): void => {
+		this.#queue.addNext(trackId)
+	}
+
 	playNext = (): void => {
 		this.playTrack(this.#queue.getNextIndex())
 	}
