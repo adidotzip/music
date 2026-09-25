@@ -225,24 +225,57 @@ const parseDiscoveryGroup = (
 	}).filter((item): item is DiscoveryResource => Boolean(item))
 }
 
+const parseCatalogResources = (input: unknown): DiscoveryResource[] => {
+	if (!input || typeof input !== 'object') return []
+	const root = input as Record<string, unknown>
+	const data = Array.isArray(root.data) ? root.data : []
+	return data.map((value) => {
+		if (!value || typeof value !== 'object') return null
+		const item = value as Record<string, unknown>
+		const attrs = item.attributes && typeof item.attributes === 'object' ? item.attributes as Record<string, unknown> : {}
+		const type = item.type === 'songs' ? 'song' : item.type === 'albums' ? 'album' : item.type === 'artists' ? 'artist' : null
+		if (!type || item.id == null) return null
+		const artwork = attrs.artwork && typeof attrs.artwork === 'object' ? attrs.artwork as Record<string, unknown> : {}
+		const name = String(attrs.name ?? item.name ?? '')
+		if (!name) return null
+		return {
+			type,
+			id: String(item.id),
+			name,
+			artist: String(attrs.artistName ?? ''),
+			album: String(attrs.albumName ?? (type === 'album' ? name : '')),
+			artUrl: cleanDiscoveryArtwork(artwork.url ?? attrs.artworkUrl100 ?? ''),
+			genre: Array.isArray(attrs.genreNames) ? String(attrs.genreNames[0] ?? '') : '',
+			bio: '',
+		}
+	}).filter((item): item is DiscoveryResource => Boolean(item))
+}
+
 export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
 	...parseDiscoveryGroup(input, 'song'),
 	...parseDiscoveryGroup(input, 'album'),
 	...parseDiscoveryGroup(input, 'artist'),
+	...parseCatalogResources(input),
 ]
 
 export const searchDiscovery = async (query: string, limit = 100) => {
-	// SpicyAMLL expects its original combined search request shape.
-	// Keep the upstream type names and search parameters unchanged so the
-	// endpoint does not reject the request with a 400.
-	const response = await spicyamll.search({
+	const params = {
 		term: query,
-		types: 'songs,albums,artists',
+		l: 'en-US',
 		limit,
-	})
+		offset: 0,
+		types: 'songs,albums,artists',
+	}
 
-	return parseDiscoveryResults(response)
+	try {
+		const response = await spicyamll.catalogSearch('us', params)
+		const results = parseDiscoveryResults(response)
+		if (results.length) return results
+	} catch {}
+
+	return parseDiscoveryResults(await spicyamll.search(params))
 }
+
 export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 	const root = unwrap<unknown>(input)
 	const items: Record<string, unknown>[] = []
