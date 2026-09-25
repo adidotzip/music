@@ -76,50 +76,6 @@
 			data-goatcounter-settings='{"no_onload": true}'
 		></script>
 
-		<!-- Re-initialize AeroUI controls after Svelte mounts dynamic player markup. -->
-		<script type="module">
-			const playerButtonUrl =
-				'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
-			const skipLabelUrl =
-				'https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js'
-
-			const [{ initPlayerButtons }, { initSkipLabels, playSkip }] = await Promise.all([
-				import(playerButtonUrl),
-				import(skipLabelUrl),
-			])
-
-			const initializeAeroPlayer = () => {
-				initPlayerButtons()
-				initSkipLabels()
-
-				document.querySelectorAll('.aero-player .aero-skip').forEach((skip) => {
-					if (skip.dataset.aeroSkipBound === 'true') return
-
-					const button = skip.closest('.aero-player')
-					if (!button) return
-
-					button.addEventListener('pressend', () => {
-						playSkip(skip, { bouncing: true })
-					})
-					skip.dataset.aeroSkipBound = 'true'
-				})
-			}
-
-			initializeAeroPlayer()
-
-			let scheduled = false
-			const observer = new MutationObserver(() => {
-				if (scheduled) return
-				scheduled = true
-				queueMicrotask(() => {
-					scheduled = false
-					initializeAeroPlayer()
-				})
-			})
-
-			observer.observe(document.getElementById('app'), { childList: true, subtree: true })
-		</script>
-
 		<script defer src="/supported-browser-check.js"></script>
 	</body>
 </html>
