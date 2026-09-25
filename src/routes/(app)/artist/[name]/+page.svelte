@@ -15,8 +15,8 @@
 	let loading = $state(true)
 	let error = $state<string | null>(null)
 	let artistId = $state('')
-	let artist = $state('')
 	let artistNameHint = $state('')
+	let artist = $state('')
 	let artistArt = $state<string | undefined>()
 	let songs = $state<any[]>([])
 	let albums = $state<any[]>([])
@@ -72,6 +72,23 @@
 		}
 	}
 
+	const playSong = (index: number) => {
+		if (!songIds.length) return
+		player.playTrack(index, songIds)
+	}
+
+	const playTopSong = (index: number) => {
+		const topIds = songIds.slice(0, 10)
+		if (!topIds.length) return
+		player.playTrack(index, topIds)
+	}
+
+	let latestAlbum = $derived(albums[0] ?? null)
+	let latestSong = $derived(songs[0] ?? null)
+	let latestArtwork = $derived(latestAlbum?.artUrl || latestSong?.artUrl || artistArt)
+	let latestName = $derived(latestAlbum?.name || latestSong?.album || 'Latest Release')
+	let latestArtist = $derived(latestAlbum?.artist || artist)
+
 	onMount(() => {
 		artistId = decodeURIComponent(page.params.name)
 		artistNameHint = page.url.searchParams.get('name')?.trim() || ''
@@ -92,37 +109,96 @@
 			<Button onclick={() => void load()}>Retry</Button>
 		</div>
 	{:else}
-		<section class="relative mb-8 flex flex-col items-center gap-6 overflow-hidden rounded-3xl bg-surfaceContainerHigh p-6 sm:flex-row sm:items-end sm:p-8">
-			<Artwork src={artistArt} fallbackIcon="person" class="size-40 shrink-0 rounded-full sm:size-52" />
-			<div class="min-w-0 flex-1 text-center sm:text-left">
-				<div class="mb-2 text-label-lg text-onSurfaceVariant">Artist</div>
-				<h1 class="truncate text-display-sm font-bold">{artist}</h1>
-				<div class="mt-2 text-body-md text-onSurfaceVariant">{songs.length} songs • {albums.length} albums</div>
-			</div>
-			<Button kind="filled" disabled={songIds.length === 0} onclick={() => player.playTrack(0, songIds)}>
-				Play
-			</Button>
-		</section>
-
-		{#if songs.length}
-			<section class="mb-8 flex flex-col gap-3">
-				<h2 class="text-title-lg font-bold">Popular Songs</h2>
-				<TracksListContainer items={songIds.slice(0, 20)} />
-			</section>
-		{/if}
-
-		{#if albums.length}
-			<section class="flex flex-col gap-3">
-				<h2 class="text-title-lg font-bold">Albums</h2>
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-					{#each albums as album (album.id)}
-						<div class="overflow-hidden rounded-xl bg-surfaceContainerHigh">
-							<Artwork src={album.artUrl} fallbackIcon="album" class="aspect-square w-full" />
-							<div class="truncate p-3 text-body-md">{album.name}</div>
+		<div class="flex flex-col gap-10 pb-8">
+			<section class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+				<div class="flex flex-col gap-4">
+					<h1 class="text-title-lg font-bold">Latest Release</h1>
+					<div class="flex flex-col gap-4">
+						<Artwork
+							src={latestArtwork}
+							fallbackIcon="album"
+							class="aspect-square w-full rounded-2xl"
+						/>
+						<div class="flex items-center gap-4">
+							<div class="min-w-0 flex-1">
+								<div class="text-body-sm text-onSurfaceVariant">{latestArtist}</div>
+								<h2 class="truncate text-headline-sm font-bold">{latestName}</h2>
+								<div class="text-body-sm text-onSurfaceVariant">{songs.length} songs</div>
+							</div>
+							<Button
+								kind="filled"
+								disabled={!songIds.length}
+								onclick={() => playSong(0)}
+							>
+								Play
+							</Button>
 						</div>
-					{/each}
+					</div>
+				</div>
+
+				<div class="flex min-w-0 flex-col gap-4">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg font-bold">Top Songs</h2>
+						<span class="text-body-sm text-onSurfaceVariant">{songs.length} songs</span>
+					</div>
+
+					{#if songs.length}
+						<div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
+							{#each songs.slice(0, 10) as song, index (song.id)}
+								<button
+									type="button"
+									class="interactable flex min-w-0 items-center gap-3 rounded-2xl bg-surfaceContainerHigh p-3 text-left"
+									onclick={() => playTopSong(index)}
+								>
+									<Artwork
+										src={song.artUrl}
+										fallbackIcon="musicNote"
+										class="size-14 shrink-0 rounded-xl"
+									/>
+									<div class="min-w-0 flex-1">
+										<div class="truncate text-body-lg font-bold">{song.name}</div>
+										<div class="truncate text-body-md text-onSurfaceVariant">
+											{song.album || artist}{song.year ? ` • ${song.year}` : ''}
+										</div>
+									</div>
+									<span class="shrink-0 px-1 text-onSurfaceVariant/70">•••</span>
+								</button>
+							{/each}
+						</div>
+					{:else}
+						<div class="rounded-2xl bg-surfaceContainerHigh p-6 text-body-md text-onSurfaceVariant">
+							No songs found for this artist.
+						</div>
+					{/if}
 				</div>
 			</section>
-		{/if}
+
+			{#if songs.length}
+				<section class="flex flex-col gap-3">
+					<div class="flex items-center justify-between">
+						<h2 class="text-title-lg font-bold">All Songs</h2>
+						<Button kind="flat" onclick={() => playSong(0)}>Play All</Button>
+					</div>
+					<TracksListContainer items={songIds} />
+				</section>
+			{/if}
+
+			{#if albums.length}
+				<section class="flex flex-col gap-4">
+					<h2 class="text-title-lg font-bold">Albums</h2>
+					<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+						{#each albums as album (album.id)}
+							<div class="overflow-hidden rounded-2xl bg-surfaceContainerHigh">
+								<Artwork src={album.artUrl} fallbackIcon="album" class="aspect-square w-full" />
+								<div class="p-3">
+									<div class="truncate text-body-md font-medium">{album.name}</div>
+									<div class="truncate text-body-sm text-onSurfaceVariant">{album.artist || artist}</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</section>
+			{/if}
+		</div>
 	{/if}
 </main>
