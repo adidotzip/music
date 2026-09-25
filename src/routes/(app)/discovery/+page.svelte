@@ -245,7 +245,7 @@
 	}
 
 	const viewArtist = async (artist: DiscoveryItem) => {
-		await goto(`/artist/${encodeURIComponent(artist.name)}`)
+		await goto(`/artist/${encodeURIComponent(artist.id)}`)
 	}
 
 	const SEARCH_STATE_KEY = 'adi_music_discovery_search_v1'
