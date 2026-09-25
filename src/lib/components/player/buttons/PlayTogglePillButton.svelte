@@ -38,8 +38,9 @@
 				return
 			}
 
-			if (event.target === button) {
-				// AeroUI's native keydown/keyup gesture will emit pressend.
+			if (event.target instanceof Node && button.contains(event.target)) {
+				// AeroUI owns keyboard presses while the button or its injected
+				// label is focused. Do not toggle a second time here.
 				return
 			}
 
