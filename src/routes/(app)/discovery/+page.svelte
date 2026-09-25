@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte'
+import { browser } from '$app/environment'
     import { goto } from '$app/navigation'
     import Artwork from '$lib/components/Artwork.svelte'
     import Button from '$lib/components/Button.svelte'
@@ -38,6 +39,7 @@
     let loadingRecommendations = $state(false)
     let error = $state<string | null>(null)
     let searched = $state(false)
+    let isOnline = $state(browser ? navigator.onLine : true)
 
     let results = $state<DiscoveryItem[]>([])
     let topPicks = $state<DiscoveryItem[]>([])
@@ -198,6 +200,7 @@
     }
 
     const search = async () => {
+        if (!isOnline) return
         const term = query.trim()
         if (!term) return
         loading = true
@@ -228,7 +231,26 @@
     }
 
     onMount(() => {
-        void loadRecommendations()
+        const handleOnline = () => {
+            isOnline = true
+            void loadRecommendations()
+        }
+        const handleOffline = () => {
+            isOnline = false
+            query = ''
+            results = []
+            searched = false
+            error = null
+        }
+
+        window.addEventListener('online', handleOnline)
+        window.addEventListener('offline', handleOffline)
+        if (navigator.onLine) void loadRecommendations()
+
+        return () => {
+            window.removeEventListener('online', handleOnline)
+            window.removeEventListener('offline', handleOffline)
+        }
     })
 </script>
 
@@ -281,17 +303,19 @@
         </div>
     </Button>
 
-    <Button
-        as="a"
-        href="/discovery"
-        kind="blank"
-        tooltip="Discovery"
-        class={['flex shrink-0 items-center justify-center', className]}
-    >
-        <div class="flex items-center justify-center rounded-full bg-surfaceContainerHighest p-2 text-onSurface">
-            <Icon type="compass" />
-        </div>
-    </Button>
+    {#if isOnline}
+        <Button
+            as="a"
+            href="/discovery"
+            kind="blank"
+            tooltip="Discovery"
+            class={['flex shrink-0 items-center justify-center', className]}
+        >
+            <div class="flex items-center justify-center rounded-full bg-surfaceContainerHighest p-2 text-onSurface">
+                <Icon type="compass" />
+            </div>
+        </Button>
+    {/if}
 {/snippet}
 
 {#snippet layoutBottom()}
