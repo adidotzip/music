@@ -1,5 +1,4 @@
 import type { DiscoveryResource } from './spicyamll.ts'
-import { parseDiscoveryResults, spicyamll } from './spicyamll.ts'
 
 const API_BASE_URL = (
 	import.meta.env.PUBLIC_LYRICSFLOW_API_URL ||
@@ -7,65 +6,50 @@ const API_BASE_URL = (
 	''
 ).replace(/\/$/, '')
 
-const request = async <T>(path: string, artist: string): Promise<T | null> => {
-	if (!API_BASE_URL) return null
+type AppleMusicArtist = {
+	id?: string | number
+	type?: string
+	attributes?: { name?: string; url?: string; genreNames?: string[]; artwork?: { url?: string } }
+	relationships?: { albums?: { data?: AppleMusicResource[] }; songs?: { data?: AppleMusicResource[] } }
+}
 
+type AppleMusicResource = {
+	id?: string | number
+	type?: string
+	attributes?: { name?: string; artistName?: string; albumName?: string; artwork?: { url?: string } }
+}
+
+const requestArtist = async (artistId: string): Promise<AppleMusicArtist | null> => {
+	if (!API_BASE_URL) return null
 	try {
 		const response = await fetch(
-			`${API_BASE_URL}${path}?artist=${encodeURIComponent(artist)}`,
+			`${API_BASE_URL}/artist?artist=${encodeURIComponent(artistId)}`,
 			{ headers: { Accept: 'application/json' } },
 		)
-
 		if (!response.ok) return null
-		return (await response.json()) as T
+		const payload = (await response.json()) as { data?: AppleMusicArtist[] | AppleMusicArtist }
+		const data = payload?.data
+		return Array.isArray(data) ? (data[0] ?? null) : (data ?? null)
 	} catch {
 		return null
 	}
 }
 
-const extractArray = (value: unknown): unknown[] => {
-	if (Array.isArray(value)) return value
-	if (!value || typeof value !== 'object') return []
+const artworkUrl = (url?: string, size = 600) =>
+	url?.replace(/\{w\}/g, String(size)).replace(/\{h\}/g, String(size)).replace(/\{f\}/g, 'jpg').replace(/\{c\}/g, 'bb') || 'favicon.svg'
 
-	const object = value as Record<string, unknown>
-	for (const key of ['data', 'results', 'songs', 'albums', 'items']) {
-		if (Array.isArray(object[key])) return object[key]
-		if (object[key] && typeof object[key] === 'object') {
-			const nested = extractArray(object[key])
-			if (nested.length) return nested
-		}
-	}
-
-	return []
-}
-
-const mapAppleMusicItem = (item: any, type: 'song' | 'album'): DiscoveryResource | null => {
-	const attributes = item?.attributes ?? item
+const mapResource = (item: AppleMusicResource, type: 'song' | 'album', artistName: string): DiscoveryResource | null => {
+	const attributes = item.attributes
 	const name = attributes?.name
-	if (!name) return null
-
-	const artwork = attributes?.artwork?.url
-		?.replace('{w}', '600')
-		.replace('{h}', '600')
-		.replace('{f}', 'jpg')
-		.replace('{c}', 'bb')
-
+	if (!name || !item.id) return null
 	return {
 		type,
-		id: String(item?.id ?? attributes?.id ?? name),
-		name: String(name),
-		artist: String(
-			attributes?.artistName ??
-			attributes?.artist?.name ??
-			'',
-		),
-		album: String(
-			type === 'song'
-				? (attributes?.albumName ?? '')
-				: (attributes?.name ?? name),
-		),
-		artUrl: artwork || 'favicon.svg',
-	} as DiscoveryResource
+		id: String(item.id),
+		name,
+		artist: attributes?.artistName || artistName,
+		album: type === 'album' ? name : attributes?.albumName || '',
+		artUrl: artworkUrl(attributes?.artwork?.url),
+	}
 }
 
 export interface LyricsflowArtistProfile {
@@ -75,59 +59,22 @@ export interface LyricsflowArtistProfile {
 	albums: DiscoveryResource[]
 }
 
-export const getLyricsflowArtistProfile = async (
-	artist: string,
-): Promise<LyricsflowArtistProfile> => {
-	const [artistResponse, songsResponse, albumsResponse] = await Promise.all([
-		request<unknown>('/artist', artist),
-		request<unknown>('/artist/songs', artist),
-		request<unknown>('/artist/albums', artist),
-	])
+export const getLyricsflowArtistProfile = async (artistId: string): Promise<LyricsflowArtistProfile> => {
+	const artist = await requestArtist(artistId)
+	if (!artist) throw new Error('Unable to load artist profile.')
 
-	const artistObject =
-		artistResponse && typeof artistResponse === 'object'
-			? (artistResponse as any)
-			: undefined
-
-	const artistData = artistObject?.data ?? artistObject?.artist ?? artistObject
-	const artistAttributes = artistData?.attributes ?? artistData
-
-	const songs = extractArray(songsResponse)
-		.map((item) => mapAppleMusicItem(item, 'song'))
+	const name = artist.attributes?.name || artistId
+	const songs = (artist.relationships?.songs?.data ?? [])
+		.map((item) => mapResource(item, 'song', name))
 		.filter((item): item is DiscoveryResource => !!item)
-
-	const albums = extractArray(albumsResponse)
-		.map((item) => mapAppleMusicItem(item, 'album'))
+	const albums = (artist.relationships?.albums?.data ?? [])
+		.map((item) => mapResource(item, 'album', name))
 		.filter((item): item is DiscoveryResource => !!item)
-
-	if (songs.length || albums.length || artistAttributes?.name) {
-		return {
-			name: String(artistAttributes?.name || artist),
-			artUrl: artistAttributes?.artwork?.url
-				?.replace('{w}', '1200')
-				.replace('{h}', '1200')
-				.replace('{f}', 'jpg')
-				.replace('{c}', 'bb'),
-			songs,
-			albums,
-		}
-	}
-
-	// Keep artist profiles functional when the optional LyricsFlow proxy is not configured.
-	const fallback = await spicyamll.search({
-		term: artist,
-		types: 'songs',
-		limit: 50,
-	})
-
-	const fallbackItems = parseDiscoveryResults(fallback).filter(
-		(item) => item.type === 'song' && item.artist.toLowerCase() === artist.toLowerCase(),
-	)
 
 	return {
-		name: artist,
-		artUrl: fallbackItems[0]?.artUrl,
-		songs: fallbackItems,
-		albums: [],
+		name,
+		artUrl: artworkUrl(artist.attributes?.artwork?.url, 1200),
+		songs,
+		albums,
 	}
 }
