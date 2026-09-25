@@ -1,4 +1,4 @@
-import { getLibraryValue } from '$lib/library/get/value.ts'
+import { getLibraryValue, setLibraryValueInCache } from '$lib/library/get/value.ts'
 import { dbImportTrack } from '$lib/library/scan-actions/scanner/import-track.ts'
 import { LEGACY_NO_NATIVE_DIRECTORY, UNKNOWN_ITEM, type UnknownTrack } from '$lib/library/types.ts'
 import { spicyamll } from '$lib/services/spicyamll.ts'
@@ -6,6 +6,7 @@ import { getDatabase } from '$lib/db/database.ts'
 
 const MAX_DOWNLOAD_BYTES = 300 * 1024 * 1024
 const pendingDownloads = new Map<string, Promise<number>>()
+const LOCAL_ALIAS_PREFIX = 'adi_music_local_track_alias:'
 
 const sanitizeFilename = (value: string) =>
 	value.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || 'Unknown'
@@ -49,7 +50,14 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 
 	const database = await getDatabase()
 	const existing = await database.getFromIndex('tracks', 'uuid', track.uuid)
-	if (existing?.file) return existing.id
+	if (existing?.file) {
+		if (trackId < 0) {
+			try {
+				localStorage.setItem(LOCAL_ALIAS_PREFIX + trackId, String(existing.id))
+			} catch {}
+		}
+		return existing.id
+	}
 
 	const url = getDownloadUrl(track)
 	if (!url) {
@@ -126,7 +134,14 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 		}
 	}
 
-	return dbImportTrack(parsedData, trackId >= 0 ? trackId : undefined)
+	const localTrackId = await dbImportTrack(parsedData, trackId >= 0 ? trackId : undefined)
+
+	if (trackId < 0) {
+		try {
+			localStorage.setItem(LOCAL_ALIAS_PREFIX + trackId, String(localTrackId))
+		} catch {}
+	}
+	return localTrackId
 }
 
 export const ensureTrackIsStoredLocally = async (trackId: number): Promise<number> => {
