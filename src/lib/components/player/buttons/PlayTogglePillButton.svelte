@@ -4,6 +4,16 @@
 	const player = usePlayer()
 	let button: HTMLButtonElement
 
+	const isTypingTarget = (target: EventTarget | null) => {
+		if (!(target instanceof HTMLElement)) return false
+		return (
+			target.isContentEditable ||
+			target instanceof HTMLInputElement ||
+			target instanceof HTMLTextAreaElement ||
+			target instanceof HTMLSelectElement
+		)
+	}
+
 	onMount(async () => {
 		const { initPlayerButton, setPlayerIcon } = await import(
 			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
@@ -12,12 +22,37 @@
 		initPlayerButton(button)
 		setPlayerIcon(button, player.playing ? 'pause' : 'play')
 
-		button.addEventListener('pressend', () => {
+		const handlePressEnd = () => {
 			player.togglePlay()
 			queueMicrotask(() => {
 				setPlayerIcon(button, player.playing ? 'pause' : 'play')
 			})
-		})
+		}
+
+		button.addEventListener('pressend', handlePressEnd)
+
+		// Keep Space as the music-player shortcut even when the AeroUI button
+		// itself does not have focus. Do not hijack text fields or editable UI.
+		const handleGlobalKeydown = (event: KeyboardEvent) => {
+			if (event.key !== ' ' || event.repeat || player.isQueueEmpty || isTypingTarget(event.target)) {
+				return
+			}
+
+			if (event.target === button) {
+				// AeroUI's native keydown/keyup gesture will emit pressend.
+				return
+			}
+
+			event.preventDefault()
+			player.togglePlay()
+		}
+
+		window.addEventListener('keydown', handleGlobalKeydown)
+
+		return () => {
+			button.removeEventListener('pressend', handlePressEnd)
+			window.removeEventListener('keydown', handleGlobalKeydown)
+		}
 	})
 
 	$effect(() => {
