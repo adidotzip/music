@@ -1,4 +1,3 @@
-/* Material 3 Expressive 2025 color roles. */
 @theme {
 	--color-*: initial;
 	--color-transparent: transparent;
@@ -10,7 +9,6 @@
 	--color-secondary: var(--m3c-secondary);
 	--color-onSecondary: var(--m3c-on-secondary);
 	--color-secondaryContainer: var(--m3c-secondary-container);
-	--color-secondaryContainerVariant: var(--m3c-secondary-container-subtle);
 	--color-onSecondaryContainer: var(--m3c-on-secondary-container);
 	--color-tertiary: var(--m3c-tertiary);
 	--color-onTertiary: var(--m3c-on-tertiary);
