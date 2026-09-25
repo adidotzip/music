@@ -162,6 +162,7 @@ export type DiscoveryResource = {
 	artist: string
 	album: string
 	artUrl: string
+	duration?: number
 	genre?: string
 	bio?: string
 }
@@ -223,6 +224,7 @@ const parseDiscoveryGroup = (
 			artist: String(attrs.artistName ?? item.artistName ?? item.artist ?? ''),
 			album: String(attrs.albumName ?? item.albumName ?? item.album ?? ''),
 			artUrl: cleanDiscoveryArtwork(artwork.url ?? attrs.artworkUrl100 ?? item.artworkUrl100 ?? item.artUrl ?? item.image),
+			duration: Number(attrs.durationInMillis ?? item.durationInMillis ?? attrs.duration ?? item.duration ?? 0) / (attrs.durationInMillis !== undefined || item.durationInMillis !== undefined ? 1000 : 1),
 			genre: Array.isArray(attrs.genreNames) ? String(attrs.genreNames[0] ?? '') : String(attrs.genre ?? ''),
 			bio: String(editorial.short ?? editorial.standard ?? ''),
 		}
@@ -249,6 +251,7 @@ const parseCatalogResources = (input: unknown): DiscoveryResource[] => {
 			artist: String(attrs.artistName ?? ''),
 			album: String(attrs.albumName ?? (type === 'album' ? name : '')),
 			artUrl: cleanDiscoveryArtwork(artwork.url ?? attrs.artworkUrl100 ?? ''),
+			duration: Number(attrs.durationInMillis ?? attrs.duration ?? 0) / (attrs.durationInMillis !== undefined ? 1000 : 1),
 			genre: Array.isArray(attrs.genreNames) ? String(attrs.genreNames[0] ?? '') : '',
 			bio: '',
 		}
