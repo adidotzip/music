@@ -52,6 +52,10 @@ const mapResource = (item: AppleMusicResource, type: 'song' | 'album', artistNam
 	}
 }
 
+const ARTIST_PROFILE_CACHE_TTL = 10 * 60 * 1000
+const artistProfileCache = new Map<string, { value: LyricsflowArtistProfile; expiresAt: number }>()
+const artistProfileRequests = new Map<string, Promise<LyricsflowArtistProfile>>()
+
 export interface LyricsflowArtistProfile {
 	name: string
 	artUrl?: string
@@ -139,7 +143,7 @@ const mapSpicyResource = (
 	}
 }
 
-export const getLyricsflowArtistProfile = async (
+const fetchLyricsflowArtistProfile = async (
 	artistId: string,
 	artistName?: string,
 ): Promise<LyricsflowArtistProfile> => {
@@ -214,4 +218,22 @@ export const getLyricsflowArtistProfile = async (
 		songs,
 		albums,
 	}
+}
+
+export const getLyricsflowArtistProfile = (artistId: string, artistName?: string): Promise<LyricsflowArtistProfile> => {
+	const key = `${artistId}:${artistName?.trim().toLowerCase() ?? ''}`
+	const cached = artistProfileCache.get(key)
+	if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.value)
+	if (cached) artistProfileCache.delete(key)
+
+	const pending = artistProfileRequests.get(key)
+	if (pending) return pending
+
+	const request = fetchLyricsflowArtistProfile(artistId, artistName).then((value) => {
+		artistProfileCache.set(key, { value, expiresAt: Date.now() + ARTIST_PROFILE_CACHE_TTL })
+		return value
+	}).finally(() => artistProfileRequests.delete(key))
+
+	artistProfileRequests.set(key, request)
+	return request
 }
