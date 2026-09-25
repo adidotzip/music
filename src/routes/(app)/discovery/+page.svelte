@@ -151,13 +151,8 @@
 		loadingRecommendations = true
 		try {
 			const cached = getCachedDiscoveryRecommendations()
-			if (cached) {
-				topPicks = cached.topPicks
-				recommendations = cached.recommendations
-				return
-			}
-
 			const history = getRecentlyPlayed(100)
+
 			recentlyPlayed = history.slice(0, 10).map((track) => ({
 				type: 'song',
 				id: String(track.trackId || track.id),
@@ -167,6 +162,11 @@
 				artUrl: cleanArtUrl(track.artUrl),
 			}))
 
+			if (cached) {
+				topPicks = cached.topPicks
+				recommendations = cached.recommendations
+				return
+			}
 			if (!history.length) {
 				topPicks = []
 			} else {
