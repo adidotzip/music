@@ -1,6 +1,5 @@
 import type { DiscoveryResource } from './spicyamll.ts'
 
-// Discovery recommendations are persisted independently from transient API response caching.
 const CACHE_KEY = 'adi_music_discovery_recommendations_v1'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
