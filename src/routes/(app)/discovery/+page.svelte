@@ -306,6 +306,7 @@
 
 <Header
     title="Discovery"
+    noBackButton={!searched}
     onback={
         searched
             ? () => {
