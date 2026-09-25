@@ -542,19 +542,19 @@
                         <h2 class="text-title-lg font-bold text-onSurface">Albums</h2>
                         <span class="text-body-sm text-onSurfaceVariant/70">{albumResults.length}</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {#each albumResults as item (item.id)}
                             <button
                                 type="button"
-                                class="interactable flex flex-col overflow-hidden rounded-2xl bg-surfaceContainerHigh text-left"
+                                class="interactable group flex min-w-0 flex-col overflow-hidden rounded-2xl bg-surfaceContainerHigh text-left transition-colors hover:bg-surfaceContainerHighest"
                                 onclick={() => void viewAlbum(item)}
                             >
                                 <Artwork
                                     src={item.artUrl}
                                     fallbackIcon="album"
-                                    class="aspect-square w-full rounded-[inherit]"
+                                    class="aspect-square w-full rounded-[inherit] transition-transform duration-200 group-hover:scale-[1.015]"
                                 />
-                                <div class="flex min-h-18 w-full flex-col justify-center overflow-hidden px-3 py-3 text-center text-onSurfaceVariant">
+                                <div class="flex min-h-18 w-full flex-col justify-center overflow-hidden px-3 py-3">
                                     <div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
                                     <div class="truncate text-body-sm text-onSurfaceVariant">{item.artist || 'Unknown Artist'}</div>
                                 </div>
@@ -622,19 +622,19 @@
             {#if recommendations.some((r) => r.type === 'album')}
                 <section class="flex flex-col gap-3">
                     <h2 class="text-title-lg font-bold text-onSurface">Recommended Albums</h2>
-                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {#each recommendations.filter((r) => r.type === 'album').slice(0, 12) as item (item.id)}
                             <button
                                 type="button"
-                                class="interactable flex flex-col overflow-hidden rounded-lg bg-surfaceContainerHigh text-left"
+                                class="interactable group flex min-w-0 flex-col overflow-hidden rounded-2xl bg-surfaceContainerHigh text-left transition-colors hover:bg-surfaceContainerHighest"
                                 onclick={() => void viewAlbum(item)}
                             >
                                 <Artwork
                                     src={item.artUrl}
                                     fallbackIcon="album"
-                                    class="aspect-square w-full rounded-[inherit]"
+                                    class="aspect-square w-full rounded-[inherit] transition-transform duration-200 group-hover:scale-[1.015]"
                                 />
-                                <div class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant">
+                                <div class="flex min-h-18 w-full flex-col justify-center overflow-hidden px-3 py-3">
                                     <div class="truncate text-body-md font-medium text-onSurface">{item.name}</div>
                                     <div class="truncate text-body-sm text-onSurfaceVariant">{item.artist || 'Unknown Artist'}</div>
                                 </div>
