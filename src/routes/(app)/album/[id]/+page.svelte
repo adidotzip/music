@@ -110,56 +110,54 @@
         </div>
     {:else}
         <div class="flex flex-col gap-6">
-            <!-- Apple Music-style Hero Header with Material Aesthetics -->
-            <section class="flex flex-col items-center pt-4 text-center">
-                <!-- Main Artwork Card with Elevation -->
-                <div class="relative shadow-lg transition-transform hover:scale-[1.02] duration-200 rounded-2xl overflow-hidden bg-surfaceContainer">
-                    <Artwork src={artwork} fallbackIcon="album" class="size-64 sm:size-72 shrink-0 rounded-2xl object-cover" />
-                </div>
+            <section class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row">
+                <Artwork
+                    src={artwork}
+                    fallbackIcon="album"
+                    class="h-49 shrink-0 rounded-2xl @2xl:h-full"
+                />
 
-                <!-- Title & Artist Metadata -->
-                <div class="mt-5 flex flex-col items-center px-2 max-w-xl">
-                    <h1 class="text-headline-medium sm:text-display-small font-bold text-onSurface tracking-tight">
-                        {albumName}
-                    </h1>
-                    
-                    {#if artistName}
-                        <button class="mt-1 text-title-medium font-semibold text-primary hover:underline">
-                            {artistName}
-                        </button>
-                    {/if}
+                <div class="relative z-0 flex size-full flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh">
+                    <div class="flex grow flex-col p-4">
+                        <div class="flex items-center gap-2">
+                            <Icon type="album" class="size-10 text-onSurface/54" />
+                            <h1 class="text-headline-md">{albumName}</h1>
+                        </div>
 
-                    <div class="mt-1 text-body-medium text-onSurfaceVariant">
-                        Album • {songIds.length} {songIds.length === 1 ? 'song' : 'songs'}
+                        {#if artistName}
+                            <div class="grid w-full overflow-hidden text-body-lg">
+                                <div class="truncate">{artistName}</div>
+                            </div>
+                        {/if}
+
+                        <div class="mt-1 text-onSurfaceVariant">
+                            {m.libraryTracksCount({ count: songIds.length })}
+                        </div>
                     </div>
-                </div>
 
-                <!-- Material Dynamic Action Bar (Shuffle / Play / Add) -->
-                <div class="mt-6 flex items-center justify-center gap-3 w-full max-w-xs">
-                    <button 
-                        class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-secondaryContainer text-onSecondaryContainer font-medium text-label-large hover:bg-secondaryContainer/80 transition-colors"
-                        disabled={!songIds.length}
-                        onclick={playShuffle}
-                    >
-                        <Icon type="shuffle" class="size-5" />
-                        Shuffle
-                    </button>
+                    <div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
+                        <Button
+                            kind="filled"
+                            class="my-1"
+                            disabled={songIds.length === 0}
+                            onclick={() => player.playTrack(0, songIds)}
+                        >
+                            {m.play()}
+                        </Button>
 
-                    <button 
-                        class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-primary text-onPrimary font-medium text-label-large shadow-sm hover:shadow-md hover:bg-primary/90 transition-all"
-                        disabled={!songIds.length}
-                        onclick={() => player.playTrack(0, songIds)}
-                    >
-                        <Icon type="play" class="size-5" />
-                        Play
-                    </button>
+                        <Button
+                            kind="flat"
+                            class="my-1 mr-auto"
+                            disabled={songIds.length === 0}
+                            onclick={playShuffle}
+                        >
+                            {m.shuffle()}
+                            <Icon type="shuffle" />
+                        </Button>
+                    </div>
                 </div>
             </section>
 
-            <!-- Divider Line -->
-            <hr class="border-outlineVariant opacity-40 my-2" />
-
-            <!-- Track List Section -->
             <TracksListContainer items={songIds} />
         </div>
     {/if}
