@@ -1,46 +1,31 @@
 import { writeFileSync } from 'node:fs'
+import {
+	argbFromHex,
+	// biome-ignore lint/style/noRestrictedImports: Used for static theme generation
+} from '@material/material-color-utilities'
+import { getThemePaletteRgbEntries } from '../src/lib/theme.ts'
 
+const defaultColorSeed = '#d34539'
 const outputFile = `${import.meta.dirname}/../src/theme-colors.css`
 
-const content = `@theme {
+const argb = argbFromHex(defaultColorSeed)
+
+const tokensLightEntries = getThemePaletteRgbEntries(argb, false)
+const tokensDark = Object.fromEntries(getThemePaletteRgbEntries(argb, true))
+
+const variables = tokensLightEntries
+	.map(([name, lightValue]) => `--color-${name}: light-dark(${lightValue}, ${tokensDark[name]});`)
+	.join('\n	')
+
+const content = `/* This file is auto generated, do not edit manually. */
+@theme {
 	--color-*: initial;
 	--color-transparent: transparent;
 	--color-current: currentColor;
-	--color-primary: var(--m3c-primary);
-	--color-onPrimary: var(--m3c-on-primary);
-	--color-primaryContainer: var(--m3c-primary-container);
-	--color-onPrimaryContainer: var(--m3c-on-primary-container);
-	--color-secondary: var(--m3c-secondary);
-	--color-onSecondary: var(--m3c-on-secondary);
-	--color-secondaryContainer: var(--m3c-secondary-container);
-	--color-onSecondaryContainer: var(--m3c-on-secondary-container);
-	--color-tertiary: var(--m3c-tertiary);
-	--color-onTertiary: var(--m3c-on-tertiary);
-	--color-tertiaryContainer: var(--m3c-tertiary-container);
-	--color-onTertiaryContainer: var(--m3c-on-tertiary-container);
-	--color-error: var(--m3c-error);
-	--color-onError: var(--m3c-on-error);
-	--color-errorContainer: var(--m3c-error-container);
-	--color-onErrorContainer: var(--m3c-on-error-container);
-	--color-surface: var(--m3c-surface);
-	--color-onSurface: var(--m3c-on-surface);
-	--color-surfaceVariant: var(--m3c-surface-container-highest);
-	--color-onSurfaceVariant: var(--m3c-on-surface-variant);
-	--color-surfaceContainerHighest: var(--m3c-surface-container-highest);
-	--color-surfaceContainerHigh: var(--m3c-surface-container-high);
-	--color-surfaceContainer: var(--m3c-surface-container);
-	--color-surfaceContainerLow: var(--m3c-surface-container-low);
-	--color-surfaceContainerLowest: var(--m3c-surface-container-lowest);
-	--color-surfaceBright: var(--m3c-surface-bright);
-	--color-surfaceDim: var(--m3c-surface-dim);
-	--color-outline: var(--m3c-outline);
-	--color-outlineVariant: var(--m3c-outline-variant);
-	--color-shadow: var(--m3c-shadow);
-	--color-scrim: var(--m3c-scrim);
-	--color-inverseSurface: var(--m3c-inverse-surface);
-	--color-inverseOnSurface: var(--m3c-inverse-on-surface);
-	--color-inversePrimary: var(--m3c-inverse-primary);
+	${variables}
 }
 `
 
-writeFileSync(outputFile, content, { encoding: 'utf-8' })
+writeFileSync(outputFile, content, {
+	encoding: 'utf-8',
+})
