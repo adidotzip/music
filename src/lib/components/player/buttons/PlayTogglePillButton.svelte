@@ -42,34 +42,12 @@
 <style lang="postcss">
 	@reference '../../../../app.css';
 
-	.adi-aero-player-button {
-		width: --spacing(18);
-		height: --spacing(10);
-		padding: 0;
-		border-radius: var(--radius-full);
-		background-color: var(--color-primary);
-		color: var(--color-onPrimary);
-		--player-label: var(--color-onPrimary);
-		--player-pressed: var(--color-onPrimary);
-		--player-tint: var(--color-primary);
-		--player-disabled: color-mix(in srgb, var(--color-onPrimary) 38%, transparent);
-		flex: 0 0 auto;
-	}
-
-	.adi-aero-player-button :global(.aero-player-label) {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.adi-aero-player-button :global(.aero-player-label > svg) {
-		width: --spacing(6);
-		height: --spacing(6);
-		display: block;
-	}
-
-	.adi-aero-player-button:disabled {
-		cursor: default;
-		background-color: var(--color-primary);
+	/* Keep AeroUI's native player geometry and interaction styling.
+	 * Only map AeroUI's color tokens to Adi Music's theme. */
+	.aero-player {
+		--player-label: var(--color-onSecondaryContainer);
+		--player-pressed: var(--color-onSecondaryContainer);
+		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
+		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
 	}
 </style>
