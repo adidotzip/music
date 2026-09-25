@@ -16,6 +16,7 @@
 	let error = $state<string | null>(null)
 	let artistId = $state('')
 	let artist = $state('')
+	let artistNameHint = $state('')
 	let artistArt = $state<string | undefined>()
 	let songs = $state<any[]>([])
 	let albums = $state<any[]>([])
@@ -58,7 +59,7 @@
 		loading = true
 		error = null
 		try {
-			const profile = await getLyricsflowArtistProfile(artistId)
+			const profile = await getLyricsflowArtistProfile(artistId, artistNameHint)
 			artist = profile.name
 			artistArt = profile.artUrl
 			songs = profile.songs
@@ -73,6 +74,7 @@
 
 	onMount(() => {
 		artistId = decodeURIComponent(page.params.name)
+		artistNameHint = page.url.searchParams.get('name')?.trim() || ''
 		void load()
 	})
 </script>
