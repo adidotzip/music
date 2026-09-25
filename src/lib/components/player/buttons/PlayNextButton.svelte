@@ -32,29 +32,12 @@
 <style lang="postcss">
 	@reference '../../../../app.css';
 
-	.aero-transport-button {
-		width: --spacing(11);
-		height: --spacing(11);
-		padding: 0;
-		border-radius: var(--radius-full);
-		background: transparent;
-		color: var(--color-onSecondaryContainer);
+	/* Keep AeroUI's native player geometry and interaction styling.
+	 * Only map AeroUI's color tokens to Adi Music's theme. */
+	.aero-player {
 		--player-label: var(--color-onSecondaryContainer);
 		--player-pressed: var(--color-onSecondaryContainer);
 		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
 		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
-		flex: 0 0 auto;
-	}
-
-	.aero-transport-button :global(.aero-skip) {
-		--skip-size: --spacing(6);
-		color: currentColor;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.aero-transport-button :global(.aero-skip svg) {
-		display: block;
 	}
 </style>
