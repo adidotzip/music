@@ -1,4 +1,4 @@
-import { getSongsForArtist, searchDiscovery, type DiscoveryResource } from './spicyamll.ts'
+import { searchDiscovery, type DiscoveryResource } from './spicyamll.ts'
 
 const API_BASE_URL = (
 	import.meta.env.PUBLIC_LYRICSFLOW_API_URL ||
