@@ -420,17 +420,31 @@ export class PlayerStore {
 	}
 
 	#preloadUpcoming = async (): Promise<void> => {
-		const nextId = this.#queue.itemsIds[this.#queue.activeTrackIndex + 1]
-		if (nextId === undefined) {
+		const activeIndex = this.#queue.activeTrackIndex
+		const upcomingIds = this.#queue.itemsIds.slice(activeIndex + 1, activeIndex + 3)
+
+		if (!upcomingIds.length) {
 			this.#clearPreloadedAudio()
 			return
 		}
 
-		const candidate = await getLibraryValue('tracks', nextId, true)
-		if (!candidate || this.#queue.itemsIds[this.#queue.activeTrackIndex + 1] !== nextId) return
+		const candidates = await Promise.all(
+			upcomingIds.map(async (id) => ({
+				id,
+				track: await getLibraryValue('tracks', id, true),
+			})),
+		)
 
+		// The queue may have changed while the tracks were being resolved.
+		const currentUpcomingIds = this.#queue.itemsIds.slice(
+			this.#queue.activeTrackIndex + 1,
+			this.#queue.activeTrackIndex + 3,
+		)
+		if (currentUpcomingIds.join(',') !== upcomingIds.join(',')) return
+
+		const upcomingSet = new Set(upcomingIds)
 		for (const [id, entry] of this.#preloadedAudio) {
-			if (id !== nextId) {
+			if (!upcomingSet.has(id)) {
 				entry.audio.src = ''
 				entry.audio.load()
 				if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
@@ -438,25 +452,29 @@ export class PlayerStore {
 			}
 		}
 
-		if (!this.#preloadedLyrics.has(candidate.id)) {
-			this.#preloadedLyrics.set(candidate.id, LyricsService.fetchLyrics(candidate).catch(() => null))
+		for (const { id, track: candidate } of candidates) {
+			if (!candidate) continue
+
+			if (!this.#preloadedLyrics.has(candidate.id)) {
+				this.#preloadedLyrics.set(candidate.id, LyricsService.fetchLyrics(candidate).catch(() => null))
+			}
+
+			if (this.#preloadedAudio.has(candidate.id)) continue
+
+			let src = candidate.url
+			let objectUrl: string | undefined
+			if (!src && candidate.file instanceof File) {
+				objectUrl = URL.createObjectURL(candidate.file)
+				src = objectUrl
+			}
+			if (!src) continue
+
+			const audio = new Audio()
+			audio.preload = 'auto'
+			audio.src = src
+			audio.load()
+			this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
 		}
-
-		if (this.#preloadedAudio.has(candidate.id)) return
-
-		let src = candidate.url
-		let objectUrl: string | undefined
-		if (!src && candidate.file instanceof File) {
-			objectUrl = URL.createObjectURL(candidate.file)
-			src = objectUrl
-		}
-		if (!src) return
-
-		const audio = new Audio()
-		audio.preload = 'auto'
-		audio.src = src
-		audio.load()
-		this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
 	}
 
 	#consumePreloadedAudio = (trackId: number): boolean => {
