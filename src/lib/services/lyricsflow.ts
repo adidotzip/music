@@ -1,4 +1,4 @@
-import type { DiscoveryResource } from './spicyamll.ts'
+import { searchDiscovery, type DiscoveryResource } from './spicyamll.ts'
 
 const API_BASE_URL = (
 	import.meta.env.PUBLIC_LYRICSFLOW_API_URL ||
@@ -59,15 +59,36 @@ export interface LyricsflowArtistProfile {
 	albums: DiscoveryResource[]
 }
 
-export const getLyricsflowArtistProfile = async (artistId: string): Promise<LyricsflowArtistProfile> => {
+export const getLyricsflowArtistProfile = async (
+	artistId: string,
+	artistName?: string,
+): Promise<LyricsflowArtistProfile> => {
 	const artist = await requestArtist(artistId)
-	if (!artist) throw new Error('Unable to load artist profile.')
 
-	const name = artist.attributes?.name || artistId
+	// The LyricsFlow /artist endpoint is the primary source. If the proxy is not
+	// configured or unavailable, keep artist profiles usable through the existing
+	// SpicyAMLL discovery API instead of rendering a dead-end error page.
+	if (!artist) {
+		const fallbackName = artistName?.trim()
+		if (!fallbackName) throw new Error('Unable to load artist profile.')
+
+		const fallback = (await searchDiscovery(fallbackName)).filter(
+			(item) => item.type === 'song' && item.artist.toLowerCase() === fallbackName.toLowerCase(),
+		)
+
+		return {
+			name: fallbackName,
+			artUrl: fallback[0]?.artUrl,
+			songs: fallback,
+			albums: [],
+		}
+	}
+
+	const name = artist.attributes?.name || artistName || artistId
 	const songs = (artist.relationships?.songs?.data ?? [])
 		.map((item) => mapResource(item, 'song', name))
 		.filter((item): item is DiscoveryResource => !!item)
-	const albums = (artist.relationships?.albums?.data ?? [])
+	let albums = (artist.relationships?.albums?.data ?? [])
 		.map((item) => mapResource(item, 'album', name))
 		.filter((item): item is DiscoveryResource => !!item)
 
