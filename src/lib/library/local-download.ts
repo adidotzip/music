@@ -1,4 +1,4 @@
-import { getLibraryValue, setLibraryValueInCache } from '$lib/library/get/value.ts'
+import { getLibraryValue } from '$lib/library/get/value.ts'
 import { dbImportTrack } from '$lib/library/scan-actions/scanner/import-track.ts'
 import { LEGACY_NO_NATIVE_DIRECTORY, UNKNOWN_ITEM, type UnknownTrack } from '$lib/library/types.ts'
 import { spicyamll } from '$lib/services/spicyamll.ts'
