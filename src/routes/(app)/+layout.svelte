@@ -36,6 +36,16 @@
         (window as any).dialogs = dialogs;
     }
 
+    const syncNetworkState = () => {
+        document.documentElement.toggleAttribute('data-offline', !navigator.onLine)
+    }
+
+    if (browser) {
+        syncNetworkState()
+        window.addEventListener('online', syncNetworkState)
+        window.addEventListener('offline', syncNetworkState)
+    }
+
     setupTheme()
     setupGlobalMenu()
     setupAppInstallPromptListeners()
@@ -317,5 +327,8 @@
         &::view-transition-old(bottom-bar):only-child {
             animation: view-bottom-bar-out 300ms var(--ease-standard) forwards;
         }
+    }
+    :global(html[data-offline] a[href="/discovery"]) {
+        display: none !important;
     }
 </style>
