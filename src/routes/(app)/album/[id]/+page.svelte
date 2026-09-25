@@ -97,46 +97,78 @@
 
 <Header title={albumName || 'Album'} />
 
-<main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
-    {#if loading}
-        <div class="my-auto flex min-h-80 items-center justify-center">
-            <div class="text-title-md text-onSurfaceVariant opacity-60">Loading album...</div>
+<main class="relative min-h-screen w-full pb-32 text-onSurface">
+    {#if artwork}
+        <!-- Apple Music Full-Screen Ambient Glow Background -->
+        <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            <img 
+                src={artwork} 
+                alt="" 
+                class="h-[80vh] w-full object-cover blur-3xl opacity-35 scale-125 saturate-150 transition-opacity duration-700" 
+            />
+            <div class="absolute inset-0 bg-gradient-to-b from-surface/20 via-surface/80 to-surface"></div>
         </div>
-    {:else if error}
-        <div class="my-auto flex flex-col items-center justify-center gap-3 text-center">
-            <div class="text-title-lg text-error">{error}</div>
-            <Button onclick={() => void load()}>Retry</Button>
-        </div>
-    {:else}
-        <div class="flex flex-col gap-6">
-            <!-- Apple Music-style Hero Header with Material Aesthetics -->
-            <section class="flex flex-col items-center pt-4 text-center">
-                <!-- Main Artwork Card with Elevation -->
-                <div class="relative shadow-lg transition-transform hover:scale-[1.02] duration-200 rounded-2xl overflow-hidden bg-surfaceContainer">
-                    <Artwork src={artwork} fallbackIcon="album" class="size-64 sm:size-72 shrink-0 rounded-2xl object-cover" />
+    {/if}
+
+    <div class="mx-auto flex w-full max-w-(--app-max-content-width) flex-col px-4 sm:pl-20">
+        {#if loading}
+            <div class="my-auto flex min-h-[60vh] items-center justify-center">
+                <div class="text-title-medium text-onSurfaceVariant opacity-70">Loading album...</div>
+            </div>
+        {:else if error}
+            <div class="my-auto flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+                <div class="text-title-lg text-error">{error}</div>
+                <Button onclick={() => void load()}>Retry</Button>
+            </div>
+        {:else}
+            <!-- Hero Header Section -->
+            <section class="flex flex-col items-center pt-6 text-center">
+                <!-- Floating Back / Action Controls Bar -->
+                <div class="flex w-full items-center justify-between px-2 pb-4">
+                    <button class="flex size-10 items-center justify-center rounded-full bg-surfaceContainerLow/60 backdrop-blur-md text-onSurface hover:bg-surfaceContainerHigh transition-colors" onclick={() => window.history.back()}>
+                        <span class="material-symbols-rounded text-2xl">arrow_back</span>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <button class="flex size-10 items-center justify-center rounded-full bg-surfaceContainerLow/60 backdrop-blur-md text-onSurface hover:bg-surfaceContainerHigh transition-colors">
+                            <span class="material-symbols-rounded text-xl">share</span>
+                        </button>
+                        <button class="flex size-10 items-center justify-center rounded-full bg-surfaceContainerLow/60 backdrop-blur-md text-onSurface hover:bg-surfaceContainerHigh transition-colors">
+                            <span class="material-symbols-rounded text-xl">more_horiz</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Title & Artist Metadata -->
-                <div class="mt-5 flex flex-col items-center px-2 max-w-xl">
-                    <h1 class="text-headline-medium sm:text-display-small font-bold text-onSurface tracking-tight">
+                <!-- Apple-style Hero Animated Center Artwork -->
+                <div class="relative mt-2 group">
+                    <div class="absolute inset-0 rounded-3xl bg-black/20 blur-xl transition-all duration-300 group-hover:blur-2xl"></div>
+                    <Artwork 
+                        src={artwork} 
+                        fallbackIcon="album" 
+                        class="relative size-60 sm:size-72 shrink-0 rounded-3xl shadow-2xl transition-transform duration-300 group-hover:scale-[1.02]" 
+                    />
+                </div>
+
+                <!-- Typography Stack -->
+                <div class="mt-6 flex flex-col items-center max-w-md px-4">
+                    <h1 class="text-headline-large sm:text-display-small font-bold tracking-tight text-onSurface">
                         {albumName}
                     </h1>
                     
                     {#if artistName}
-                        <button class="mt-1 text-title-medium font-semibold text-primary hover:underline">
+                        <div class="mt-1 text-title-medium font-semibold text-primary">
                             {artistName}
-                        </button>
+                        </div>
                     {/if}
 
-                    <div class="mt-1 text-body-medium text-onSurfaceVariant">
-                        Album • {songIds.length} {songIds.length === 1 ? 'song' : 'songs'}
+                    <div class="mt-1 text-body-medium text-onSurfaceVariant/80 font-medium">
+                        {songIds.length} {songIds.length === 1 ? 'song' : 'songs'}
                     </div>
                 </div>
 
-                <!-- Material Dynamic Action Bar (Shuffle / Play / Add) -->
-                <div class="mt-6 flex items-center justify-center gap-3 w-full max-w-xs">
+                <!-- Apple Music Floating Glass Action Buttons -->
+                <div class="mt-6 flex items-center justify-center gap-3 w-full max-w-xs px-2">
                     <button 
-                        class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-secondaryContainer text-onSecondaryContainer font-medium text-label-large hover:bg-secondaryContainer/80 transition-colors"
+                        class="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-surfaceContainerHighest/40 backdrop-blur-xl border border-outlineVariant/20 text-onSurface font-semibold text-label-large hover:bg-surfaceContainerHighest/70 active:scale-95 transition-all shadow-sm"
                         disabled={!songIds.length}
                         onclick={playShuffle}
                     >
@@ -145,21 +177,27 @@
                     </button>
 
                     <button 
-                        class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-primary text-onPrimary font-medium text-label-large shadow-sm hover:shadow-md hover:bg-primary/90 transition-all"
+                        class="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-primary text-onPrimary font-semibold text-label-large hover:bg-primary/90 active:scale-95 transition-all shadow-md"
                         disabled={!songIds.length}
                         onclick={() => player.playTrack(0, songIds)}
                     >
-                        <span class="material-symbols-rounded text-xl">play_arrow</span>
+                        <span class="material-symbols-rounded text-xl fill-1">play_arrow</span>
                         Play
+                    </button>
+
+                    <button 
+                        class="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surfaceContainerHighest/40 backdrop-blur-xl border border-outlineVariant/20 text-onSurface hover:bg-surfaceContainerHighest/70 active:scale-95 transition-all shadow-sm"
+                        disabled={!songIds.length}
+                    >
+                        <span class="material-symbols-rounded text-xl">add</span>
                     </button>
                 </div>
             </section>
 
-            <!-- Divider Line -->
-            <hr class="border-outlineVariant opacity-40 my-2" />
-
-            <!-- Track List Section -->
-            <TracksListContainer items={songIds} />
-        </div>
-    {/if}
+            <!-- Embedded Track List Container -->
+            <div class="mt-8 rounded-3xl bg-surfaceContainerLow/30 backdrop-blur-lg p-2 sm:p-4 border border-outlineVariant/10">
+                <TracksListContainer items={songIds} />
+            </div>
+        {/if}
+    </div>
 </main>
