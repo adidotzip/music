@@ -79,6 +79,8 @@ export class PlayerStore {
 	}
 
 	#preloadedAudio = new Map<number, { audio: HTMLAudioElement; objectUrl?: string }>()
+	// Tracks that must resume automatically once their source finishes loading.
+	#autoplayTrackId: number | null = null
 	#preloadedLyrics = new Map<number, Promise<unknown>>()
 
 	#activeTrackQuery: QueryResult<TrackData | undefined> = createTrackQuery(
@@ -152,7 +154,12 @@ export class PlayerStore {
 			).then((result) => {
 				// playTrack() sets the desired state to playing before the async
 				// source load finishes. Start playback as soon as the source is ready.
-				if (result.status === 'loaded' && this.playing && this.activeTrack?.id === track.id) {
+				if (
+					result.status === 'loaded' &&
+					this.activeTrack?.id === track.id &&
+					(this.playing || this.#autoplayTrackId === track.id)
+				) {
+					this.playing = true
 					if (this.equalizer.enabled) {
 						void this.equalizer.resumeContext()
 					}
@@ -520,7 +527,9 @@ export class PlayerStore {
 		}
 
 		const nextState = force ?? !this.playing
+		const activeTrackId = this.#queue.activeTrackId
 		this.playing = nextState
+		this.#autoplayTrackId = nextState ? activeTrackId : null
 		if (nextState) {
 			this.#audio.preload = 'auto'
 			if (this.#audioLoader.loading) {
