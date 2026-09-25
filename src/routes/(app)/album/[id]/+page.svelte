@@ -4,6 +4,7 @@
     import Artwork from '$lib/components/Artwork.svelte'
     import Button from '$lib/components/Button.svelte'
     import Header from '$lib/components/Header.svelte'
+    import Icon from '$lib/components/icon/Icon.svelte'
     import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
     import { generateStableId } from '$lib/services/jiosaavn.ts'
@@ -140,7 +141,7 @@
                         disabled={!songIds.length}
                         onclick={playShuffle}
                     >
-                        <span class="material-symbols-rounded text-xl">shuffle</span>
+                        <Icon type="shuffle" class="size-5" />
                         Shuffle
                     </button>
 
@@ -149,7 +150,7 @@
                         disabled={!songIds.length}
                         onclick={() => player.playTrack(0, songIds)}
                     >
-                        <span class="material-symbols-rounded text-xl">play_arrow</span>
+                        <Icon type="play" class="size-5" />
                         Play
                     </button>
                 </div>
