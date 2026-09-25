@@ -4,39 +4,41 @@
 	const { class: className }: { class?: ClassValue } = $props()
 	const player = usePlayer()
 
+	let button: HTMLButtonElement
 	let skip: HTMLSpanElement
 
 	onMount(async () => {
-		const { initSkipLabel } = await import(
-			'https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js'
-		)
+		const [{ initPlayerButton }, { initSkipLabel, playSkip }] = await Promise.all([
+			import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'),
+			import('https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js')
+		])
+
+		initPlayerButton(button)
 		initSkipLabel(skip)
+
+		button.addEventListener('pressend', () => {
+			playSkip(skip, { bouncing: true })
+			player.playPrev()
+		})
 	})
 </script>
 
 <button
-	class={['aero-player aero-transport-button', className]}
+	bind:this={button}
+	class={['aero-player', className]}
 	aria-label={m.playerPlayPreviousTrack()}
 	disabled={player.isQueueEmpty}
-	onclick={player.playPrev}
 >
-	<span
-		bind:this={skip}
-		class="aero-skip"
-		data-direction="backward"
-		aria-hidden="true"
-	></span>
+	<span bind:this={skip} class="aero-skip" data-direction="backward" aria-hidden="true"></span>
 </button>
 
 <style lang="postcss">
 	@reference '../../../../app.css';
 
-	/* Keep AeroUI's native player geometry and interaction styling.
-	 * Only map AeroUI's color tokens to Adi Music's theme. */
 	.aero-player {
 		--player-label: var(--color-onSecondaryContainer);
 		--player-pressed: var(--color-onSecondaryContainer);
 		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
-		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
+		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 55%, transparent);
 	}
 </style>
