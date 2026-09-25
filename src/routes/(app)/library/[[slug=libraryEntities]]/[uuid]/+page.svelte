@@ -12,6 +12,7 @@
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 	import type { AlbumData, TrackData } from '$lib/library/get/value.ts'
+	import { getLibraryValue } from '$lib/library/get/value.ts'
 	import {
 		FAVORITE_PLAYLIST_ID,
 		removeTrackEntryFromPlaylist,
@@ -34,23 +35,41 @@
 	const isFavoritesView = $derived(slug === 'playlists' && item.id === FAVORITE_PLAYLIST_ID)
 
 	const getFallbackArtwork = () => {
-		if (slug === 'playlists') {
-			return 'playlist'
-		}
-
-		if (slug === 'albums') {
-			return 'album'
-		}
-
+		if (slug === 'playlists') return 'playlist'
+		if (slug === 'albums') return 'album'
 		return 'person'
 	}
 
 	const artworkSrc = createManagedArtwork(() => {
+		if (slug !== 'playlists') return (item as Album).image
+		return null
+	})
+
+	let firstPlaylistTrack = $state<TrackData | undefined>()
+	const playlistArtworkSrc = createManagedArtwork(
+		() => firstPlaylistTrack?.image?.full ?? firstPlaylistTrack?.image?.small,
+	)
+
+	$effect(() => {
 		if (slug !== 'playlists') {
-			return (item as Album).image
+			firstPlaylistTrack = undefined
+			return
 		}
 
-		return null
+		const trackId = tracks.tracksIds[0]
+		if (trackId === undefined) {
+			firstPlaylistTrack = undefined
+			return
+		}
+
+		let cancelled = false
+		void Promise.resolve(getLibraryValue('tracks', trackId, true)).then((track) => {
+			if (!cancelled) firstPlaylistTrack = track
+		})
+
+		return () => {
+			cancelled = true
+		}
 	})
 
 	let artistArtworkSrc = $state<string | undefined>()
@@ -77,11 +96,10 @@
 	})
 
 	const isWideLayout = new MediaQuery('(min-width: 1154px)')
+	const backdropSrc = $derived(slug === 'albums' ? artworkSrc() : playlistArtworkSrc())
 
 	const playlistTrackMenuItems = (track: TrackData) => {
-		if (isFavoritesView) {
-			return []
-		}
+		if (isFavoritesView) return []
 
 		return [
 			{
@@ -89,7 +107,6 @@
 				action: () => {
 					const entryId = tracks.playlistIdMap?.[track.id]
 					invariant(entryId)
-
 					void removeTrackEntryFromPlaylist(entryId)
 				},
 			},
@@ -108,10 +125,7 @@
 					}
 
 		if (slug === 'playlists') {
-			if (isFavoritesView) {
-				return [addToQueueMenuItem]
-			}
-
+			if (isFavoritesView) return [addToQueueMenuItem]
 			return [addToQueueMenuItem, ...getPlaylistMenuItems(dialogs, item as Playlist)]
 		}
 
@@ -139,104 +153,135 @@
 
 	const menuItems = $derived.by(() => {
 		const items = getMenuItems().filter((item) => item !== null)
-
 		return items.length > 0 ? items : null
 	})
 
 	const description = $derived(slug === 'playlists' && (item as Playlist).description)
-
 	const artists = $derived(slug === 'albums' && formatArtists((item as AlbumData).artists))
 </script>
 
 {#if !(isWideLayout.current && main.librarySplitLayoutEnabled)}
-	<Header title={data.singularTitle()} />
+	<Header
+		title={undefined}
+		class={(scrolled) =>
+			scrolled
+				? 'bg-surface/90 backdrop-blur-xl'
+				: 'bg-transparent'
+		}
+	/>
 {/if}
 
-<div class="@container flex grow flex-col px-4 pb-4">
-	<section
-		class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row"
-	>
-		{#if slug !== 'playlists'}
-			<Artwork
-				src={slug === 'artists' ? artistArtworkSrc : artworkSrc()}
-				animatedSrc={animatedArtworkSrc}
-				fallbackIcon={getFallbackArtwork()}
-				class="h-49 shrink-0 rounded-2xl @2xl:h-full"
-			/>
-		{/if}
+<div
+	class="relative isolate flex min-h-full grow flex-col overflow-hidden"
+	style={backdropSrc ? `--page-art: url("${backdropSrc}")` : undefined}
+>
+	{#if backdropSrc}
+		<div class="pointer-events-none absolute inset-0 -z-20 bg-[image:var(--page-art)] bg-cover bg-center opacity-70 blur-3xl scale-110"></div>
+		<div class="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-surface/20 via-surface/60 to-surface"></div>
+	{/if}
 
-		<div
-			class="relative z-0 flex size-full flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh"
+	<div class="@container mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32">
+		<section
+			class="relative flex min-h-105 w-full flex-col items-center justify-end overflow-hidden pt-10 pb-5 text-center @2xl:min-h-130"
 		>
-			<div class="flex grow flex-col p-4">
-				<div class="flex items-center gap-2">
-					<Icon type="playlist" class="size-10 text-onSurface/54" />
+			{#if slug === 'artists'}
+				<Artwork
+					src={artistArtworkSrc}
+					animatedSrc={animatedArtworkSrc}
+					fallbackIcon={getFallbackArtwork()}
+					class="mb-5 size-48 rounded-full shadow-xl"
+				/>
+			{/if}
 
-					<h1 class="text-headline-md">{formatNameOrUnknown(item.name)}</h1>
+			<div class="relative z-10 flex w-full max-w-2xl flex-col items-center">
+				<div class="mb-2 text-label-lg font-medium uppercase tracking-wide text-onSurfaceVariant">
+					{slug === 'playlists'
+						? m.libraryPlaylists()
+						: slug === 'albums'
+							? 'Album'
+							: 'Artist'}
 				</div>
 
-				{#if description}
-					<div class="text-body-lg">{description}</div>
-				{/if}
+				<h1 class="text-display-sm font-bold tracking-tight text-onSurface sm:text-display-md">
+					{formatNameOrUnknown(item.name)}
+				</h1>
 
 				{#if artists}
-					<div class="grid w-full overflow-hidden text-body-lg">
-						<div class="truncate">
-							{artists}
-						</div>
-					</div>
+					<div class="mt-2 text-title-lg font-medium text-onSurface">{artists}</div>
 				{/if}
 
-				<div class="mt-1 text-onSurfaceVariant">
+				{#if description}
+					<div class="mt-2 max-w-xl text-body-lg text-onSurfaceVariant">{description}</div>
+				{/if}
+
+				<div class="mt-2 text-body-md text-onSurfaceVariant">
 					{#if slug === 'albums' && (item as AlbumData).year !== UNKNOWN_ITEM}
 						{(item as AlbumData).year} •
 					{/if}
-
 					{m.libraryTracksCount({ count: tracks.tracksIds.length })}
 				</div>
+
+				<div class="mt-6 flex items-center justify-center gap-3">
+					<Button
+						kind="flat"
+						class="size-12 min-w-12 rounded-full bg-surface/45 p-0 backdrop-blur-xl"
+						disabled={tracks.tracksIds.length === 0}
+						aria-label={m.shuffle()}
+						onclick={() => {
+							player.playTrack(0, tracks.tracksIds, { shuffle: true })
+						}}
+					>
+						<Icon type="shuffle" />
+					</Button>
+
+					<Button
+						kind="filled"
+						class="h-14 min-w-44 rounded-full px-7 text-title-md font-semibold shadow-lg"
+						disabled={tracks.tracksIds.length === 0}
+						onclick={() => {
+							player.playTrack(0, tracks.tracksIds)
+						}}
+					>
+						<Icon type="play" />
+						{m.play()}
+					</Button>
+
+					{#if slug === 'albums'}
+						<Button
+							kind="flat"
+							class="size-12 min-w-12 rounded-full bg-surface/45 p-0 backdrop-blur-xl"
+							aria-label={m.more()}
+							onclick={() => {
+								if (menuItems) {
+									useMenu().showFromEvent(new MouseEvent('click'), menuItems(), {
+										anchor: false,
+										position: { top: 0, left: 0 },
+									})
+								}
+							}}
+						>
+						<Icon type="more" />
+						</Button>
+					{:else}
+						<div class="flex size-12 items-center justify-center rounded-full bg-surface/45 text-onSurface backdrop-blur-xl">
+							<Icon type="check" />
+						</div>
+					{/if}
+				</div>
 			</div>
+		</section>
 
-			<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
-				<Button
-					kind="filled"
-					class="my-1"
-					disabled={tracks.tracksIds.length === 0}
-					onclick={() => {
-						player.playTrack(0, tracks.tracksIds)
-					}}
-				>
-					{m.play()}
-				</Button>
-
-				<Button
-					kind="flat"
-					class="my-1 mr-auto"
-					disabled={tracks.tracksIds.length === 0}
-					onclick={() => {
-						player.playTrack(0, tracks.tracksIds, {
-							shuffle: true,
-						})
-					}}
-				>
-					{m.shuffle()}
-					<Icon type="shuffle" />
-				</Button>
-
-				{#if menuItems}
-					<MenuButton tooltip={m.more()} menuItems={() => menuItems} />
-				{/if}
-			</div>
+		<div class="relative z-10 overflow-hidden rounded-3xl bg-surface/35 shadow-xl backdrop-blur-xl">
+			<TracksListContainer
+				items={tracks.tracksIds}
+				predefinedMenuItems={{
+					disableViewAlbum: slug === 'albums',
+					disableViewArtist: slug === 'artists',
+					disableAddToFavorites: isFavoritesView,
+					enableMultiRemoveFromFavorites: isFavoritesView,
+				}}
+				menuItems={slug === 'playlists' ? playlistTrackMenuItems : undefined}
+			/>
 		</div>
-	</section>
-
-	<TracksListContainer
-		items={tracks.tracksIds}
-		predefinedMenuItems={{
-			disableViewAlbum: slug === 'albums',
-			disableViewArtist: slug === 'artists',
-			disableAddToFavorites: isFavoritesView,
-			enableMultiRemoveFromFavorites: isFavoritesView,
-		}}
-		menuItems={slug === 'playlists' ? playlistTrackMenuItems : undefined}
-	/>
+	</div>
 </div>
