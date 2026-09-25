@@ -71,12 +71,12 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 
 	const url = getDownloadUrl(track)
 	if (!url) {
-		throw new Error(\`No downloadable source is available for "\${track.name}".\`)
+		throw new Error(`No downloadable source is available for "${track.name}".`)
 	}
 
 	const response = await fetch(url)
 	if (!response.ok) {
-		throw new Error(\`Download failed (\${response.status}).\`)
+		throw new Error(`Download failed (${response.status}).`)
 	}
 
 	const contentLength = Number(response.headers.get('content-length') || 0)
@@ -93,7 +93,7 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 	}
 
 	const extension = getAudioExtension(blob)
-	const filename = \`\${sanitizeFilename(track.artists?.join(', ') || 'Unknown Artist')} - \${sanitizeFilename(track.name)}.\${extension}\`
+	const filename = `${sanitizeFilename(track.artists?.join(', ') || 'Unknown Artist')} - ${sanitizeFilename(track.name)}.${extension}`
 	const file = new File([blob], filename, {
 		type: blob.type || 'audio/mp4',
 		lastModified: Date.now(),
