@@ -176,7 +176,7 @@
 	style={backdropSrc ? `--page-art: url("${backdropSrc}")` : undefined}
 >
 	{#if backdropSrc}
-		<div class="pointer-events-none absolute inset-0 -z-20 bg-[image:var(--page-art)] bg-cover bg-center opacity-70 blur-3xl scale-110"></div>
+		<div class="pointer-events-none absolute inset-0 -z-20 scale-110 bg-cover bg-center opacity-70 blur-3xl" style="background-image: var(--page-art)"></div>
 		<div class="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-surface/20 via-surface/60 to-surface"></div>
 	{/if}
 
@@ -247,21 +247,12 @@
 					</Button>
 
 					{#if slug === 'albums'}
-						<Button
-							kind="flat"
+						<MenuButton
+							ariaLabel={m.more()}
+							tooltip={m.more()}
 							class="size-12 min-w-12 rounded-full bg-surface/45 p-0 backdrop-blur-xl"
-							aria-label={m.more()}
-							onclick={() => {
-								if (menuItems) {
-									useMenu().showFromEvent(new MouseEvent('click'), menuItems(), {
-										anchor: false,
-										position: { top: 0, left: 0 },
-									})
-								}
-							}}
-						>
-						<Icon type="more" />
-						</Button>
+							menuItems={menuItems ?? undefined}
+					/>
 					{:else}
 						<div class="flex size-12 items-center justify-center rounded-full bg-surface/45 text-onSurface backdrop-blur-xl">
 							<Icon type="check" />
