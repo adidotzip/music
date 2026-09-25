@@ -10,9 +10,10 @@
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
 	import { spicyamll } from '$lib/services/spicyamll.ts'
 	import { onMount } from 'svelte'
+	import { fade, fly, scale } from 'svelte/transition'
+	import { cubicOut } from 'svelte/easing'
 
 	const menu = useMenu()
-
 	const player = usePlayer()
 
 	let loading = $state(true)
@@ -103,37 +104,59 @@
 
 <main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
 	{#if loading}
-		<div class="my-auto flex min-h-80 flex-col items-center justify-center gap-3 text-onSurfaceVariant">
-			<Spinner class="size-10" />
-			<div class="text-body-md">Loading artist profile...</div>
+		<div
+			in:fade={{ duration: 250 }}
+			out:fade={{ duration: 150 }}
+			class="my-auto flex min-h-80 flex-col items-center justify-center gap-3 text-onSurfaceVariant"
+		>
+			<Spinner class="size-10 animate-spin" />
+			<div class="animate-pulse text-body-md">Loading artist profile...</div>
 		</div>
 	{:else if error}
-		<div class="my-auto flex flex-col items-center justify-center gap-3 text-center">
+		<div
+			in:scale={{ duration: 300, start: 0.95, easing: cubicOut }}
+			out:fade={{ duration: 150 }}
+			class="my-auto flex flex-col items-center justify-center gap-3 text-center"
+		>
 			<div class="text-title-lg">{error}</div>
 			<Button onclick={() => void load()}>Retry</Button>
 		</div>
 	{:else}
-		<div class="flex flex-col gap-10 pb-8">
-			<section class="flex items-center gap-4 border-b border-outline/10 pb-6">
+		<div
+			in:fade={{ duration: 300 }}
+			class="flex flex-col gap-10 pb-8"
+		>
+			<!-- Hero Section -->
+			<section
+				in:fly={{ y: 20, duration: 400, easing: cubicOut }}
+				class="flex items-center gap-4 border-b border-outline/10 pb-6"
+			>
 				<Artwork
 					src={artistArt}
 					fallbackIcon="person"
-					class="size-20 shrink-0 rounded-full sm:size-24"
+					class="size-20 shrink-0 rounded-full shadow-lg transition-transform duration-500 hover:scale-105 sm:size-24"
 				/>
 				<div class="min-w-0">
 					<div class="text-label-lg text-onSurfaceVariant">Artist</div>
 					<h1 class="truncate text-display-sm font-bold text-onSurface">{artist}</h1>
 				</div>
 			</section>
+
 			<section class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-				<div class="flex flex-col gap-4">
+				<!-- Latest Release Section -->
+				<div
+					in:fly={{ y: 20, duration: 400, delay: 100, easing: cubicOut }}
+					class="flex flex-col gap-4"
+				>
 					<h1 class="text-title-lg font-bold">Latest Release</h1>
-					<div class="flex flex-col gap-4">
-						<Artwork
-							src={latestArtwork}
-							fallbackIcon="album"
-							class="aspect-square w-full rounded-2xl"
-						/>
+					<div class="group/card flex flex-col gap-4 rounded-3xl border border-outline/5 bg-surfaceContainerHigh/40 p-4 transition-all duration-300 hover:bg-surfaceContainerHigh hover:shadow-xl">
+						<div class="overflow-hidden rounded-2xl">
+							<Artwork
+								src={latestArtwork}
+								fallbackIcon="album"
+								class="aspect-square w-full rounded-2xl transition-transform duration-500 ease-out group-hover/card:scale-105"
+							/>
+						</div>
 						<div class="flex items-center gap-4">
 							<div class="min-w-0 flex-1">
 								<div class="text-body-sm text-onSurfaceVariant">{latestArtist}</div>
@@ -143,6 +166,7 @@
 								kind="filled"
 								disabled={!songIds.length}
 								onclick={() => playSong(0)}
+								class="transition-transform active:scale-95"
 							>
 								Play
 							</Button>
@@ -150,7 +174,11 @@
 					</div>
 				</div>
 
-				<div class="flex min-w-0 flex-col gap-4">
+				<!-- Top Songs Section -->
+				<div
+					in:fly={{ y: 20, duration: 400, delay: 150, easing: cubicOut }}
+					class="flex min-w-0 flex-col gap-4"
+				>
 					<div class="flex items-center justify-between">
 						<h2 class="text-title-lg font-bold">Top Songs</h2>
 						<span class="text-body-sm text-onSurfaceVariant">{songs.length} songs</span>
@@ -162,7 +190,8 @@
 								<div
 									role="button"
 									tabindex="0"
-									class="interactable flex min-w-0 items-center gap-3 rounded-2xl bg-surfaceContainerHigh p-3 text-left"
+									style="--delay: {index * 40}ms"
+									class="stagger-animate interactable group flex min-w-0 items-center gap-3 rounded-2xl bg-surfaceContainerHigh p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-surfaceContainerHighest hover:shadow-md active:translate-y-0"
 									onclick={() => playTopSong(index)}
 									onkeydown={(event) => {
 										if (event.key === 'Enter' || event.key === ' ') {
@@ -174,24 +203,24 @@
 									<Artwork
 										src={song.artUrl}
 										fallbackIcon="musicNote"
-										class="size-14 shrink-0 rounded-xl"
+										class="size-14 shrink-0 rounded-xl transition-transform duration-300 group-hover:scale-105"
 									/>
 									<div class="min-w-0 flex-1">
-										<div class="truncate text-body-lg font-bold">{song.name}</div>
+										<div class="truncate text-body-lg font-bold group-hover:text-primary transition-colors">{song.name}</div>
 										<div class="truncate text-body-md text-onSurfaceVariant">
 											{song.album || artist}{song.year ? ` • ${song.year}` : ''}
 										</div>
 									</div>
 									<button
 										type="button"
-										class="interactable size-10 shrink-0 justify-center rounded-full text-onSurfaceVariant"
+										class="interactable flex size-10 shrink-0 items-center justify-center rounded-full text-onSurfaceVariant transition-colors hover:bg-outline/10 hover:text-onSurface"
 										aria-label="More options"
 										onclick={(event) => {
-											e.stopPropagation()
+											event.stopPropagation()
 											const trackId = songIds[index]
 											if (trackId === undefined) return
 											menu.showFromEvent(
-												e,
+												event,
 												[
 													{ label: 'Play', action: () => playTopSong(index) },
 													{ label: 'Play next', action: () => player.playNextTrack(trackId) },
@@ -200,8 +229,10 @@
 												{ anchor: true, preferredAlignment: { horizontal: 'right', vertical: 'bottom' } },
 											)
 										}}
-										>•••</button>
-									</div>
+									>
+										•••
+									</button>
+								</div>
 							{/each}
 						</div>
 					{:else}
@@ -212,8 +243,12 @@
 				</div>
 			</section>
 
+			<!-- All Songs Section -->
 			{#if songs.length}
-				<section class="flex flex-col gap-3">
+				<section
+					in:fly={{ y: 20, duration: 400, delay: 200, easing: cubicOut }}
+					class="flex flex-col gap-3"
+				>
 					<div class="flex items-center justify-between">
 						<h2 class="text-title-lg font-bold">All Songs</h2>
 						<Button kind="flat" onclick={() => playSong(0)}>Play All</Button>
@@ -222,8 +257,12 @@
 				</section>
 			{/if}
 
+			<!-- Albums Section -->
 			{#if albums.length}
-				<section class="flex flex-col gap-5">
+				<section
+					in:fly={{ y: 20, duration: 400, delay: 250, easing: cubicOut }}
+					class="flex flex-col gap-5"
+				>
 					<div class="flex items-end justify-between gap-4">
 						<div>
 							<h2 class="text-headline-sm font-bold">Albums</h2>
@@ -232,20 +271,21 @@
 					</div>
 
 					<div class="grid min-w-0 grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-						{#each albums as album (album.id)}
+						{#each albums as album, index (album.id)}
 							<a
 								href={`/album/${encodeURIComponent(album.id)}?name=${encodeURIComponent(album.name)}&artist=${encodeURIComponent(album.artist || artist)}&art=${encodeURIComponent(album.artUrl)}`}
-								class="interactable group flex-col min-w-0 rounded-2xl bg-surfaceContainerHigh p-2"
+								style="--delay: {index * 50}ms"
+								class="stagger-animate interactable group flex min-w-0 flex-col rounded-2xl bg-surfaceContainerHigh p-2 transition-all duration-300 hover:-translate-y-1 hover:bg-surfaceContainerHighest hover:shadow-lg active:translate-y-0"
 							>
 								<div class="relative aspect-square w-full overflow-hidden rounded-xl">
 									<Artwork
 										src={album.artUrl}
 										fallbackIcon="album"
-										class="size-full rounded-xl transition-transform duration-300 group-hover:scale-[1.02]"
+										class="size-full rounded-xl transition-transform duration-500 ease-out group-hover:scale-105"
 									/>
 								</div>
 								<div class="min-w-0 px-1 pb-1 pt-3">
-									<div class="truncate text-body-md font-medium">{album.name}</div>
+									<div class="truncate text-body-md font-medium transition-colors group-hover:text-primary">{album.name}</div>
 									<div class="mt-0.5 truncate text-body-sm text-onSurfaceVariant">
 										{album.artist || artist}
 									</div>
@@ -258,3 +298,21 @@
 		</div>
 	{/if}
 </main>
+
+<style>
+	@keyframes fadeInUp {
+		from {
+			opacity: 0;
+			transform: translateY(12px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.stagger-animate {
+		animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+		animation-delay: var(--delay, 0ms);
+	}
+</style>
