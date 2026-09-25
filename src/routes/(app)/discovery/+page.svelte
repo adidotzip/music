@@ -245,22 +245,7 @@
 	}
 
 	const viewArtist = async (artist: DiscoveryItem) => {
-		selectedDetail = {
-			type: 'artist',
-			id: artist.id,
-			name: artist.name,
-			artUrl: artist.artUrl,
-		}
-		detailLoading = true
-		detailTrackIds = []
-		try {
-			const tracks = await getSongsForArtist(artist.id, artist.name)
-			detailTrackIds = tracks.map((t) => getOrRegisterRemoteTrack(t))
-		} catch {
-			detailTrackIds = []
-		} finally {
-			detailLoading = false
-		}
+		await goto(`/artist/${encodeURIComponent(artist.name)}`)
 	}
 
 	const SEARCH_STATE_KEY = 'adi_music_discovery_search_v1'
