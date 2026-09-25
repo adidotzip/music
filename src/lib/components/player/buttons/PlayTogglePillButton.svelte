@@ -1,5 +1,13 @@
 <script lang="ts">
 	const player = usePlayer()
+
+	const handleKeydown = (event: KeyboardEvent) => {
+		if (!player.activeTrack) return
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault()
+			player.togglePlay()
+		}
+	}
 </script>
 
 <div class="aero-player-control aero-player-control--play">
@@ -7,8 +15,12 @@
 		class="adi-aero-player-button"
 		aria-label={player.playing ? m.playerPause() : m.playerPlay()}
 		aria-pressed={player.playing}
+		aria-disabled={!player.activeTrack}
 		disabled={!player.activeTrack}
+		role="button"
+		tabindex={player.activeTrack ? 0 : -1}
 		onclick={() => player.togglePlay()}
+		onkeydown={handleKeydown}
 	>
 		<span slot="play" aria-hidden="true"></span>
 		<span slot="pause" aria-hidden="true"></span>
@@ -16,7 +28,7 @@
 </div>
 
 <style lang="postcss">
-	@reference '../../../app.css';
+	@reference '../../../../app.css';
 
 	.aero-player-control {
 		display: inline-flex;
