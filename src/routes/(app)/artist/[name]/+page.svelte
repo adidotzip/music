@@ -4,6 +4,7 @@
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
 	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
+	import Spinner from '$lib/components/Spinner.svelte'
 	import { generateStableId } from '$lib/services/jiosaavn.ts'
 	import { getLyricsflowArtistProfile } from '$lib/services/lyricsflow.ts'
 	import { registerRemoteTrack } from '$lib/library/get/value.ts'
@@ -100,8 +101,9 @@
 
 <main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
 	{#if loading}
-		<div class="my-auto flex min-h-80 items-center justify-center">
-			<div class="text-title-md opacity-60">Loading artist profile...</div>
+		<div class="my-auto flex min-h-80 flex-col items-center justify-center gap-3 text-onSurfaceVariant">
+			<Spinner class="size-10" />
+			<div class="text-body-md">Loading artist profile...</div>
 		</div>
 	{:else if error}
 		<div class="my-auto flex flex-col items-center justify-center gap-3 text-center">
@@ -196,14 +198,20 @@
 			{#if albums.length}
 				<section class="flex flex-col gap-4">
 					<h2 class="text-title-lg font-bold">Albums</h2>
-					<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+					<div class="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 						{#each albums as album (album.id)}
 							<a
 								href={`/album/${encodeURIComponent(album.id)}?name=${encodeURIComponent(album.name)}&artist=${encodeURIComponent(album.artist || artist)}&art=${encodeURIComponent(album.artUrl)}`}
-								class="interactable overflow-hidden rounded-2xl bg-surfaceContainerHigh"
+								class="interactable group min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh"
 							>
-								<Artwork src={album.artUrl} fallbackIcon="album" class="aspect-square w-full" />
-								<div class="p-3">
+								<div class="aspect-square w-full min-w-0 overflow-hidden">
+									<Artwork
+										src={album.artUrl}
+										fallbackIcon="album"
+										class="size-full rounded-none"
+									/>
+								</div>
+								<div class="min-w-0 p-3">
 									<div class="truncate text-body-md font-medium">{album.name}</div>
 									<div class="truncate text-body-sm text-onSurfaceVariant">{album.artist || artist}</div>
 								</div>
