@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Icon from './icon/Icon.svelte'
+
 	interface Props {
 		checked: boolean
 	}
@@ -10,27 +12,25 @@
 	}
 </script>
 
-<div
+<button
+	type="button"
 	class={[
-		'flex h-8 w-13 shrink-0 cursor-pointer items-center rounded-4xl border-2 outline-offset-2 transition-all duration-150',
+		'interactable relative flex h-8 w-13 shrink-0 cursor-pointer items-center rounded-4xl border-2 outline-offset-2 transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-primary',
 		checked ? 'border-transparent bg-primary' : 'border-outline bg-surfaceContainerHigh',
 	]}
-	tabindex="0"
 	role="switch"
 	aria-checked={checked}
 	onclick={toggle}
-	onkeydown={(e) => {
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault()
-			toggle()
-		}
-	}}
 >
-	<input type="checkbox" bind:checked class="hidden" />
-	<div
+	<span
 		class={[
-			'ml-1.5 h-4 w-4 rounded-full transition-all duration-150',
-			checked ? 'translate-x-5 scale-150 bg-onPrimary' : 'bg-outline',
+			'absolute flex items-center justify-center rounded-full transition-all duration-200',
+			checked
+				? 'left-6 h-6 w-6 bg-onPrimary text-primary'
+				: 'left-1.5 h-4 w-4 bg-outline text-surfaceContainerHigh',
 		]}
-	></div>
-</div>
+		aria-hidden="true"
+	>
+		<Icon type={checked ? 'check' : 'close'} class={checked ? 'size-4' : 'size-3'} />
+	</span>
+</button>
