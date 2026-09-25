@@ -231,13 +231,35 @@ export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
 	...parseDiscoveryGroup(input, 'artist'),
 ]
 
-export const searchDiscovery = async (query: string, limit = 25) => {
-	const response = await spicyamll.search({
-		term: query,
-		types: 'songs,albums,artists',
-		limit,
+export const searchDiscovery = async (query: string, limit = 100) => {
+	// Search songs separately so albums/artists cannot consume the song result
+	// budget when the upstream API applies a shared limit.
+	const [songsResponse, otherResponse] = await Promise.all([
+		spicyamll.search({
+			term: query,
+			types: 'songs',
+			limit,
+		}),
+		spicyamll.search({
+			term: query,
+			types: 'albums,artists',
+			limit,
+		}),
+	])
+
+	const results = [
+		...parseDiscoveryGroup(songsResponse, 'song'),
+		...parseDiscoveryGroup(otherResponse, 'album'),
+		...parseDiscoveryGroup(otherResponse, 'artist'),
+	]
+
+	const seen = new Set<string>()
+	return results.filter((item) => {
+		const key = `${item.type}:${item.id}`
+		if (seen.has(key)) return false
+		seen.add(key)
+		return true
 	})
-	return parseDiscoveryResults(response)
 }
 
 export const normalizeTracks = (input: unknown): SpicyTrack[] => {
