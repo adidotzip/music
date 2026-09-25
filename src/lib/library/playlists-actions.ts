@@ -234,7 +234,7 @@ export const dbBatchModifyPlaylistsSelection = async (
 	if (playlistsIdsAddTo.length > 0) {
 		const changes = await dbAddTracksToPlaylistsWithTx(store, {
 			playlistIds: playlistsIdsAddTo,
-			trackIds,
+			trackIds: localTrackIds,
 		})
 		allChanges.push(...changes)
 	}
