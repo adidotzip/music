@@ -366,8 +366,7 @@
 </div>
 
 <main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
-    {#if !selectedDetail}
-        <form
+    <form
             class="@container sticky top-2 z-1 mt-2 mb-6 ml-auto flex w-full max-w-125 items-center gap-1 rounded-full bg-surfaceContainerHigh px-2 @sm:gap-2"
             onsubmit={(event) => {
                 event.preventDefault()
@@ -396,7 +395,6 @@
                 width={200}
             />
         </form>
-    {/if}
 
     {#if error}
         <div class="my-auto flex flex-col items-center p-8 text-center text-error">
