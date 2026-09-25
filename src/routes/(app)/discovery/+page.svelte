@@ -215,7 +215,6 @@
     }
 
     const viewAlbum = async (album: DiscoveryItem) => {
-        persistSearchState()
         const params = new URLSearchParams({
             name: album.name,
             artist: album.artist || '',
@@ -228,49 +227,7 @@
         await goto(`/artist/${encodeURIComponent(artist.id)}?name=${encodeURIComponent(artist.name)}`)
     }
 
-    const SEARCH_STATE_KEY = 'adi_music_discovery_search_v1'
-    let restoreSearchDone = false
-
-    const persistSearchState = () => {
-        if (typeof window === 'undefined' || !searched || !results.length) return
-        try {
-            window.sessionStorage.setItem(
-                SEARCH_STATE_KEY,
-                JSON.stringify({ query, results, searched: true }),
-            )
-        } catch {
-            // Ignore storage failures.
-        }
-    }
-
-    const restoreSearchState = () => {
-        if (typeof window === 'undefined' || restoreSearchDone) return
-        restoreSearchDone = true
-        try {
-            const raw = window.sessionStorage.getItem(SEARCH_STATE_KEY)
-            if (!raw) return
-            const saved = JSON.parse(raw) as {
-                query?: unknown
-                results?: unknown
-                searched?: unknown
-            }
-            if (!(saved.searched && Array.isArray(saved.results))) return
-            query = typeof saved.query === 'string' ? saved.query : ''
-            results = saved.results as DiscoveryItem[]
-            searched = true
-        } catch {
-            window.sessionStorage.removeItem(SEARCH_STATE_KEY)
-        }
-    }
-
-    $effect(() => {
-        if (searched && results.length > 0) {
-            persistSearchState()
-        }
-    })
-
     onMount(() => {
-        restoreSearchState()
         void loadRecommendations()
     })
 </script>
