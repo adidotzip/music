@@ -8,6 +8,16 @@ const MAX_DOWNLOAD_BYTES = 300 * 1024 * 1024
 const pendingDownloads = new Map<string, Promise<number>>()
 const LOCAL_ALIAS_PREFIX = 'adi_music_local_track_alias:'
 
+const getCachedLocalTrackId = (sourceId: number): number | undefined => {
+	if (typeof window === 'undefined' || sourceId >= 0) return undefined
+	try {
+		const id = Number(localStorage.getItem(LOCAL_ALIAS_PREFIX + sourceId) || '')
+		return Number.isFinite(id) && id > 0 ? id : undefined
+	} catch {
+		return undefined
+	}
+}
+
 const sanitizeFilename = (value: string) =>
 	value.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || 'Unknown'
 
@@ -145,6 +155,12 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 }
 
 export const ensureTrackIsStoredLocally = async (trackId: number): Promise<number> => {
+	const cachedLocalTrackId = getCachedLocalTrackId(trackId)
+	if (cachedLocalTrackId) {
+		const cachedTrack = await getLibraryValue('tracks', cachedLocalTrackId, true)
+		if (cachedTrack?.file) return cachedLocalTrackId
+	}
+
 	const existingRequest = pendingDownloads.get(String(trackId))
 	if (existingRequest) return existingRequest
 
