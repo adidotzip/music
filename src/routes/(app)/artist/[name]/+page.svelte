@@ -119,7 +119,6 @@
 				<div class="min-w-0">
 					<div class="text-label-lg text-onSurfaceVariant">Artist</div>
 					<h1 class="truncate text-display-sm font-bold text-onSurface">{artist}</h1>
-					<div class="text-body-sm text-onSurfaceVariant">{songs.length} songs • {albums.length} albums</div>
 				</div>
 			</section>
 			<section class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
@@ -135,7 +134,6 @@
 							<div class="min-w-0 flex-1">
 								<div class="text-body-sm text-onSurfaceVariant">{latestArtist}</div>
 								<h2 class="truncate text-headline-sm font-bold">{latestName}</h2>
-								<div class="text-body-sm text-onSurfaceVariant">{songs.length} songs</div>
 							</div>
 							<Button
 								kind="filled"
@@ -200,13 +198,16 @@
 					<h2 class="text-title-lg font-bold">Albums</h2>
 					<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 						{#each albums as album (album.id)}
-							<div class="overflow-hidden rounded-2xl bg-surfaceContainerHigh">
+							<a
+								href={`/album/${encodeURIComponent(album.id)}?name=${encodeURIComponent(album.name)}&artist=${encodeURIComponent(album.artist || artist)}&art=${encodeURIComponent(album.artUrl)}`}
+								class="interactable overflow-hidden rounded-2xl bg-surfaceContainerHigh"
+							>
 								<Artwork src={album.artUrl} fallbackIcon="album" class="aspect-square w-full" />
 								<div class="p-3">
 									<div class="truncate text-body-md font-medium">{album.name}</div>
 									<div class="truncate text-body-sm text-onSurfaceVariant">{album.artist || artist}</div>
 								</div>
-							</div>
+							</a>
 						{/each}
 					</div>
 				</section>
