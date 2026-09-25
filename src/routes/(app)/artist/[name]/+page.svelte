@@ -159,10 +159,17 @@
 					{#if songs.length}
 						<div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
 							{#each songs.slice(0, 10) as song, index (song.id)}
-								<button
-									type="button"
+								<div
+									role="button"
+									tabindex="0"
 									class="interactable flex min-w-0 items-center gap-3 rounded-2xl bg-surfaceContainerHigh p-3 text-left"
 									onclick={() => playTopSong(index)}
+									onkeydown={(event) => {
+										if (event.key === 'Enter' || event.key === ' ') {
+											event.preventDefault()
+											playTopSong(index)
+										}
+									}}
 								>
 									<Artwork
 										src={song.artUrl}
@@ -176,24 +183,25 @@
 										</div>
 									</div>
 									<button
-								class="interactable size-10 shrink-0 justify-center rounded-full text-onSurfaceVariant"
-								aria-label="More options"
-								onclick={(event) => {
-									e.stopPropagation()
-									const trackId = songIds[index]
-									if (trackId === undefined) return
-									menu.showFromEvent(
-										e,
-										[
-											{ label: 'Play', action: () => playTopSong(index) },
-											{ label: 'Play next', action: () => player.playNextTrack(trackId) },
-											{ label: 'Add to queue', action: () => player.addToQueue(trackId) },
-										],
-										{ anchor: true, preferredAlignment: { horizontal: 'right', vertical: 'bottom' } },
-									)
-								}}
-								>•••</button>
-								</button>
+										type="button"
+										class="interactable size-10 shrink-0 justify-center rounded-full text-onSurfaceVariant"
+										aria-label="More options"
+										onclick={(event) => {
+											e.stopPropagation()
+											const trackId = songIds[index]
+											if (trackId === undefined) return
+											menu.showFromEvent(
+												e,
+												[
+													{ label: 'Play', action: () => playTopSong(index) },
+													{ label: 'Play next', action: () => player.playNextTrack(trackId) },
+													{ label: 'Add to queue', action: () => player.addToQueue(trackId) },
+												],
+												{ anchor: true, preferredAlignment: { horizontal: 'right', vertical: 'bottom' } },
+											)
+										}}
+										>•••</button>
+									</div>
 							{/each}
 						</div>
 					{:else}
