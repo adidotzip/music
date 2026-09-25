@@ -22,11 +22,11 @@
 		initPlayerButton(button)
 		setPlayerIcon(button, player.playing ? 'pause' : 'play')
 
+		const syncIcon = () => setPlayerIcon(button, player.playing ? 'pause' : 'play')
+
 		const handlePressEnd = () => {
 			player.togglePlay()
-			queueMicrotask(() => {
-				setPlayerIcon(button, player.playing ? 'pause' : 'play')
-			})
+			syncIcon()
 		}
 
 		button.addEventListener('pressend', handlePressEnd)
@@ -46,6 +46,7 @@
 
 			event.preventDefault()
 			player.togglePlay()
+			syncIcon()
 		}
 
 		window.addEventListener('keydown', handleGlobalKeydown)
