@@ -102,7 +102,7 @@
 
 <Header title={artist || 'Artist'} />
 
-<main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:pl-20">
+<main class="mx-auto flex w-full max-w-(--app-max-content-width) grow flex-col px-4 pb-32 sm:px-6 md:px-8">
 	{#if loading}
 		<div
 			in:fade={{ duration: 250 }}
@@ -126,30 +126,30 @@
 			in:fade={{ duration: 300 }}
 			class="flex flex-col gap-10 pb-8"
 		>
-			<!-- Hero Section -->
+			<!-- Hero Header -->
 			<section
 				in:fly={{ y: 20, duration: 400, easing: cubicOut }}
-				class="flex items-center gap-4 border-b border-outline/10 pb-6"
+				class="flex items-center gap-4 border-b border-outline/10 pb-6 sm:gap-6"
 			>
 				<Artwork
 					src={artistArt}
 					fallbackIcon="person"
-					class="size-20 shrink-0 rounded-full shadow-lg transition-transform duration-500 hover:scale-105 sm:size-24"
+					class="size-20 shrink-0 rounded-full shadow-lg transition-transform duration-500 hover:scale-105 sm:size-28"
 				/>
-				<div class="min-w-0">
-					<div class="text-label-lg text-onSurfaceVariant">Artist</div>
-					<h1 class="truncate text-display-sm font-bold text-onSurface">{artist}</h1>
+				<div class="min-w-0 flex-1">
+					<div class="text-label-lg font-medium text-onSurfaceVariant">Artist</div>
+					<h1 class="truncate text-headline-lg font-bold text-onSurface sm:text-display-md">{artist}</h1>
 				</div>
 			</section>
 
 			<section class="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
-				<!-- Latest Release Section -->
+				<!-- Latest Release -->
 				<div
 					in:fly={{ y: 20, duration: 400, delay: 100, easing: cubicOut }}
 					class="flex flex-col gap-4"
 				>
-					<h1 class="text-title-lg font-bold">Latest Release</h1>
-					<div class="group/card flex flex-col gap-4 rounded-3xl border border-outline/5 bg-surfaceContainerHigh/40 p-4 transition-all duration-300 hover:bg-surfaceContainerHigh hover:shadow-xl">
+					<h2 class="text-title-lg font-bold">Latest Release</h2>
+					<div class="group/card flex flex-col gap-4 rounded-3xl border border-outline/10 bg-surfaceContainerHigh/50 p-4 transition-all duration-300 hover:bg-surfaceContainerHigh hover:shadow-xl">
 						<div class="overflow-hidden rounded-2xl">
 							<Artwork
 								src={latestArtwork}
@@ -157,16 +157,16 @@
 								class="aspect-square w-full rounded-2xl transition-transform duration-500 ease-out group-hover/card:scale-105"
 							/>
 						</div>
-						<div class="flex items-center gap-4">
+						<div class="flex items-center justify-between gap-3">
 							<div class="min-w-0 flex-1">
-								<div class="text-body-sm text-onSurfaceVariant">{latestArtist}</div>
-								<h2 class="truncate text-headline-sm font-bold">{latestName}</h2>
+								<div class="truncate text-body-sm text-onSurfaceVariant">{latestArtist}</div>
+								<h3 class="truncate text-headline-sm font-bold">{latestName}</h3>
 							</div>
 							<Button
 								kind="filled"
 								disabled={!songIds.length}
 								onclick={() => playSong(0)}
-								class="transition-transform active:scale-95"
+								class="shrink-0 transition-transform active:scale-95"
 							>
 								Play
 							</Button>
@@ -174,7 +174,7 @@
 					</div>
 				</div>
 
-				<!-- Top Songs Section -->
+				<!-- Top Songs -->
 				<div
 					in:fly={{ y: 20, duration: 400, delay: 150, easing: cubicOut }}
 					class="flex min-w-0 flex-col gap-4"
@@ -190,7 +190,7 @@
 								<div
 									role="button"
 									tabindex="0"
-									style="--delay: {index * 40}ms"
+									style="--delay: {index * 30}ms"
 									class="stagger-animate interactable group flex min-w-0 items-center gap-3 rounded-2xl bg-surfaceContainerHigh p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:bg-surfaceContainerHighest hover:shadow-md active:translate-y-0"
 									onclick={() => playTopSong(index)}
 									onkeydown={(event) => {
@@ -206,7 +206,7 @@
 										class="size-14 shrink-0 rounded-xl transition-transform duration-300 group-hover:scale-105"
 									/>
 									<div class="min-w-0 flex-1">
-										<div class="truncate text-body-lg font-bold group-hover:text-primary transition-colors">{song.name}</div>
+										<div class="truncate text-body-lg font-bold transition-colors group-hover:text-primary">{song.name}</div>
 										<div class="truncate text-body-md text-onSurfaceVariant">
 											{song.album || artist}{song.year ? ` • ${song.year}` : ''}
 										</div>
@@ -230,7 +230,7 @@
 											)
 										}}
 									>
-										•••
+										<span class="text-base font-bold leading-none">•••</span>
 									</button>
 								</div>
 							{/each}
@@ -243,7 +243,7 @@
 				</div>
 			</section>
 
-			<!-- All Songs Section -->
+			<!-- All Songs -->
 			{#if songs.length}
 				<section
 					in:fly={{ y: 20, duration: 400, delay: 200, easing: cubicOut }}
@@ -257,7 +257,7 @@
 				</section>
 			{/if}
 
-			<!-- Albums Section -->
+			<!-- Albums Grid -->
 			{#if albums.length}
 				<section
 					in:fly={{ y: 20, duration: 400, delay: 250, easing: cubicOut }}
@@ -270,12 +270,12 @@
 						</div>
 					</div>
 
-					<div class="grid min-w-0 grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+					<div class="grid min-w-0 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 						{#each albums as album, index (album.id)}
 							<a
 								href={`/album/${encodeURIComponent(album.id)}?name=${encodeURIComponent(album.name)}&artist=${encodeURIComponent(album.artist || artist)}&art=${encodeURIComponent(album.artUrl)}`}
-								style="--delay: {index * 50}ms"
-								class="stagger-animate interactable group flex min-w-0 flex-col rounded-2xl bg-surfaceContainerHigh p-2 transition-all duration-300 hover:-translate-y-1 hover:bg-surfaceContainerHighest hover:shadow-lg active:translate-y-0"
+								style="--delay: {index * 40}ms"
+								class="stagger-animate interactable group flex min-w-0 flex-col rounded-2xl bg-surfaceContainerHigh p-3 transition-all duration-300 hover:-translate-y-1 hover:bg-surfaceContainerHighest hover:shadow-lg active:translate-y-0"
 							>
 								<div class="relative aspect-square w-full overflow-hidden rounded-xl">
 									<Artwork
@@ -314,5 +314,11 @@
 	.stagger-animate {
 		animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 		animation-delay: var(--delay, 0ms);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.stagger-animate {
+			animation: none !important;
+		}
 	}
 </style>
