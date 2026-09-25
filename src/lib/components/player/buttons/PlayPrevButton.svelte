@@ -1,50 +1,40 @@
 <script lang="ts">
+	import PlayPreviousNextIcon from '../../animated-icons/PlayPreviousNextIcon.svelte'
 	import { onMount } from 'svelte'
 
 	const { class: className }: { class?: ClassValue } = $props()
 	const player = usePlayer()
-
 	let button: HTMLButtonElement
-	let skip: HTMLSpanElement
 
 	onMount(async () => {
-		const [{ initPlayerButton }, { initSkipLabel, playSkip }] = await Promise.all([
-			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-			// @ts-expect-error — remote CDN module, no type declarations available
-			import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'),
-			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-			// @ts-expect-error — remote CDN module, no type declarations available
-			import('https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js')
-		])
-
+		const { initPlayerButton } = await import(
+			'https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'
+		)
 		initPlayerButton(button)
-		initSkipLabel(skip)
-
-		button.addEventListener('pressend', () => {
-			playSkip(skip, { bouncing: true })
-			player.playPrev()
-		})
 	})
 </script>
 
 <button
 	bind:this={button}
 	type="button"
-	class={['aero-player', className]}
+	class={['aero-player aero-transport-button', className]}
 	aria-label={m.playerPlayPreviousTrack()}
 	disabled={player.isQueueEmpty}
+	onclick={player.playPrev}
 >
-	<span bind:this={skip} class="aero-skip" data-direction="backward" aria-hidden="true"></span>
+	<PlayPreviousNextIcon type="previous" />
 </button>
 
 <style lang="postcss">
 	@reference '../../../../app.css';
 
-	.aero-player {
+	.aero-transport-button {
+		--player-size: --spacing(11);
+		--player-icon: --spacing(6);
 		--player-label: var(--color-onSecondaryContainer);
 		--player-pressed: var(--color-onSecondaryContainer);
 		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
-		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 55%, transparent);
+		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
+		color: var(--color-onSecondaryContainer);
 	}
-
 </style>
