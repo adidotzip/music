@@ -180,7 +180,12 @@ const trackConfig: QueryConfig<TrackData> = {
 			const remote = remoteTrackMap.get(id) ?? getPersistedRemoteTrack(id)
 			if (remote) {
 				remoteTrackMap.set(id, remote)
-				return remote
+				const db = await getDatabase()
+				const favorite = await db.getFromIndex('playlistEntries', 'playlistTrack', [
+					FAVORITE_PLAYLIST_ID,
+					id,
+				])
+				return { ...remote, favorite: !!favorite }
 			}
 
 			const recovered = await recoverRemoteTrack(id)
