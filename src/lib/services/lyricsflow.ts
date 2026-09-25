@@ -59,21 +59,95 @@ export interface LyricsflowArtistProfile {
 	albums: DiscoveryResource[]
 }
 
+const SPICYAMLL_API = 'https://api.spicyamll.online'
+
+const requestSpicyArtistResource = async <T>(
+	path: string,
+	artistId: string,
+): Promise<T | null> => {
+	try {
+		const response = await fetch(
+			`${SPICYAMLL_API}${path}?artist=${encodeURIComponent(artistId)}`,
+			{ headers: { Accept: 'application/json' } },
+		)
+		if (!response.ok) return null
+		return (await response.json()) as T
+	} catch {
+		return null
+	}
+}
+
+const extractItems = (value: unknown): unknown[] => {
+	if (Array.isArray(value)) return value
+	if (!value || typeof value !== 'object') return []
+
+	const object = value as Record<string, unknown>
+	for (const key of ['data', 'results', 'songs', 'albums', 'items']) {
+		const child = object[key]
+		if (Array.isArray(child)) return child
+		if (child && typeof child === 'object') {
+			const nested = extractItems(child)
+			if (nested.length) return nested
+		}
+	}
+	return []
+}
+
+const mapSpicyResource = (
+	item: unknown,
+	type: 'song' | 'album',
+	artistName: string,
+): DiscoveryResource | null => {
+	if (!item || typeof item !== 'object') return null
+	const record = item as Record<string, unknown>
+	const attributes =
+		record.attributes && typeof record.attributes === 'object'
+			? record.attributes as Record<string, unknown>
+			: record
+	const artwork =
+		attributes.artwork && typeof attributes.artwork === 'object'
+			? attributes.artwork as Record<string, unknown>
+			: {}
+
+	const id = attributes.trackId ?? attributes.songId ?? attributes.collectionId ?? attributes.albumId ?? record.id
+	const name = attributes.name ?? attributes.trackName ?? attributes.collectionName ?? record.name ?? record.title
+	if (id === undefined || id === null || !name) return null
+
+	return {
+		type,
+		id: String(id),
+		name: String(name),
+		artist: String(attributes.artistName ?? record.artistName ?? record.artist ?? artistName),
+		album: type === 'album'
+			? String(name)
+			: String(attributes.albumName ?? record.albumName ?? record.album ?? ''),
+		artUrl: artworkUrl(
+			String(
+				artwork.url ??
+				attributes.artworkUrl100 ??
+				record.artworkUrl100 ??
+				record.artUrl ??
+				record.image ??
+				record.cover ??
+				'',
+			),
+		),
+	}
+}
+
 export const getLyricsflowArtistProfile = async (
 	artistId: string,
 	artistName?: string,
 ): Promise<LyricsflowArtistProfile> => {
+	// /artist is used for the canonical artist identity and PFP.
 	const artist = await requestArtist(artistId)
 
-	// The LyricsFlow /artist endpoint is the primary source. If the proxy is not
-	// configured or unavailable, keep artist profiles usable through the existing
-	// SpicyAMLL discovery API instead of rendering a dead-end error page.
 	if (!artist) {
 		const fallbackName = artistName?.trim()
 		if (!fallbackName) throw new Error('Unable to load artist profile.')
 
 		const discovery = await searchDiscovery(fallbackName)
-		const fallback = discovery.filter(
+		const fallbackSongs = discovery.filter(
 			(item) => item.type === 'song' && item.artist.toLowerCase() === fallbackName.toLowerCase(),
 		)
 		const artistResult = discovery.find(
@@ -82,58 +156,45 @@ export const getLyricsflowArtistProfile = async (
 
 		return {
 			name: artistResult?.name || fallbackName,
-			// Never use a song's album artwork as the artist PFP. Prefer the
-			// dedicated artist resource returned by discovery.
 			artUrl: artistResult?.artUrl,
-			songs: fallback,
+			songs: fallbackSongs,
 			albums: [],
 		}
 	}
 
 	const name = artist.attributes?.name || artistName || artistId
-	const catalogSongs = (artist.relationships?.songs?.data ?? [])
-		.map((item) => mapResource(item, 'song', name))
+
+	// Use the exact SpicyAMLL artist catalog endpoints requested for the
+	// complete songs and albums lists.
+	const [songsResponse, albumsResponse] = await Promise.all([
+		requestSpicyArtistResource<unknown>('/artist/songs', artistId),
+		requestSpicyArtistResource<unknown>('/artist/albums', artistId),
+	])
+
+	let songs = extractItems(songsResponse)
+		.map((item) => mapSpicyResource(item, 'song', name))
 		.filter((item): item is DiscoveryResource => !!item)
 
-	// /artist can expose only a partial relationship. Fetch the complete artist
-	// catalog separately so the profile does not stop after the first few tracks.
-	let songs = catalogSongs
-	try {
-		const completeSongs = await getSongsForArtist(artistId, name)
-		const normalized = completeSongs
-			.filter((song) => !song.artist || song.artist.toLowerCase() === name.toLowerCase())
-			.map((song) => ({
-				type: 'song' as const,
-				id: String(song.id),
-				name: song.name,
-				artist: song.artist || name,
-				album: song.album || song.albumName || '',
-				artUrl: artworkUrl(song.image || song.artwork || song.cover || song.coverUrl, 600),
-			}))
-		const seen = new Set<string>()
-		songs = [...normalized, ...catalogSongs].filter((song) => {
-			if (seen.has(song.id)) return false
-			seen.add(song.id)
-			return true
-		})
-	} catch {
-		// Keep the /artist relationship results if the catalog request fails.
+	let albums = extractItems(albumsResponse)
+		.map((item) => mapSpicyResource(item, 'album', name))
+		.filter((item): item is DiscoveryResource => !!item)
+
+	// If an endpoint returns an envelope containing the artist relationship
+	// rather than a direct array, still keep the profile usable.
+	if (!songs.length) {
+		try {
+			songs = (artist.relationships?.songs?.data ?? [])
+				.map((item) => mapResource(item, 'song', name))
+				.filter((item): item is DiscoveryResource => !!item)
+		} catch {}
 	}
 
-	let albums = (artist.relationships?.albums?.data ?? [])
-		.map((item) => mapResource(item, 'album', name))
-		.filter((item): item is DiscoveryResource => !!item)
-
-	// Album relationship entries can contain only IDs. Use discovery to enrich
-	// them with names/artwork without changing the primary artist endpoint.
 	if (!albums.length) {
 		try {
-			albums = (await searchDiscovery(name))
-				.filter((item) => item.type === 'album' && (!item.artist || item.artist.toLowerCase() === name.toLowerCase()))
-				.slice(0, 25)
-		} catch {
-			// Albums are optional and should never make the artist page fail.
-		}
+			albums = (artist.relationships?.albums?.data ?? [])
+				.map((item) => mapResource(item, 'album', name))
+				.filter((item): item is DiscoveryResource => !!item)
+		} catch {}
 	}
 
 	return {
