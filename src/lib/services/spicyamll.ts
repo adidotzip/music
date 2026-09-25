@@ -232,13 +232,20 @@ export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
 ]
 
 export const searchDiscovery = async (query: string, limit = 100) => {
-	// Search songs separately so albums/artists cannot consume the song result
-	// budget when the upstream API applies a shared limit.
-	const [songsResponse, otherResponse] = await Promise.all([
+	// Search songs independently. Some upstream search routes can omit
+	// explicit catalog entries, so also query the Apple Music catalog route
+	// and merge both result sets.
+	const [songsResponse, catalogSongsResponse, otherResponse] = await Promise.all([
 		spicyamll.search({
 			term: query,
 			types: 'songs',
 			limit,
+		}),
+		spicyamll.catalogSearch('us', {
+			term: query,
+			types: 'songs',
+			limit,
+			offset: 0,
 		}),
 		spicyamll.search({
 			term: query,
@@ -249,6 +256,7 @@ export const searchDiscovery = async (query: string, limit = 100) => {
 
 	const results = [
 		...parseDiscoveryGroup(songsResponse, 'song'),
+		...parseDiscoveryGroup(catalogSongsResponse, 'song'),
 		...parseDiscoveryGroup(otherResponse, 'album'),
 		...parseDiscoveryGroup(otherResponse, 'artist'),
 	]
