@@ -5,6 +5,7 @@
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
+	import BackButton from '$lib/components/BackButton.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
 	import MenuButton from '$lib/components/MenuButton.svelte'
 	import Separator from '$lib/components/Separator.svelte'
@@ -371,11 +372,9 @@
 
 <Header title={selectedDetail ? selectedDetail.name : 'Discovery'} noBackButton>
 	{#if !selectedDetail && searched}
-		<IconButton
-			icon="backArrow"
-			tooltip="Back to Discovery"
+		<BackButton
 			class="mr-auto"
-			onclick={() => {
+			onback={() => {
 				query = ''
 				results = []
 				searched = false
@@ -384,11 +383,9 @@
 		/>
 	{/if}
 	{#if selectedDetail}
-		<IconButton
-			icon="backArrow"
-			tooltip={m.goBack()}
+		<BackButton
 			class="mr-auto"
-			onclick={() => {
+			onback={() => {
 				selectedDetail = null
 			}}
 		/>
