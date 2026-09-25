@@ -152,6 +152,14 @@ source {
 
 @layer base {
 	* {
+		transition-property: background-color, color, border-color, outline-color, fill, stroke;
+		transition-duration: 450ms;
+		transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+	}
+
+	html.theme-transition *,
+	html.theme-transition *::before,
+	html.theme-transition *::after {
 		scrollbar-width: thin;
 		scrollbar-color: --alpha(var(--color-secondary) / 30%) transparent;
 	}
