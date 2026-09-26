@@ -74,9 +74,35 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 		throw new Error(`No downloadable source is available for "${track.name}".`)
 	}
 
-	const response = await fetch(url)
+	let response: Response
+	try {
+		response = await fetch(url, {
+			method: 'GET',
+			mode: 'cors',
+			credentials: 'omit',
+			cache: 'no-store',
+			headers: { Accept: 'audio/*,application/octet-stream;q=0.9,*/*;q=0.5' },
+		})
+	} catch (error) {
+		throw new Error(
+			`Unable to fetch the audio for "${track.name}". Check your connection or whether this song is available offline.`,
+			{ cause: error },
+		)
+	}
+
 	if (!response.ok) {
-		throw new Error(`Download failed (${response.status}).`)
+		let detail = ''
+		try {
+			detail = (await response.text()).slice(0, 160)
+		} catch {}
+		throw new Error(
+			`Download failed (${response.status})${detail ? `: ${detail}` : '.'}`,
+		)
+	}
+
+	const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
+	if (contentType.includes('application/json') || contentType.includes('text/html')) {
+		throw new Error('The music service returned an error instead of an audio file.')
 	}
 
 	const contentLength = Number(response.headers.get('content-length') || 0)
