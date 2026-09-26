@@ -258,9 +258,20 @@ export class PlayerStore {
 
 		const syncPlayingFromAudio = () => {
 			const audioPlaying = !audio.paused
-			if (audioPlaying !== this.playing) {
-				this.playing = audioPlaying
+			if (audioPlaying) {
+				this.playing = true
+				return
 			}
+
+			// Changing the audio source can emit a pause event before the new
+			// source has finished loading. If this track is still marked for
+			// autoplay, keep the requested state instead of flipping the UI
+			// back to Play.
+			if (this.#autoplayTrackId === this.activeTrack?.id) {
+				return
+			}
+
+			this.playing = false
 		}
 
 		audio.onplay = () => {
@@ -576,29 +587,42 @@ export class PlayerStore {
 
 		const nextState = force ?? !this.playing
 		const activeTrackId = this.#queue.activeTrackId
-		this.playing = nextState
-		this.#autoplayTrackId = nextState ? activeTrackId : null
+
 		if (nextState) {
-			if (activeTrackId !== null && this.#failedRemoteTracks.has(activeTrackId)) {
+			if (activeTrackId === null || this.#failedRemoteTracks.has(activeTrackId)) {
 				this.playing = false
 				this.#autoplayTrackId = null
 				return
 			}
 
+			this.playing = true
+			this.#autoplayTrackId = activeTrackId
 			this.#audio.preload = 'auto'
+
 			if (this.equalizer.enabled) {
 				void this.equalizer.resumeContext()
 			}
-			const playPromise = this.#audio.play()
-			if (playPromise !== undefined) {
-				playPromise.catch((error) => {
-					console.warn('Audio playback request failed:', error)
-					if (!this.#audioLoader.loading) {
-						this.playing = false
-					}
-				})
+
+			// If the source is still being loaded, don't call play() against
+			// the previous/empty source. The track-load completion handler and
+			// the playback effect will start it once the correct source exists.
+			if (this.#audioLoader.loading || !this.#audio.src) {
+				return
 			}
+
+			const playPromise = this.#audio.play()
+			playPromise?.catch((error) => {
+				console.warn('Audio playback request failed:', error)
+				if (this.#autoplayTrackId === activeTrackId && !this.#audioLoader.loading) {
+					this.playing = false
+					this.#autoplayTrackId = null
+				}
+			})
 		} else {
+			// Clear autoplay intent before pausing so the native pause event
+			// correctly updates the UI to the Play state.
+			this.#autoplayTrackId = null
+			this.playing = false
 			this.#audio.pause()
 		}
 	}
