@@ -14,6 +14,7 @@
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 	import { type AlbumData, getLibraryValue, registerRemoteTrack, type TrackData } from '$lib/library/get/value.ts'
 	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
+	import { getLibraryArtists } from '$lib/services/library.ts'
 	import {
 		FAVORITE_PLAYLIST_ID,
 		removeTrackEntryFromPlaylist,
@@ -123,9 +124,18 @@
 			const loadArtistProfile = async () => {
 				try {
 					const [profile, albums, songs] = await Promise.all([
-						getArtistProfile(undefined, item.name),
-						getAlbumsForArtist(undefined, item.name),
-						getSongsForArtist(undefined, item.name),
+						getArtistProfile(
+						getLibraryArtists().find((artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase())?.id,
+						item.name,
+					),
+						getAlbumsForArtist(
+						getLibraryArtists().find((artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase())?.id,
+						item.name,
+					),
+						getSongsForArtist(
+						getLibraryArtists().find((artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase())?.id,
+						item.name,
+					),
 					])
 
 					if (cancelled) return
