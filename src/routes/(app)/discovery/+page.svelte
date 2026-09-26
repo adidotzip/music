@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte'
-import { browser } from '$app/environment'
+    import { browser } from '$app/environment'
     import { goto } from '$app/navigation'
     import Artwork from '$lib/components/Artwork.svelte'
     import Button from '$lib/components/Button.svelte'
