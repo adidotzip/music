@@ -10,7 +10,6 @@ export function getSourceDisplayName(source?: string): string {
 	if (!source) return 'Unknown'
 	const s = source.toLowerCase()
 	if (s === 'adi') return 'Adi Lyrics'
-	if (s === 'lrc-red') return 'LRC Red'
 	if (s === 'adi-lrcmux') return 'Adi Lyrics + LRC Mux'
 	if (s === 'lrcmux') return 'LRC Mux'
 	if (s === 'lrclib') return 'LRCLIB'
