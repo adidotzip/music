@@ -77,6 +77,8 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		localUuid: string
 	}>>([])
 	let localArtistTrackIds = $state<number[]>([])
+	let csvInput = $state<HTMLInputElement>()
+	let importingCsv = $state(false)
 
 	const remoteIdToNumber = (id: string | number) => {
 		const value = String(id)
@@ -210,6 +212,25 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		]
 	}
 
+	const importPlaylistCsvFile = async (file: File) => {
+		if (slug !== 'playlists' || !item || importingCsv) return
+		importingCsv = true
+		try {
+			const { importPlaylistCsv } = await import('$lib/library/import-playlist-csv.ts')
+			const result = await importPlaylistCsv(item.id, file)
+			const failedCount = result.notFound.length + result.failed.length
+			snackbar({
+				id: `playlist-csv-import-${item.id}`,
+				message: `Imported ${result.added} songs and downloaded them to your library.${result.duplicates ? ` ${result.duplicates} already existed.` : ''}${failedCount ? ` ${failedCount} could not be imported.` : ''}`,
+			})
+		} catch (error) {
+			snackbar.unexpectedError(error)
+		} finally {
+			importingCsv = false
+			if (csvInput) csvInput.value = ''
+		}
+	}
+
 	const getMenuItems = () => {
 		const addToQueueMenuItem =
 			tracks.tracksIds.length === 0
@@ -226,7 +247,16 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 				return [addToQueueMenuItem]
 			}
 
-			return [addToQueueMenuItem, ...getPlaylistMenuItems(dialogs, item as Playlist)]
+			return [
+				addToQueueMenuItem,
+				{
+					label: importingCsv ? 'Importing CSV…' : 'Import songs from CSV',
+					action: () => {
+						if (!importingCsv) csvInput?.click()
+					},
+				},
+				...getPlaylistMenuItems(dialogs, item as Playlist),
+			]
 		}
 
 		return [
@@ -267,6 +297,17 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 {:else}
 	<Header title={data.singularTitle()} />
 {/if}
+
+<input
+	type="file"
+	accept=".csv,text/csv"
+	class="hidden"
+	bind:this={csvInput}
+	onchange={(event) => {
+		const file = (event.currentTarget as HTMLInputElement).files?.[0]
+		if (file) void importPlaylistCsvFile(file)
+	}}
+/>
 
 <div class="@container flex grow flex-col px-4 pb-4">
 	<section
