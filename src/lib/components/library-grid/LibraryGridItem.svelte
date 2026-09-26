@@ -4,6 +4,7 @@
 	import { page } from '$app/state'
 	import type { RouteId } from '$app/types'
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
+	import { compressArtwork } from '$lib/helpers/compress-artwork.ts'
 	import type { QueryResult } from '$lib/db/query/query.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte.ts'
 	import { dbGetAlbumTracksIdsByName, dbGetArtistTracksIdsByName } from '$lib/library/get/ids'
@@ -61,7 +62,7 @@
 			const album = value as AlbumData
 
 			if (album.image instanceof Blob) {
-				artworkSource = album.image
+				artworkSource = await compressArtwork(album.image)
 				return
 			}
 
@@ -72,7 +73,7 @@
 
 				const image = track.image?.full ?? track.image?.small
 				if (image) {
-					artworkSource = image
+					artworkSource = image instanceof Blob ? await compressArtwork(image) : image
 					return
 				}
 			}
