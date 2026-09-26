@@ -336,7 +336,7 @@
                                     {:else if item.status === 'downloading'}
                                         <div class="size-5 rounded-full border-2 border-primary border-t-transparent animate-spin" aria-hidden="true"></div>
                                     {:else if item.status === 'error'}
-                                        <Icon type="error" class="size-5 text-error" />
+                                        <Icon type="alertCircle" class="size-5 text-error" />
                                     {:else}
                                         <Icon type="download" class="size-5 text-onSurfaceVariant" />
                                     {/if}
