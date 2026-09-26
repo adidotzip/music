@@ -166,6 +166,7 @@ const downloadAndImport = async (
 				`Download failed (${candidate.status})${detail ? `: ${detail}` : '.'}`,
 			)
 		} catch (error) {
+			if (signal?.aborted) throw error
 			lastError = error
 		}
 	}
