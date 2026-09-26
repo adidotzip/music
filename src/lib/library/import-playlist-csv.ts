@@ -62,7 +62,7 @@ const getColumn = (headers: string[], names: string[]) => {
 
 const registerTrack = (track: SpicyTrack): number => {
 	const remoteId = String(track.id)
-	const id = generateStableId(\`spicyamll:\${remoteId}\`)
+	const id = generateStableId(`spicyamll:${remoteId}`)
 	const artist = track.artist ?? track.artists?.join(', ') ?? ''
 	const album = track.album ?? track.albumName ?? ''
 	const image = track.image ?? track.artwork
@@ -71,7 +71,7 @@ const registerTrack = (track: SpicyTrack): number => {
 		id,
 		remoteId,
 		streaming: true,
-		uuid: \`spicyamll:\${remoteId}\`,
+		uuid: `spicyamll:${remoteId}`,
 		name: track.name,
 		album: album || '~\\0unknown',
 		artists: artist ? [artist] : ['Unknown Artist'],
