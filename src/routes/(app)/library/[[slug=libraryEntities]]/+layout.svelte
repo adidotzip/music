@@ -136,18 +136,6 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 		{@render navItemsSnippet('h-14 w-20')}
 	{/if}
 
-	{#if !isLibraryHome && (slug === 'albums' || slug === 'artists') && isWideLayout}
-		<IconButton
-			icon="sidePanel"
-			tooltip={main.librarySplitLayoutEnabled
-				? m.librarySplitViewDisable()
-				: m.librarySplitViewEnable()}
-			class={['mt-4', main.librarySplitLayoutEnabled && 'rotate-180']}
-			onclick={() => {
-				main.librarySplitLayoutEnabled = !main.librarySplitLayoutEnabled
-			}}
-		/>
-	{/if}
 </div>
 
 {#if isLibraryHome}
@@ -160,7 +148,23 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	{#snippet list(mode)}
 		<div class={[isHandHeldDevice ? 'sm:pl-20' : 'pl-20', 'flex grow flex-col']}>
 			<div class={[mode === 'both' && 'w-100', 'flex grow flex-col px-4']}>
-				<Search name={data.pluralTitle()} sortOptions={data.sortOptions} store={data.store} />
+				<div class="flex items-center gap-2">
+					<div class="min-w-0 grow">
+						<Search name={data.pluralTitle()} sortOptions={data.sortOptions} store={data.store} />
+					</div>
+					{#if !isAlbumOrArtistDetails && (slug === 'albums' || slug === 'artists') && isWideLayout}
+						<IconButton
+							icon="sidePanel"
+							tooltip={main.librarySplitLayoutEnabled
+								? m.librarySplitViewDisable()
+								: m.librarySplitViewEnable()}
+							class={main.librarySplitLayoutEnabled && 'rotate-180'}
+							onclick={() => {
+								main.librarySplitLayoutEnabled = !main.librarySplitLayoutEnabled
+							}}
+						/>
+					{/if}
+				</div>
 
 				{#if slug === 'playlists'}
 					<div class="mb-4 flex items-center justify-end">
