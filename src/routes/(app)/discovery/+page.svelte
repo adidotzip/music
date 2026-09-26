@@ -23,12 +23,11 @@ import { browser } from '$app/environment'
     import {
         type DiscoveryResource,
         type DiscoveryTrack,
-        getSongsForArtist,
         normalizeTracks,
         parseDiscoveryResults,
-        searchDiscovery,
         spicyamll,
     } from '$lib/services/spicyamll.ts'
+    import { searchMusic } from '$lib/services/music-search.ts'
 
     type DiscoveryItem = DiscoveryResource
 
@@ -48,7 +47,8 @@ import { browser } from '$app/environment'
 
 
     const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
-        const key = `spicyamll:${input.id}`
+        const playbackId = input.providerId || input.id
+        const key = `spicyamll:${playbackId}`
         const id = generateStableId(key)
 
         const isResource = 'artUrl' in input
@@ -61,7 +61,7 @@ import { browser } from '$app/environment'
 
         registerRemoteTrack({
             id,
-            remoteId: String(input.id),
+            remoteId: String(playbackId),
             streaming: true,
             uuid: key,
             name,
@@ -81,7 +81,7 @@ import { browser } from '$app/environment'
             directory: undefined,
             fileName: undefined,
             scannedAt: Date.now(),
-            url: spicyamll.streamUrl(input.id, {
+            url: spicyamll.streamUrl(playbackId, {
                 codec: 'aac',
                 fallback: true,
                 language: 'en-US',
@@ -246,9 +246,10 @@ import { browser } from '$app/environment'
         results = []
 
         try {
-            results = await enrichDiscoveryArtwork(await searchDiscovery(term))
+            results = await searchMusic(term)
+            results = await enrichDiscoveryArtwork(results)
         } catch (e) {
-            error = e instanceof Error ? e.message : 'Unable to search SpicyAMLL'
+            error = e instanceof Error ? e.message : 'Unable to search music catalog'
         } finally {
             loading = false
         }
