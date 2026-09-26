@@ -145,23 +145,16 @@
 	{#snippet list(mode)}
 		<div class="flex grow flex-col pl-20">
 			<div class={[mode === 'both' && 'w-100', 'flex grow flex-col px-4']}>
-				<div class="flex items-center gap-2">
-					<div class="min-w-0 grow">
-						<Search name={data.pluralTitle()} sortOptions={data.sortOptions} store={data.store} />
-					</div>
-					{#if !isAlbumOrArtistDetails && (slug === 'albums' || slug === 'artists') && isWideLayout}
-						<IconButton
-							icon="sidePanel"
-							tooltip={main.librarySplitLayoutEnabled
-								? m.librarySplitViewDisable()
-								: m.librarySplitViewEnable()}
-							class={['size-10', main.librarySplitLayoutEnabled && 'rotate-180']}
-							onclick={() => {
-								main.librarySplitLayoutEnabled = !main.librarySplitLayoutEnabled
-							}}
-						/>
-					{/if}
-				</div>
+				<Search
+					name={data.pluralTitle()}
+					sortOptions={data.sortOptions}
+					store={data.store}
+					showSplitButton={!isAlbumOrArtistDetails && (slug === 'albums' || slug === 'artists') && isWideLayout}
+					splitEnabled={main.librarySplitLayoutEnabled}
+					onToggleSplit={() => {
+						main.librarySplitLayoutEnabled = !main.librarySplitLayoutEnabled
+					}}
+			/>
 
 				{#if slug === 'playlists'}
 					<div class="mb-4 flex items-center justify-end">
