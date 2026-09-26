@@ -47,7 +47,7 @@ import { browser } from '$app/environment'
 
 
     const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
-        const playbackId = input.providerId || input.id
+        const playbackId = 'providerId' in input && input.providerId ? input.providerId : input.id
         const key = `spicyamll:${playbackId}`
         const id = generateStableId(key)
 
