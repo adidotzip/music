@@ -249,12 +249,11 @@
 								: 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
 						]}
 						onclick={(e) => {
-							// If selection is not enabled, enable it
-							// otherwise let parent handle toggling
-							if (!selectionEnabled) {
-								e.stopPropagation()
-								toggleSelection?.()
-							}
+							// The checkbox owns selection clicks. Always stop the
+							// row click so an active selection is not toggled twice.
+							e.preventDefault()
+							e.stopPropagation()
+							toggleSelection?.()
 						}}
 					>
 						<div
