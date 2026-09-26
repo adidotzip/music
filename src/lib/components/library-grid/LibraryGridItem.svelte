@@ -9,7 +9,7 @@
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte.ts'
 	import { dbGetAlbumTracksIdsByName, dbGetArtistTracksIdsByName } from '$lib/library/get/ids'
-import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
+	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 	import type { AlbumData, ArtistData } from '$lib/library/get/value'
 	import { createAlbumQuery, createArtistQuery } from '$lib/library/get/value-queries'
 	import { UNKNOWN_ITEM } from '$lib/library/types'
