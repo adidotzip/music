@@ -6,6 +6,7 @@
 	import { formatArtists, formatNameOrUnknown, getItemLanguage } from '$lib/helpers/utils/text.ts'
 	import { createTrackQuery, type TrackData } from '$lib/library/get/value-queries.ts'
 	import Artwork from '../Artwork.svelte'
+	import DownloadButton from '../player/buttons/DownloadButton.svelte'
 	import FavoriteButton from '../FavoriteButton.svelte'
 	import IconButton from '../IconButton.svelte'
 	import Icon from '../icon/Icon.svelte'
@@ -25,6 +26,8 @@
 		selected: boolean
 		showReorderButton?: boolean
 		showFavoriteButton?: boolean
+		showDownloadButton?: boolean
+		downloadButtonLarge?: boolean
 		reorderDragging?: boolean
 		reorderInsertBefore?: boolean
 		reorderInsertAfter?: boolean
@@ -46,6 +49,8 @@
 		selected,
 		showReorderButton = false,
 		showFavoriteButton = true,
+		showDownloadButton = true,
+		downloadButtonLarge = false,
 		reorderDragging = false,
 		reorderInsertBefore = false,
 		reorderInsertAfter = false,
@@ -196,6 +201,14 @@
 				>
 					<Icon type="dragHorizontal" />
 				</button>
+			{/if}
+
+			{#if showDownloadButton}
+				<DownloadButton
+					trackId={track.id}
+					large={downloadButtonLarge}
+					class={selectionEnabled && 'invisible'}
+				/>
 			{/if}
 
 			{#if showFavoriteButton}
