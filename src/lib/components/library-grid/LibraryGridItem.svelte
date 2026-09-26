@@ -57,34 +57,70 @@
 	const { value: item } = $derived(query)
 
 	let artistArtworkSrc = $state<string | undefined>()
+	let fallbackArtworkSrc = $state<Blob | string | undefined>()
 	const artworkSrc = createManagedArtwork(() => {
 		if (type === 'albums') {
-			return item ? (item as AlbumData).image : undefined
+			return item ? (item as AlbumData).image ?? fallbackArtworkSrc : fallbackArtworkSrc
 		}
 
-		return undefined
+		return fallbackArtworkSrc
 	})
 
 	let animatedArtworkSrc = $state<string | undefined>()
 	$effect(() => {
+		let cancelled = false
+		artistArtworkSrc = undefined
+		fallbackArtworkSrc = undefined
+
+		const loadFallbackArtwork = async () => {
+			if (!item) return
+
+			const name = item.name
+			const trackIds = await dbGetAlbumOrArtistTrackIdsByName(name)
+			for (const trackId of trackIds.slice(0, 3)) {
+				try {
+					const track = await getLibraryValue('tracks', trackId, true)
+					const image = track?.image?.full
+					if (image && !cancelled) {
+						fallbackArtworkSrc = image
+						return
+					}
+				} catch {
+					// Try the next track artwork.
+				}
+			}
+		}
+
 		if (type === 'albums' && item) {
 			const album = item as AlbumData
 			const artist = (album.artists[0] as string) ?? ''
-			if (artist === UNKNOWN_ITEM || album.name === UNKNOWN_ITEM) {
-				animatedArtworkSrc = undefined
-				return
+			if (artist !== UNKNOWN_ITEM && album.name !== UNKNOWN_ITEM) {
+				getAnimatedArtwork(artist, album.name)
+					.then((result) => {
+						if (!cancelled) animatedArtworkSrc = result?.url
+					})
+					.catch(() => {
+						if (!cancelled) animatedArtworkSrc = undefined
+					})
 			}
-			getAnimatedArtwork(artist, album.name).then((result) => {
-				animatedArtworkSrc = result?.url
-			})
+
+			if (!(album.image instanceof Blob)) {
+				void loadFallbackArtwork()
+			}
 		} else if (type === 'artists' && item) {
 			const artist = item as ArtistData
-			artistArtworkSrc = undefined
-			getArtistArtwork(artist.name).then((url) => {
-				artistArtworkSrc = url
-			})
+			getArtistArtwork(artist.name)
+				.then((url) => {
+					if (!cancelled && url) artistArtworkSrc = url
+				})
+				.catch(() => undefined)
+			void loadFallbackArtwork()
 		} else {
 			animatedArtworkSrc = undefined
+		}
+
+		return () => {
+			cancelled = true
 		}
 	})
 
