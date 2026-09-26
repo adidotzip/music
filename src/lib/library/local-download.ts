@@ -6,6 +6,7 @@ import { getDatabase } from '$lib/db/database.ts'
 
 const MAX_DOWNLOAD_BYTES = 300 * 1024 * 1024
 const pendingDownloads = new Map<string, Promise<number>>()
+const downloadControllers = new Map<string, AbortController>()
 const LOCAL_ALIAS_PREFIX = 'adi_music_local_track_alias:'
 
 const getCachedLocalTrackId = (sourceId: number | string): number | undefined => {
@@ -108,7 +109,11 @@ const getDownloadUrls = (track: LibraryTrack): string[] => {
 	return [...new Set(urls)]
 }
 
-const downloadAndImport = async (trackId: number, onProgress?: (progress: number) => void): Promise<number> => {
+const downloadAndImport = async (
+	trackId: number,
+	onProgress?: (progress: number) => void,
+	signal?: AbortSignal,
+): Promise<number> => {
 	const track = await getLibraryValue('tracks', trackId, true)
 	if (!track) {
 		throw new Error('Track is no longer available. Open the song once and try Download again.')
@@ -139,6 +144,7 @@ const downloadAndImport = async (trackId: number, onProgress?: (progress: number
 				mode: 'cors',
 				credentials: 'omit',
 				cache: 'no-store',
+				signal,
 				headers: { Accept: 'audio/*,application/octet-stream;q=0.9,*/*;q=0.5' },
 			})
 
@@ -289,7 +295,24 @@ const downloadAndImport = async (trackId: number, onProgress?: (progress: number
 	return localTrackId
 }
 
-export const ensureTrackIsStoredLocally = async (trackId: number, onProgress?: (progress: number) => void): Promise<number> => {
+export const isDownloadAbortError = (error: unknown): boolean =>
+	error instanceof Error && error.name === 'AbortError'
+
+export const cancelTrackDownload = (trackId: number): boolean => {
+	const key = String(trackId)
+	const controller = downloadControllers.get(key)
+	if (!controller) return false
+
+	controller.abort()
+	downloadControllers.delete(key)
+	pendingDownloads.delete(key)
+	return true
+}
+
+export const ensureTrackIsStoredLocally = async (
+	trackId: number,
+	onProgress?: (progress: number) => void,
+): Promise<number> => {
 	const cachedLocalTrackId = getCachedLocalTrackId(trackId)
 	if (cachedLocalTrackId) {
 		const cachedTrack = await getLibraryValue('tracks', cachedLocalTrackId, true)
@@ -299,10 +322,14 @@ export const ensureTrackIsStoredLocally = async (trackId: number, onProgress?: (
 	const existingRequest = pendingDownloads.get(String(trackId))
 	if (existingRequest) return existingRequest
 
-	const request = downloadAndImport(trackId, onProgress).finally(() => {
-		pendingDownloads.delete(String(trackId))
+	const key = String(trackId)
+	const controller = new AbortController()
+	const request = downloadAndImport(trackId, onProgress, controller.signal).finally(() => {
+		pendingDownloads.delete(key)
+		downloadControllers.delete(key)
 	})
 
-	pendingDownloads.set(String(trackId), request)
+	downloadControllers.set(key, controller)
+	pendingDownloads.set(key, request)
 	return request
 }
