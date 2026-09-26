@@ -446,6 +446,37 @@ export const searchAlbums = async (query: string) => {
 	return []
 }
 
+const iTunesArtistIdCache = new Map<string, string>()
+
+export const resolveAppleMusicArtistId = async (artistName: string): Promise<string | undefined> => {
+	const key = artistName.trim().toLowerCase()
+	if (!key) return undefined
+	const cached = iTunesArtistIdCache.get(key)
+	if (cached) return cached
+
+	try {
+		const url = new URL('https://itunes.apple.com/search')
+		url.searchParams.set('term', artistName)
+		url.searchParams.set('entity', 'musicArtist')
+		url.searchParams.set('limit', '10')
+		url.searchParams.set('country', 'US')
+		const response = await fetch(url, { headers: { Accept: 'application/json' } })
+		if (!response.ok) return undefined
+		const payload = await response.json() as { results?: Array<Record<string, unknown>> }
+		const results = Array.isArray(payload.results) ? payload.results : []
+		const exact = results.find((result) =>
+			String(result.artistName ?? '').trim().toLowerCase() === key && result.artistId != null,
+		)
+		const match = exact ?? results.find((result) => result.artistId != null)
+		if (!match) return undefined
+		const id = String(match.artistId)
+		iTunesArtistIdCache.set(key, id)
+		return id
+	} catch {
+		return undefined
+	}
+}
+
 export interface SpicyArtistProfile {
 	id: string
 	name: string
