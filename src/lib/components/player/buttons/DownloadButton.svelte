@@ -41,6 +41,11 @@
 	aria-label={state === 'done' ? 'Downloaded for offline playback' : state === 'loading' ? 'Saving song offline' : state === 'error' ? 'Download failed, try again' : 'Download song for offline playback'}
 	aria-busy={state === 'loading'}
 	disabled={state === 'loading' || state === 'done'}
+	onpointerdown={(event) => {
+		// This control lives inside the clickable track row. Stop the pointer
+		// before it can be interpreted as a request to play the track.
+		event.stopPropagation()
+	}}
 	onclick={download}
 >
 	<span class={['download-icon', state === 'loading' && 'is-loading', state === 'done' && 'is-done', state === 'error' && 'is-error']}>
