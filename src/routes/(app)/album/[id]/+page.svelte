@@ -49,7 +49,7 @@
 
             albumName = String(attrs.name || page.url.searchParams.get('name') || 'Album')
             artistName = String(attrs.artistName || page.url.searchParams.get('artist') || '')
-            artwork = artworkUrl(art.url) || page.url.searchParams.get('art') || undefined
+            artwork = page.url.searchParams.get('art') || artworkUrl(art.url) || normalized.find((song) => song.image)?.image || undefined
 
             songIds = normalized.map((song) => {
                 const id = generateStableId(`spicyamll:${song.id}`)
