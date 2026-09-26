@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
-import { MediaQuery } from 'svelte/reactivity'
+import { onMount } from 'svelte'
+	import { MediaQuery } from 'svelte/reactivity'
 	import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
@@ -85,6 +86,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		title: string
 		artist: string
 		status: 'searching' | 'downloading' | 'added' | 'duplicate' | 'not-found' | 'failed'
+		rowIndex: number
 	} | null>(null)
 
 	const remoteIdToNumber = (id: string | number) => {
@@ -219,14 +221,18 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		]
 	}
 
-	const importPlaylistCsvFile = async (file: File) => {
+	const importPlaylistCsvFile = async (file: File, resumeFrom = 0) => {
 		if (slug !== 'playlists' || !item || importingCsv) return
 		importingCsv = true
+		const storageKey = `adi_music_csv_import:${item.id}`
 		try {
 			const { importPlaylistCsv } = await import('$lib/library/import-playlist-csv.ts')
-			const result = await importPlaylistCsv(item.id, file, (progress) => {
+			const csvText = await file.text()
+			localStorage.setItem(storageKey, JSON.stringify({ csvText, resumeFrom }))
+			const result = await importPlaylistCsv(csvText, (progress) => {
 				csvProgress = progress
-			})
+				localStorage.setItem(storageKey, JSON.stringify({ csvText, resumeFrom: progress.rowIndex + 1 }))
+			}, resumeFrom)
 			const failedCount = result.notFound.length + result.failed.length
 			snackbar({
 				id: `playlist-csv-import-${item.id}`,
@@ -240,9 +246,25 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		} finally {
 			importingCsv = false
 			csvProgress = null
+			localStorage.removeItem(storageKey)
 			if (csvInput) csvInput.value = ''
 		}
 	}
+
+	onMount(() => {
+		if (slug !== 'playlists' || !item) return
+		const storageKey = `adi_music_csv_import:${item.id}`
+		const saved = localStorage.getItem(storageKey)
+		if (!saved) return
+		try {
+			const state = JSON.parse(saved) as { csvText?: string; resumeFrom?: number }
+			if (!state.csvText || !state.resumeFrom || state.resumeFrom <= 0) return
+			const file = new File([state.csvText], 'playlist-import.csv', { type: 'text/csv' })
+			void importPlaylistCsvFile(file, state.resumeFrom)
+		} catch {
+			localStorage.removeItem(storageKey)
+		}
+	})
 
 	const getMenuItems = () => {
 		const addToQueueMenuItem =
