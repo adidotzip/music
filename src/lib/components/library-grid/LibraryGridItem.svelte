@@ -103,21 +103,23 @@
 
 	$effect(() => {
 		let cancelled = false
-		artworkSource = undefined
 
-		const value = item
-		if (!value || value.name === UNKNOWN_ITEM) {
-			return () => {
-				cancelled = true
-			}
+		const refreshArtwork = () => {
+			if (cancelled) return
+			artworkSource = undefined
+			const value = item
+			if (!value || value.name === UNKNOWN_ITEM) return
+			void loadArtwork(value).catch(() => {
+				if (!cancelled) artworkSource = undefined
+			})
 		}
 
-		void loadArtwork(value).catch(() => {
-			if (!cancelled) artworkSource = undefined
-		})
+		refreshArtwork()
+		window.addEventListener('adi-music-library-updated', refreshArtwork)
 
 		return () => {
 			cancelled = true
+			window.removeEventListener('adi-music-library-updated', refreshArtwork)
 		}
 	})
 
