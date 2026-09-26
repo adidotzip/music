@@ -249,8 +249,7 @@
 				disabled={downloadingAlbum}
 				onclick={downloadAlbum}
 			>
-				<!-- Updated prop from type="download" to name="download" -->
-				<Icon name="download" class={downloadingAlbum ? 'animate-pulse' : undefined} />
+				<Icon type="download" class={downloadingAlbum ? 'animate-pulse' : undefined} />
 			</button>
 		{/if}
 	</div>
