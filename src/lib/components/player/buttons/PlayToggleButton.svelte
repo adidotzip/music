@@ -21,10 +21,7 @@
 		syncIcon()
 
 		const handlePress = () => {
-			player.togglePlay()
-			// Update immediately so AeroUI's native symbol-replace animation
-			// runs on every play/pause transition.
-			syncIcon()
+			void player.togglePlay()
 		}
 
 		button.addEventListener('pressend', handlePress)
@@ -35,7 +32,6 @@
 	})
 
 	$effect(() => {
-		// Track the reactive playing state and keep AeroUI's native icon in sync.
 		player.playing
 		syncIcon()
 	})
@@ -53,9 +49,18 @@
 	@reference '../../../../app.css';
 
 	.aero-player {
+		--player-size: --spacing(11);
+		--player-icon: --spacing(6);
 		--player-label: var(--color-onSecondaryContainer);
 		--player-pressed: var(--color-onSecondaryContainer);
 		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
-		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 55%, transparent);
+		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
+		color: var(--color-onSecondaryContainer);
+	}
+
+	/* Keep the native AeroUI player button visually consistent in the mini-player. */
+	:global(#mini-player .aero-player) {
+		--player-size: --spacing(11);
+		--player-icon: --spacing(6);
 	}
 </style>
