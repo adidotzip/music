@@ -3,9 +3,8 @@
 	import { resolve } from '$app/paths'
 	import { page } from '$app/state'
 	import type { RouteId } from '$app/types'
-	import { ripple } from '$lib/attachments/ripple.ts'
+	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
 	import type { QueryResult } from '$lib/db/query/query.ts'
-	import { getAnimatedArtwork } from '$lib/helpers/animated-artwork.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte.ts'
 	import { dbGetAlbumTracksIdsByName, dbGetArtistTracksIdsByName } from '$lib/library/get/ids'
 	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
@@ -18,17 +17,17 @@
 	export type LibraryGridItemType = 'albums' | 'artists'
 
 	export type LibraryGridItemValue<Type extends LibraryGridItemType> = {
-		albums: AlbumData
-		artists: ArtistData
-	}[Type]
+	albums: AlbumData
+	artists: ArtistData
+}[Type]
 
 	export interface LibraryItemGridItemProps<Type extends LibraryGridItemType> {
-		itemId: number
-		type: Type
-		class: ClassValue
-		style: string
-		children: Snippet<[LibraryGridItemValue<Type>]>
-	}
+	itemId: number
+	type: Type
+	class: ClassValue
+	style: string
+	children: Snippet<[LibraryGridItemValue<Type>]>
+}
 </script>
 
 <script lang="ts" generics="Type extends LibraryGridItemType">
@@ -37,80 +36,83 @@
 		itemId,
 		class: className,
 		children,
-		...props
 	}: LibraryItemGridItemProps<Type> = $props()
 
 	const menu = useMenu()
 	const dialogs = useDialogsStore()
 	const player = usePlayer()
-	let downloadingAlbum = $state(false)
 
 	type Value = LibraryGridItemValue<Type>
 
 	const query =
-		// prettier-ignore
-		(
-			// svelte-ignore state_referenced_locally only initialized once
-			type === 'albums' ? createAlbumQuery(() => itemId) : createArtistQuery(() => itemId)
-		) as QueryResult<Value>
-	const { value: item } = $derived(query)
+		(type === 'albums' ? createAlbumQuery(() => itemId) : createArtistQuery(() => itemId)) as QueryResult<Value>
 
-	let fallbackArtworkSrc = $state<Blob | string | undefined>()
-	const artworkSrc = createManagedArtwork(() => {
+	const item = $derived(query.value)
+
+	let artworkSource = $state<Blob | string | undefined>()
+	let downloading = $state(false)
+
+	const artworkUrl = createManagedArtwork(() => artworkSource)
+
+	const loadArtwork = async (value: Value) => {
 		if (type === 'albums') {
-			return item ? (fallbackArtworkSrc ?? (item as AlbumData).image) : fallbackArtworkSrc
-		}
+			const album = value as AlbumData
 
-		return fallbackArtworkSrc
-	})
+			if (album.image instanceof Blob) {
+				artworkSource = album.image
+				return
+			}
 
-	let animatedArtworkSrc = $state<string | undefined>()
-	$effect(() => {
-		let cancelled = false
-		fallbackArtworkSrc = undefined
+			const trackIds = await dbGetAlbumTracksIdsByName(album.name)
+			for (const trackId of trackIds.slice(0, 5)) {
+				const track = await getLibraryValue('tracks', trackId, true)
+				const image = track?.image?.full ?? track?.image?.small
 
-		const loadFallbackArtwork = async () => {
-			if (!item) return
-
-			const name = item.name
-			const trackIds = await dbGetAlbumOrArtistTrackIdsByName(name)
-			for (const trackId of trackIds.slice(0, 3)) {
-				try {
-					const track = await getLibraryValue('tracks', trackId, true)
-					const image = track?.image?.full ?? track?.image?.small
-					if (image && !cancelled) {
-						fallbackArtworkSrc = image
-						return
-					}
-				} catch {
-					// Try the next track artwork.
+				if (image) {
+					artworkSource = image
+					return
 				}
 			}
+
+			return
 		}
 
-		if (type === 'albums' && item) {
-			const album = item as AlbumData
-			const artist = (album.artists[0] as string) ?? ''
-			if (artist !== UNKNOWN_ITEM && album.name !== UNKNOWN_ITEM) {
-				getAnimatedArtwork(artist, album.name)
-					.then((result) => {
-						if (!cancelled) animatedArtworkSrc = result?.url
-					})
-					.catch(() => {
-						if (!cancelled) animatedArtworkSrc = undefined
-					})
-			}
+		const artist = value as ArtistData
 
-			if (!(album.image instanceof Blob)) {
-				void loadFallbackArtwork()
-			}
-		} else if (type === 'artists' && item) {
-			// Artist cards use artwork from the artist's own library tracks.
-			// Do not depend on an external artist-artwork service.
-			void loadFallbackArtwork()
-		} else {
-			animatedArtworkSrc = undefined
+		// Keep the artist helper as the first lookup, then fall back to the
+		// artist's own local tracks. Both paths avoid third-party artwork APIs.
+		const artistArtwork = await getArtistArtwork(artist.name)
+		if (artistArtwork) {
+			artworkSource = artistArtwork
+			return
 		}
+
+		const trackIds = await dbGetArtistTracksIdsByName(artist.name)
+		for (const trackId of trackIds.slice(0, 8)) {
+			const track = await getLibraryValue('tracks', trackId, true)
+			const image = track?.image?.full ?? track?.image?.small
+
+			if (image) {
+				artworkSource = image
+				return
+			}
+		}
+	}
+
+	$effect(() => {
+		let cancelled = false
+		artworkSource = undefined
+
+		const value = item
+		if (!value || value.name === UNKNOWN_ITEM) {
+			return () => {
+				cancelled = true
+			}
+		}
+
+		void loadArtwork(value).catch(() => {
+			if (!cancelled) artworkSource = undefined
+		})
 
 		return () => {
 			cancelled = true
@@ -118,40 +120,30 @@
 	})
 
 	const linkProps = $derived.by(() => {
-		const item = query.value
-		if (!item) {
-			return null
-		}
+		if (!item) return null
 
 		const detailsViewId: RouteId = '/(app)/library/[[slug=libraryEntities]]/[uuid]'
 		const shouldReplace = page.route.id === detailsViewId
 
-		const resolvedHref = resolve('/(app)/library/[[slug=libraryEntities]]/[uuid]', {
-			slug: type,
-			uuid: item.uuid,
-		})
-
 		return {
-			href: resolvedHref,
+			href: resolve('/(app)/library/[[slug=libraryEntities]]/[uuid]', {
+				slug: type,
+				uuid: item.uuid,
+			}),
 			shouldReplace,
 		}
 	})
 
-	const dbGetAlbumOrArtistTrackIdsByName = (name: string) => {
-		if (type === 'albums') {
-			return dbGetAlbumTracksIdsByName(name)
-		}
-
-		return dbGetArtistTracksIdsByName(name)
-	}
+	const getTrackIds = (name: string) =>
+		type === 'albums' ? dbGetAlbumTracksIdsByName(name) : dbGetArtistTracksIdsByName(name)
 
 	const downloadAlbum = async (event: MouseEvent) => {
 		event.preventDefault()
 		event.stopPropagation()
 
-		if (type !== 'albums' || !item || downloadingAlbum) return
+		if (type !== 'albums' || !item || downloading) return
 
-		downloadingAlbum = true
+		downloading = true
 		try {
 			const trackIds = await dbGetAlbumTracksIdsByName(item.name)
 			for (const trackId of trackIds) {
@@ -160,29 +152,23 @@
 		} catch (error) {
 			snackbar.unexpectedError(error)
 		} finally {
-			downloadingAlbum = false
+			downloading = false
 		}
 	}
 
 	const menuItems = () => {
-		if (!(item && linkProps)) {
-			return []
-		}
+		if (!item || !linkProps) return []
 
 		return [
 			{
 				label: m.libraryViewDetails(),
-				action: () => {
-					goto(linkProps.href, { replaceState: linkProps.shouldReplace })
-				},
+				action: () => goto(linkProps.href, { replaceState: linkProps.shouldReplace }),
 			},
 			{
 				label: m.playerAddToQueue(),
 				action: async () => {
 					try {
-						const tracksIds = await dbGetAlbumOrArtistTrackIdsByName(item.name)
-
-						player.addToQueue(tracksIds)
+						player.addToQueue(await getTrackIds(item.name))
 					} catch (error) {
 						snackbar.unexpectedError(error)
 					}
@@ -192,9 +178,7 @@
 				label: m.libraryAddToPlaylist(),
 				action: async () => {
 					try {
-						const tracksIds = await dbGetAlbumOrArtistTrackIdsByName(item.name)
-
-						dialogs.openDialog('addToPlaylist', tracksIds)
+						dialogs.openDialog('addToPlaylist', await getTrackIds(item.name))
 					} catch (error) {
 						snackbar.unexpectedError(error)
 					}
@@ -216,51 +200,53 @@
 </script>
 
 <a
-	{@attach ripple()}
-	{...props}
 	role="listitem"
-	class={[className, 'interactable flex flex-col rounded-lg bg-surfaceContainerHigh']}
+	class={[
+		'library-entity-card group block min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh text-onSurface transition-transform duration-150 hover:-translate-y-0.5 hover:bg-surfaceContainerHighest active:scale-[0.99]',
+		className,
+	]}
 	href={linkProps?.href}
 	data-sveltekit-replacestate={linkProps?.shouldReplace}
-	oncontextmenu={(e) => {
-		e.preventDefault()
-		menu.showFromEvent(e, menuItems(), {
+	oncontextmenu={(event) => {
+		event.preventDefault()
+		menu.showFromEvent(event, menuItems(), {
 			anchor: false,
-			position: { top: e.y, left: e.x },
+			position: { top: event.y, left: event.x },
 		})
 	}}
 >
-	<div class="relative">
+	<div class={['relative aspect-square w-full overflow-hidden', type === 'artists' ? 'rounded-full p-3' : 'rounded-2xl']}>
 		<Artwork
-			src={artworkSrc()}
-			animatedSrc={animatedArtworkSrc}
-			fallbackIcon={type === 'albums' ? 'album' : 'person'}
-			class="w-full rounded-[inherit]"
+			src={artworkUrl()}
+			alt={item?.name}
+			fallbackIcon={type === 'artists' ? 'person' : 'album'}
+			class={['size-full', type === 'artists' ? 'rounded-full' : 'rounded-2xl']}
 		/>
+
 		{#if type === 'albums'}
 			<button
 				type="button"
-				class="interactable absolute right-2 bottom-2 z-2 flex size-10 items-center justify-center rounded-full bg-surfaceContainerHigh/90 text-onSurface backdrop-blur-sm"
+				class="absolute right-3 bottom-3 z-2 flex size-10 items-center justify-center rounded-full bg-black/65 text-white opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100"
 				aria-label="Download album for offline playback"
 				title="Download album for offline playback"
-				disabled={downloadingAlbum}
+				disabled={downloading}
 				onclick={downloadAlbum}
 			>
-				<Icon type="download" class={downloadingAlbum ? 'animate-pulse' : undefined} />
+				<Icon type="download" class={downloading ? 'animate-pulse' : 'size-5'} />
 			</button>
 		{/if}
 	</div>
 
-	<div
-		class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant"
-	>
+	<div class="min-w-0 px-2.5 py-3">
 		{#if query.loading}
-			<div class="mb-2 h-2 rounded-xs bg-onSurface/10"></div>
-			<div class="h-1 w-1/8 rounded-xs bg-onSurface/20"></div>
+			<div class="mb-2 h-3 w-3/4 animate-pulse rounded bg-onSurface/10"></div>
+			<div class="h-2 w-1/2 animate-pulse rounded bg-onSurface/8"></div>
 		{:else if query.error}
-			{m.errorUnexpected()}
+			<div class="text-body-sm text-error">{m.errorUnexpected()}</div>
 		{:else if item}
-			{@render children(item)}
+			<div class="truncate text-body-md font-medium text-onSurface">
+				{@render children(item)}
+			</div>
 		{/if}
 	</div>
 </a>
