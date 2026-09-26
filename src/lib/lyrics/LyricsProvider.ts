@@ -61,6 +61,55 @@ export class LyricsProvider {
 		return null
 	}
 
+	static async fetchFromLrcRed(
+		track: TrackData,
+		signal?: AbortSignal,
+	): Promise<ProviderResponse | null> {
+		try {
+			const query = `${formatArtists(track.artists)} ${track.name}`.trim()
+			const url = new URL('https://lrc.red/api/v1')
+			url.searchParams.set('q', query)
+
+			const response = await fetch(url, { signal })
+			if (!response.ok) return null
+
+			const data = await response.json()
+			if (!data || !Array.isArray(data.results) || data.results.length === 0) return null
+
+			const normalize = (value: unknown) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\([^)]*\\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+			const title = normalize(track.name)
+			const artist = normalize(formatArtists(track.artists))
+			const duration = Math.round(track.duration)
+
+			const ranked = data.results
+				.filter((item: any) => item && typeof item.lyricsUrl === 'string')
+				.map((item: any) => {
+					const itemTitle = normalize(item.track_name)
+					const itemArtist = normalize(item.artist_name)
+					const itemDuration = Number(item.duration)
+					const durationDiff = Number.isFinite(itemDuration) ? Math.abs(itemDuration - duration) : Infinity
+					const titleMatch = itemTitle === title
+					const artistMatch = itemArtist === artist || itemArtist.includes(artist) || artist.includes(itemArtist)
+					const score = (titleMatch ? 100 : 0) + (artistMatch ? 50 : 0) + (durationDiff <= 3 ? 30 : durationDiff <= 8 ? 15 : 0) - Math.min(durationDiff, 60)
+					return { item, score, titleMatch, artistMatch }
+				})
+				.sort((a: any, b: any) => b.score - a.score)
+
+			const best = ranked[0]
+			if (!best || (!best.titleMatch && !best.artistMatch)) return null
+
+			const lyricResponse = await fetch(best.item.lyricsUrl, { signal })
+			if (!lyricResponse.ok) return null
+			const rawLyrics = await lyricResponse.text()
+			if (!rawLyrics.trim()) return null
+
+			return { rawLyrics, source: 'lrc-red', isPlainOnly: false }
+		} catch (error) {
+			if (error instanceof Error && error.name === 'AbortError') throw error
+			return null
+		}
+	}
+
 	static async fetchFromAdi(
 		track: TrackData,
 		signal?: AbortSignal,
