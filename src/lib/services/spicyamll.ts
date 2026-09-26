@@ -167,7 +167,7 @@ export type DiscoveryResource = {
 	bio?: string
 }
 
-const cleanDiscoveryArtwork = (url: unknown, size = 600) => {
+const cleanDiscoveryArtwork = (url: unknown, size = 400) => {
 	if (typeof url !== 'string' || !url.trim()) return ''
 	return url
 		.trim()
@@ -374,7 +374,7 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 				.replace(/\{h\}/g, '600')
 				.replace(/\{c\}/g, 'bb')
 				.replace(/\{f\}/g, 'jpg')
-				.replace(/\d+x\d+bb\./, '600x600bb.')
+				.replace(/\d+x\d+bb\./, '400x400bb.')
 
 			const artistName = String(attributes.artistName ?? item.artist ?? item.artistName ?? '')
 			const albumName = String(attributes.albumName ?? item.album ?? item.albumName ?? '')
@@ -485,12 +485,25 @@ export interface SpicyArtistProfile {
 	bio: string
 }
 
-const cleanArtistImage = (value: unknown) => cleanDiscoveryArtwork(value, 1200)
+const cleanArtistImage = (value: unknown) => cleanDiscoveryArtwork(value, 400)
+
+const artistProfileCache = new Map<string, { expiresAt: number; value: SpicyArtistProfile }>()
+const artistProfilePending = new Map<string, Promise<SpicyArtistProfile>>()
+const ARTIST_PROFILE_CACHE_TTL = 60 * 60_000
 
 export const getArtistProfile = async (
 	artistId: string | number | undefined,
 	artistName: string,
 ): Promise<SpicyArtistProfile> => {
+	const cacheKey = artistName.trim().toLowerCase()
+	const cached = artistProfileCache.get(cacheKey)
+	if (cached && cached.expiresAt > Date.now()) return cached.value
+	if (cached) artistProfileCache.delete(cacheKey)
+
+	const pending = artistProfilePending.get(cacheKey)
+	if (pending) return pending
+
+	const request = (async (): Promise<SpicyArtistProfile> => {
 	// The canonical artist identifier for SpicyAMLL is the Apple Music/iTunes artistId.
 	// Resolve it from iTunes first so local library IDs never get sent as artist IDs.
 	const appleMusicArtistId = await resolveAppleMusicArtistId(artistName)
@@ -544,12 +557,23 @@ export const getArtistProfile = async (
 		} catch {}
 	}
 
-	return {
-		id: String(canonicalArtistId ?? ''),
-		name: artistName,
-		image: '',
-		genre: '',
-		bio: '',
+		const empty: SpicyArtistProfile = {
+			id: String(canonicalArtistId ?? ''),
+			name: artistName,
+			image: '',
+			genre: '',
+			bio: '',
+		}
+		return empty
+	})()
+
+	artistProfilePending.set(cacheKey, request)
+	try {
+		const value = await request
+		artistProfileCache.set(cacheKey, { value, expiresAt: Date.now() + ARTIST_PROFILE_CACHE_TTL })
+		return value
+	} finally {
+		artistProfilePending.delete(cacheKey)
 	}
 }
 
