@@ -43,7 +43,7 @@ const getDownloadUrls = (track: LibraryTrack): string[] => {
 	// Always prefer the dedicated download endpoint for remote songs. The
 	// playback URL is a streaming source and should never be the primary
 	// source for an offline-library import.
-	if (track.remoteId !== undefined && track.remoteId > 0) {
+	if (track.remoteId !== undefined && track.remoteId !== null && String(track.remoteId).trim() !== '' && String(track.remoteId) !== '0') {
 		urls.push(
 			spicyamll.downloadUrl(track.remoteId, {
 				codec: 'aac',
