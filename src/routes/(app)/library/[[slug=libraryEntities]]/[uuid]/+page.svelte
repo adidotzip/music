@@ -123,19 +123,14 @@
 
 			const loadArtistProfile = async () => {
 				try {
+					// Artist services resolve the canonical Apple Music/iTunes artistId from the name.
+					const localArtistId = getLibraryArtists().find(
+						(artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase(),
+					)?.id
 					const [profile, albums, songs] = await Promise.all([
-						getArtistProfile(
-						getLibraryArtists().find((artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase())?.id,
-						item.name,
-					),
-						getAlbumsForArtist(
-						getLibraryArtists().find((artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase())?.id,
-						item.name,
-					),
-						getSongsForArtist(
-						getLibraryArtists().find((artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase())?.id,
-						item.name,
-					),
+						getArtistProfile(localArtistId, item.name),
+						getAlbumsForArtist(localArtistId, item.name),
+						getSongsForArtist(localArtistId, item.name),
 					])
 
 					if (cancelled) return
