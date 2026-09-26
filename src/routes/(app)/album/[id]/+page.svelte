@@ -164,17 +164,31 @@
                     </div>
 
                     <div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
-                        <DownloadButton
-                            trackId={songIds[0] ?? 0}
-                            downloaded={downloadingAlbum}
-                            large
-                            class={downloadingAlbum ? 'opacity-70' : undefined}
+                        <button
+                            type="button"
+                            class="interactable flex size-13 shrink-0 items-center justify-center rounded-full text-onSurfaceVariant"
+                            disabled={downloadingAlbum || songIds.length === 0}
+                            aria-label={downloadingAlbum ? 'Downloading album' : 'Download album for offline playback'}
+                            title={downloadingAlbum ? 'Downloading album' : 'Download album for offline playback'}
                             onclick={(event) => {
                                 event.preventDefault()
                                 event.stopPropagation()
                                 void downloadAlbum()
                             }}
-                        />
+                        >
+                            {#if downloadingAlbum}
+                                <span class="relative flex size-8 items-center justify-center rounded-full">
+                                    <span
+                                        class="absolute inset-0 rounded-full"
+                                        style="background: conic-gradient(var(--color-primary) {albumDownloadProgress}%, color-mix(in srgb, var(--color-onSurface) 14%, transparent) 0)"
+                                    ></span>
+                                    <span class="absolute inset-1 rounded-full bg-surfaceContainerHigh"></span>
+                                    <Icon type="download" class="relative z-1 size-5" />
+                                </span>
+                            {:else}
+                                <Icon type="download" class="size-6" />
+                            {/if}
+                        </button>
 
                         <Button
                             kind="filled"
