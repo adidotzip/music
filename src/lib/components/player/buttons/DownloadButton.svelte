@@ -13,6 +13,7 @@
 
 	type DownloadState = 'idle' | 'loading' | 'done' | 'error'
 	let state = $state<DownloadState>(downloaded ? 'done' : 'idle')
+	let progress = $state(0)
 
 	const download = async (event: MouseEvent) => {
 		e.preventDefault()
@@ -22,7 +23,11 @@
 
 		state = 'loading'
 		try {
-			await ensureTrackIsStoredLocally(typeof trackId === 'string' ? Number(trackId) : trackId)
+			await ensureTrackIsStoredLocally(
+				typeof trackId === 'string' ? Number(trackId) : trackId,
+				(value) => (progress = value),
+			)
+			progress = 100
 			state = 'done'
 		} catch (error) {
 			state = 'error'
@@ -49,7 +54,20 @@
 	onclick={download}
 >
 	<span class={['download-icon', state === 'loading' && 'is-loading', state === 'done' && 'is-done', state === 'error' && 'is-error']}>
-		{#if state === 'done'}
+		{#if state === 'loading'}
+			<svg class="download-progress" viewBox="0 0 36 36" aria-hidden="true">
+				<circle class="download-progress-track" cx="18" cy="18" r="15" />
+				<circle
+					class="download-progress-value"
+					cx="18"
+					cy="18"
+					r="15"
+					pathLength="100"
+					style={`stroke-dashoffset: ${100 - progress}`}
+				/>
+				<text x="18" y="18" text-anchor="middle" dominant-baseline="central">{progress}%</text>
+			</svg>
+		{:else if state === 'done'}
 			<svg viewBox="0 0 24 24" aria-hidden="true">
 				<path d="M5 12.5 9.2 16.7 19 7" />
 			</svg>
@@ -118,6 +136,36 @@
 	.download-button-large .download-icon {
 		height: 24px;
 		width: 24px;
+	}
+
+	.download-progress {
+		height: 100%;
+		width: 100%;
+	}
+
+	.download-progress circle {
+		fill: none;
+		stroke-linecap: round;
+		stroke-width: 3;
+	}
+
+	.download-progress-track {
+		stroke: color-mix(in srgb, var(--color-onSurface) 14%, transparent);
+	}
+
+	.download-progress-value {
+		stroke: var(--color-primary);
+		stroke-dasharray: 100;
+		transition: stroke-dashoffset 120ms linear;
+		transform: rotate(-90deg);
+		transform-origin: 18px 18px;
+	}
+
+	.download-progress text {
+		fill: currentColor;
+		font-size: 7px;
+		font-weight: 600;
+		stroke: none;
 	}
 
 	.download-icon svg {
