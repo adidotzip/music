@@ -326,8 +326,10 @@ export const ensureTrackIsStoredLocally = async (
 	const key = String(trackId)
 	const controller = new AbortController()
 	const request = downloadAndImport(trackId, onProgress, controller.signal).finally(() => {
-		pendingDownloads.delete(key)
-		downloadControllers.delete(key)
+		if (downloadControllers.get(key) === controller) {
+			pendingDownloads.delete(key)
+			downloadControllers.delete(key)
+		}
 	})
 
 	downloadControllers.set(key, controller)
