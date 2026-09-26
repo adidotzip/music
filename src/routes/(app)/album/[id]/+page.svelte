@@ -158,7 +158,7 @@
                 </div>
             </section>
 
-            <TracksListContainer items={songIds} />
+            <TracksListContainer items={songIds} downloadButtonLarge />
         </div>
     {/if}
 </main>
