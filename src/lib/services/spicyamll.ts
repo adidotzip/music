@@ -1,5 +1,3 @@
-import { searchItunesArtists } from './itunes.ts'
-
 const API_BASE = 'https://api.spicyamll.online'
 
 export type SpicyApiParams = Record<string, string | number | boolean | undefined | null>
@@ -167,7 +165,6 @@ export type DiscoveryResource = {
 	duration?: number
 	genre?: string
 	bio?: string
-	providerId?: string
 }
 
 const cleanDiscoveryArtwork = (url: unknown, size = 600) => {
@@ -458,14 +455,20 @@ export const resolveAppleMusicArtistId = async (artistName: string): Promise<str
 	if (cached) return cached
 
 	try {
-		const results = await searchItunesArtists(artistName, 10)
-		const exact = results.find(
-			(result) =>
-				String(result.artistName ?? '').trim().toLowerCase() === key &&
-				result.artistId != null,
+		const url = new URL('https://itunes.apple.com/search')
+		url.searchParams.set('term', artistName)
+		url.searchParams.set('entity', 'musicArtist')
+		url.searchParams.set('limit', '10')
+		url.searchParams.set('country', 'US')
+		const response = await fetch(url, { headers: { Accept: 'application/json' } })
+		if (!response.ok) return undefined
+		const payload = await response.json() as { results?: Array<Record<string, unknown>> }
+		const results = Array.isArray(payload.results) ? payload.results : []
+		const exact = results.find((result) =>
+			String(result.artistName ?? '').trim().toLowerCase() === key && result.artistId != null,
 		)
 		const match = exact ?? results.find((result) => result.artistId != null)
-		if (!match?.artistId) return undefined
+		if (!match) return undefined
 		const id = String(match.artistId)
 		iTunesArtistIdCache.set(key, id)
 		return id
