@@ -7,6 +7,7 @@ import { debounce } from '$lib/helpers/utils/debounce.ts'
 import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
 import { throttle } from '$lib/helpers/utils/throttle.ts'
 import { getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
+import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
 import { createTrackQuery } from '$lib/library/get/value-queries.ts'
 import { LyricsService } from '$lib/lyrics/LyricsService.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
@@ -82,6 +83,7 @@ export class PlayerStore {
 	#autoplayTrackId: number | null = null
 	#preloadedLyrics = new Map<number, Promise<unknown>>()
 	#failedRemoteTracks = new Set<number>()
+	#playRequestGeneration = 0
 
 	#activeTrackQuery: QueryResult<TrackData | undefined> = createTrackQuery(
 		() => this.#queue.itemsIds[this.#queue.activeTrackIndex] ?? -1,
@@ -639,27 +641,52 @@ export class PlayerStore {
 		this.playTrack(this.#queue.getPrevIndex())
 	}
 
-	playTrack = (
+	playTrack = async (
 		trackIndex: number,
 		queue?: readonly number[],
 		options: PlayTrackOptions = {},
-	): void => {
+	): Promise<void> => {
+		const requestGeneration = ++this.#playRequestGeneration
+		const sourceQueue = queue ?? this.#queue.itemsIds
+		const requestedTrackId = sourceQueue[options.shuffle ? 0 : trackIndex]
+
+		// Downloads made from Discovery can be stored under a local IndexedDB
+		// track id while the queue still contains the remote/discovery id.
+		// Resolve that alias before changing the active queue so playback uses
+		// the downloaded file instead of starting the stream.
+		let resolvedTrackId = requestedTrackId
+		if (requestedTrackId !== undefined) {
+			const localTrackId = await getStoredLocalTrackId(requestedTrackId)
+			if (requestGeneration !== this.#playRequestGeneration) return
+			if (localTrackId !== undefined) resolvedTrackId = localTrackId
+		}
+
 		const currentTrackId = this.#queue.activeTrackId
-		this.#queue.setTrack(trackIndex, queue, options)
+		if (queue) {
+			const resolvedQueue = [...queue]
+			if (trackIndex >= 0 && trackIndex < resolvedQueue.length && resolvedTrackId !== undefined) {
+				resolvedQueue[trackIndex] = resolvedTrackId
+			}
+			this.#queue.setTrack(trackIndex, resolvedQueue, options)
+		} else if (resolvedTrackId !== requestedTrackId && requestedTrackId !== undefined) {
+			const currentQueue = [...this.#queue.itemsIds]
+			const index = currentQueue.indexOf(requestedTrackId)
+			if (index !== -1) currentQueue[index] = resolvedTrackId as number
+			this.#queue.setTrack(index === -1 ? trackIndex : index, currentQueue, options)
+		} else {
+			this.#queue.setTrack(trackIndex, undefined, options)
+		}
+
+		if (requestGeneration !== this.#playRequestGeneration) return
 
 		const isSameTrack = currentTrackId !== null && this.#queue.activeTrackId === currentTrackId
 
 		if (isSameTrack) {
-			// Reset time to 0 and resume the already-loaded source.
 			this.seek(0)
 			this.togglePlay(true)
 			return
 		}
 
-		// The queue change is reactive, so AudioLoader will attach the new
-		// local file/remote source in the track-change effect. Do not call
-		// HTMLAudioElement.play() against the previous source here. That
-		// race is especially visible for IndexedDB-backed offline tracks.
 		this.currentTime = 0
 		this.playing = true
 		this.#autoplayTrackId = this.#queue.activeTrackId
