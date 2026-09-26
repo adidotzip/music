@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
+	import { goto } from '$app/navigation'
+import { resolve } from '$app/paths'
+import { onMount } from 'svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import AlbumsListContainer from '$lib/components/AlbumsListContainer.svelte'
@@ -149,7 +151,15 @@
 						<Button as="a" href="/library/playlists" kind="flat">View all</Button>
 					</div>
 					<div class="overflow-hidden rounded-2xl bg-surfaceContainerHigh p-2">
-						<PlaylistListContainer items={playlistIds} />
+						<PlaylistListContainer
+						items={playlistIds}
+						onItemClick={({ playlist }) => {
+							void goto(resolve('/(app)/library/[[slug=libraryEntities]]/[uuid]', {
+								slug: 'playlists',
+								uuid: playlist.uuid,
+							}))
+						}}
+					/>
 					</div>
 				</section>
 			{/if}
