@@ -707,16 +707,21 @@ export const searchCatalog = async (query: string) => {
 		offset: 0,
 	}
 
-	let tracks: SpicyTrack[] = []
+	// The Apple Music catalog response is the authoritative search source for
+	// playback IDs. Its song resources use Apple Music track IDs, which are the
+	// IDs accepted by SpicyAMLL's /stream endpoint. The legacy /search endpoint
+	// can return lyric/provider IDs that look valid but are not streamable.
 	try {
-		tracks = normalizeTracks(await spicyamll.search(params))
+		const catalogTracks = normalizeTracks(await spicyamll.catalogSearch('us', params))
+		if (catalogTracks.length) return preferExplicitRecordings(catalogTracks)
 	} catch {}
 
-	if (!tracks.length) {
-		try {
-			tracks = normalizeTracks(await spicyamll.catalogSearch('us', params))
-		} catch {}
+	// Keep the legacy endpoint as a compatibility fallback for older
+	// SpicyAMLL deployments that do not expose catalog search.
+	try {
+		const legacyTracks = normalizeTracks(await spicyamll.search(params))
+		return preferExplicitRecordings(legacyTracks)
+	} catch {
+		return []
 	}
-
-	return preferExplicitRecordings(tracks)
 }
