@@ -20,15 +20,9 @@
 		aero.initPlayerButton(button)
 		syncIcon()
 
-		const handlePress = () => {
-			void player.togglePlay()
-		}
-
-		button.addEventListener('pressend', handlePress)
-
-		return () => {
-			button.removeEventListener('pressend', handlePress)
-		}
+		// Playback is handled by the native click event below. AeroUI is only
+		// responsible for the button animation and icon treatment.
+		return undefined
 	})
 
 	$effect(() => {
@@ -43,6 +37,7 @@
 	class="aero-player"
 	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
 	disabled={!player.activeTrack}
+	onclick={() => void player.togglePlay()}
 ></button>
 
 <style lang="postcss">
