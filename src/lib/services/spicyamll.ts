@@ -167,14 +167,15 @@ export type DiscoveryResource = {
 	bio?: string
 }
 
-const cleanDiscoveryArtwork = (url: unknown) => {
-	if (typeof url !== 'string' || !url) return 'favicon.svg'
+const cleanDiscoveryArtwork = (url: unknown, size = 600) => {
+	if (typeof url !== 'string' || !url.trim()) return ''
 	return url
-		.replace(/\{w\}/g, '1000')
-		.replace(/\{h\}/g, '1000')
+		.trim()
+		.replace(/\{w\}/g, String(size))
+		.replace(/\{h\}/g, String(size))
 		.replace(/\{c\}/g, 'bb')
 		.replace(/\{f\}/g, 'jpg')
-		.replace(/\d+x\d+bb\./, '1000x1000bb.')
+		.replace(/\d+x\d+bb\./, `${size}x${size}bb.`)
 }
 
 const parseDiscoveryGroup = (
@@ -258,12 +259,36 @@ const parseCatalogResources = (input: unknown): DiscoveryResource[] => {
 	}).filter((item): item is DiscoveryResource => Boolean(item))
 }
 
-export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => [
-	...parseDiscoveryGroup(input, 'song'),
-	...parseDiscoveryGroup(input, 'album'),
-	...parseDiscoveryGroup(input, 'artist'),
-	...parseCatalogResources(input),
-]
+export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => {
+	const songs = parseDiscoveryGroup(input, 'song')
+	const albums = parseDiscoveryGroup(input, 'album')
+	const artists = parseDiscoveryGroup(input, 'artist')
+	const catalog = parseCatalogResources(input)
+	const all = [...songs, ...albums, ...artists, ...catalog]
+
+	// Apple Music can omit artwork on artist resources and some catalog
+	// deployments omit it on album resources. Reuse artwork from a matching
+	// song/album in the same response instead of sending a broken placeholder.
+	const artworkByArtist = new Map<string, string>()
+	const artworkByAlbum = new Map<string, string>()
+	for (const item of all) {
+		const art = item.artUrl
+		if (!art) continue
+		if (item.artist) artworkByArtist.set(item.artist.trim().toLowerCase(), art)
+		if (item.album) artworkByAlbum.set(item.album.trim().toLowerCase(), art)
+		if (item.type === 'album') artworkByAlbum.set(item.name.trim().toLowerCase(), art)
+	}
+	return all.map((item) => {
+		if (item.artUrl) return item
+		if (item.type === 'artist') {
+			return { ...item, artUrl: artworkByArtist.get(item.name.trim().toLowerCase()) ?? '' }
+		}
+		if (item.type === 'album') {
+			return { ...item, artUrl: artworkByAlbum.get(item.name.trim().toLowerCase()) ?? '' }
+		}
+		return item
+	})
+}
 
 export const searchDiscovery = async (query: string, limit = 50) => {
 	// Apple Music Catalog Search rejects limit values above 50.
