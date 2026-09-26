@@ -30,13 +30,20 @@
 	const slug = $derived(data.slug)
 	const isHandHeldDevice = isMobile()
 
+	type LibraryNavSlug = 'home' | NonNullable<typeof slug>
+
 	interface NavItem {
-		slug: typeof slug
+		slug: LibraryNavSlug
 		title: string
 		icon: IconType
 	}
 
 	const navItems: NavItem[] = [
+		{
+			slug: 'home',
+			title: 'Library home',
+			icon: 'home',
+		},
 		{
 			slug: 'tracks',
 			title: m.tracks(),
@@ -78,7 +85,7 @@
 	{#each navItems as item}
 		<Button
 			as="a"
-			href={`/library/${item.slug}`}
+			href={item.slug === 'home' ? '/library' : `/library/${item.slug}`}
 			kind="blank"
 			tooltip={item.title}
 			class={['flex shrink-0 items-center justify-center', className]}
@@ -86,7 +93,7 @@
 			<div
 				class={[
 					'flex items-center justify-center rounded-full p-2',
-					item.slug === slug && 'bg-secondaryContainer text-onSecondaryContainer',
+					((item.slug === 'home' && !slug) || item.slug === slug) && 'bg-secondaryContainer text-onSecondaryContainer',
 				]}
 			>
 				<Icon type={item.icon} />
