@@ -168,6 +168,8 @@
 			src={fallbackApplied ? '/artwork.svg' : src}
 			{alt}
 			loading="eager"
+			referrerpolicy="no-referrer"
+			decoding="async"
 			class="size-full object-cover"
 			draggable="false"
 			onerror={() => {
@@ -190,6 +192,8 @@
 				src={animatedSrc}
 				{alt}
 				loading="eager"
+				referrerpolicy="no-referrer"
+				decoding="async"
 				class={[
 					'absolute inset-0 size-full object-cover transition-opacity duration-1000',
 					!animatedImageLoaded && 'opacity-0',
