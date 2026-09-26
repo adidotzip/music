@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
+	import { ensureTrackIsStoredLocally, getStoredLocalTrackId } from '$lib/library/local-download.ts'
 	import { snackbar } from '$lib/components/snackbar/snackbar.ts'
 
 	interface Props {
