@@ -161,7 +161,7 @@ export const importPlaylistCsv = async (
 	)
 
 	const songRows = rows.slice(1)
-	let current = 0
+	let current = resumeFrom
 
 	for (let rowIndex = 0; rowIndex < songRows.length; rowIndex += 1) {
 		if (rowIndex < resumeFrom) continue
