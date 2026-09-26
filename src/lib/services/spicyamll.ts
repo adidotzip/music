@@ -280,7 +280,29 @@ export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => {
 		if (item.album) artworkByAlbum.set(item.album.trim().toLowerCase(), art)
 		if (item.type === 'album') artworkByAlbum.set(item.name.trim().toLowerCase(), art)
 	}
-	return all.map((item) => {
+	// Prefer explicit recordings when Apple Music returns both explicit and clean
+	// versions of the same song. If only a clean recording exists, omit it rather
+	// than silently presenting a censored version.
+	const songGroups = new Map<string, DiscoveryResource[]>()
+	for (const item of all) {
+		if (item.type !== 'song') continue
+		const key = [item.name.trim().toLowerCase(), item.artist.trim().toLowerCase()].join('|')
+		const group = songGroups.get(key) ?? []
+		group.push(item)
+		songGroups.set(key, group)
+	}
+	const hiddenSongIds = new Set<string>()
+	for (const group of songGroups.values()) {
+		const explicit = group.filter((item) => {
+			const raw = item as DiscoveryResource & { contentRating?: string }
+			return raw.contentRating?.toLowerCase() === 'explicit'
+		})
+		if (explicit.length) {
+			for (const item of group) if (!explicit.includes(item)) hiddenSongIds.add(item.id)
+		}
+	}
+
+	return all.filter((item) => !hiddenSongIds.has(item.id)).map((item) => {
 		if (item.artUrl) return item
 		if (item.type === 'artist') {
 			return { ...item, artUrl: artworkByArtist.get(item.name.trim().toLowerCase()) ?? '' }
