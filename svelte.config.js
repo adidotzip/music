@@ -94,6 +94,7 @@ const config = {
 					env.PUBLIC_GOAT_COUNTER_URL ?? '',
 
 					// Lyrics
+					'https://api.amll.dev',
 					'https://lyrics.imreallyadi.space',
 					'https://lyrics-api.boidu.dev',
 					'https://lrclib.net',
