@@ -13,14 +13,28 @@
 
 	type DownloadState = 'idle' | 'loading' | 'done' | 'error'
 	let localState = $state<DownloadState | null>(null)
-	let state = $derived<DownloadState>(localState ?? (downloaded ? 'done' : 'idle'))
+	let persistedDownloaded = $state(downloaded)
+	let state = $derived<DownloadState>(localState ?? (persistedDownloaded ? 'done' : 'idle'))
 	let progress = $state(0)
 
-	// Reset local state when trackId changes
+	// A discovery track uses a stable negative id while the actual file lives on
+	// the positive IndexedDB track created by the offline import.
 	$effect(() => {
+		let cancelled = false
 		void trackId
 		localState = null
 		progress = 0
+		persistedDownloaded = downloaded
+
+		if (downloaded) return
+
+		void getStoredLocalTrackId(trackId).then((localId) => {
+			if (!cancelled && localId !== undefined) persistedDownloaded = true
+		})
+
+		return () => {
+			cancelled = true
+		}
 	})
 
 	const download = async (event: MouseEvent) => {
