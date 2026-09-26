@@ -5,6 +5,7 @@
 
 	interface Props {
 		src: string | undefined
+		loading?: 'eager' | 'lazy'
 		animatedSrc?: string | undefined
 		class?: ClassValue
 		alt?: string
@@ -27,6 +28,7 @@
 		class: className,
 		alt,
 		children,
+		loading = 'eager',
 	}: Props = $props()
 
 	let error = $state(false)
@@ -167,7 +169,7 @@
 		<img
 			src={fallbackApplied ? '/artwork.svg' : src}
 			{alt}
-			loading="eager"
+			{loading}
 			referrerpolicy="no-referrer"
 			decoding="async"
 			class="size-full object-cover"
@@ -191,7 +193,7 @@
 			<img
 				src={animatedSrc}
 				{alt}
-				loading="eager"
+				{loading}
 				referrerpolicy="no-referrer"
 				decoding="async"
 				class={[
