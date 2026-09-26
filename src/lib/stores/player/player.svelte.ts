@@ -626,15 +626,19 @@ export class PlayerStore {
 		const isSameTrack = currentTrackId !== null && this.#queue.activeTrackId === currentTrackId
 
 		if (isSameTrack) {
-			// Reset time to 0
+			// Reset time to 0 and resume the already-loaded source.
 			this.seek(0)
-		} else {
-			// Update ui time instantly, but keep audio.currentTime
-			// until play history is saved.
-			this.currentTime = 0
+			this.togglePlay(true)
+			return
 		}
 
-		this.togglePlay(true)
+		// The queue change is reactive, so AudioLoader will attach the new
+		// local file/remote source in the track-change effect. Do not call
+		// HTMLAudioElement.play() against the previous source here. That
+		// race is especially visible for IndexedDB-backed offline tracks.
+		this.currentTime = 0
+		this.playing = true
+		this.#autoplayTrackId = this.#queue.activeTrackId
 	}
 
 	seek = (time: number): void => {
