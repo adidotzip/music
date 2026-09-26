@@ -14,7 +14,8 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	import PlaylistListContainer from '$lib/components/playlists/PlaylistListContainer.svelte'
 	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.js'
-		import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte.ts'
+	import { isMobile } from '$lib/helpers/utils/ua.ts'
+	import { useSetOverlaySnippet from '$lib/layout-bottom-bar.svelte.ts'
 	import { FAVORITE_PLAYLIST_ID } from '$lib/library/playlists-actions.ts'
 	import { getPlaylistMenuItems } from '$lib/menu-actions/playlists.ts'
 	import Search from './Search.svelte'
@@ -29,6 +30,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	const itemsIds = $derived(data.itemsIdsQuery.value)
 	const slug = $derived(page.params.slug as typeof data.slug | undefined)
 	const isLibraryHome = $derived(!slug)
+	const isHandHeldDevice = isMobile()
 	const isAlbumOrArtistDetails = $derived(Boolean(page.params.uuid) && (slug === 'albums' || slug === 'artists'))
 
 	type LibraryNavSlug = 'home' | NonNullable<typeof slug>
