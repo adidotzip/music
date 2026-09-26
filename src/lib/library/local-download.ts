@@ -268,24 +268,22 @@ const hashRemoteTrackId = (value: string): number => {
 	return hash
 }
 
-let offlineRemoteRegistry = new Map<string, LibraryTrack>()
-const registerOfflineRemoteTrack = (track: LibraryTrack) => {
-	offlineRemoteRegistry.set(String(track.remoteId ?? track.id), track)
-}
-
-export const ensureTrackIsStoredLocally = async (trackId: number | string): Promise<number> =>
+export const ensureTrackIsStoredLocally = async (trackId: number | string): Promise<number> => {
 	const cachedLocalTrackId = getCachedLocalTrackId(trackId)
 	if (cachedLocalTrackId) {
 		const cachedTrack = await getLibraryValue('tracks', cachedLocalTrackId, true)
 		if (cachedTrack?.file) return cachedLocalTrackId
 	}
 
-	const numericTrackId = typeof trackId === 'string' ? Number(trackId) : trackId
-	const existingLocal = Number.isFinite(numericTrackId) ? await getLibraryValue('tracks', numericTrackId, true) : undefined
 	const existingRequest = pendingDownloads.get(String(trackId))
 	if (existingRequest) return existingRequest
 
-	const request = downloadAndImport(Number.isFinite(numericTrackId) ? numericTrackId : -Math.max(1, Math.abs(hashRemoteTrackId(String(trackId))))).finally(() => {
+	const numericTrackId = typeof trackId === 'number' ? trackId : Number(trackId)
+	const request = downloadAndImport(
+		Number.isFinite(numericTrackId)
+			? numericTrackId
+			: -Math.max(1, Math.abs(hashRemoteTrackId(String(trackId)))),
+	).finally(() => {
 		pendingDownloads.delete(String(trackId))
 	})
 
