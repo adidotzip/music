@@ -41,6 +41,7 @@
     let currentDownloadId = $state<number | undefined>()
     let albumDownloadGeneration = 0
     let downloadedDuringAlbumSession: number[] = []
+    let downloadedRemoteIdsDuringAlbumSession: number[] = []
 
     const artworkUrl = (url: unknown, size = 1200) => {
         if (typeof url !== 'string' || !url) return undefined
@@ -133,7 +134,9 @@
     const stopAlbumDownload = async () => {
         albumDownloadGeneration += 1
         const idsToRemove = [...downloadedDuringAlbumSession]
+        const remoteIdsToReset = [...downloadedRemoteIdsDuringAlbumSession]
         downloadedDuringAlbumSession = []
+        downloadedRemoteIdsDuringAlbumSession = []
 
         if (currentDownloadId !== undefined) {
             cancelTrackDownload(currentDownloadId)
@@ -143,7 +146,10 @@
         currentDownloadId = undefined
         albumDownloadProgress = 0
         for (const item of albumDownloadItems) {
-            if (item.status !== 'done') {
+            if (remoteIdsToReset.includes(item.id)) {
+                item.status = 'queued'
+                item.progress = 0
+            } else if (item.status !== 'done') {
                 item.status = 'queued'
                 item.progress = 0
             }
@@ -165,6 +171,7 @@
         downloadingAlbum = true
         albumDownloadProgress = 0
         downloadedDuringAlbumSession = []
+        downloadedRemoteIdsDuringAlbumSession = []
 
         for (const item of albumDownloadItems) {
             const localId = await getStoredLocalTrackId(item.id)
@@ -197,6 +204,7 @@
                     item.progress = 100
                     completed += 1
                     downloadedDuringAlbumSession.push(localId)
+                    downloadedRemoteIdsDuringAlbumSession.push(item.id)
                     albumDownloadProgress = Math.round((completed / albumDownloadItems.length) * 100)
                 } catch (error) {
                     if (generation !== albumDownloadGeneration || isDownloadAbortError(error)) return
@@ -276,15 +284,13 @@
                         >
                             {#if downloadingAlbum}
                                 <span class="relative flex size-8 items-center justify-center rounded-full">
-                                    <span class="absolute inset-0 flex items-center justify-center">
-                                        <Icon type="close" class="relative z-2 size-4" />
-                                    </span>
                                     <span
                                         class="absolute inset-0 rounded-full"
                                         style="background: conic-gradient(var(--color-primary) {albumDownloadProgress}%, color-mix(in srgb, var(--color-onSurface) 14%, transparent) 0)"
                                     ></span>
-                                    <span class="absolute inset-1 rounded-full bg-surfaceContainerHigh"></span>
-                                    <Icon type="download" class="relative z-1 size-5" />
+                                    <span class="absolute inset-1 flex items-center justify-center rounded-full bg-surfaceContainerHigh">
+                                        <Icon type="close" class="size-4" />
+                                    </span>
                                 </span>
                             {:else}
                                 <Icon type="download" class="size-6" />
