@@ -82,6 +82,7 @@ export class PlayerStore {
 	// Tracks that must resume automatically once their source finishes loading.
 	#autoplayTrackId: number | null = null
 	#preloadedLyrics = new Map<number, Promise<unknown>>()
+	#failedRemoteTracks = new Set<number>()
 
 	#activeTrackQuery: QueryResult<TrackData | undefined> = createTrackQuery(
 		() => this.#queue.itemsIds[this.#queue.activeTrackIndex] ?? -1,
@@ -135,6 +136,8 @@ export class PlayerStore {
 				return
 			}
 
+			this.#failedRemoteTracks.delete(track.id)
+
 			scheduleAudioReset.cancel()
 
 			if (prevTrackId !== null) {
@@ -152,8 +155,6 @@ export class PlayerStore {
 				? Promise.resolve({ status: 'loaded' } as const)
 				: this.#audioLoader.load(track.directory, track.file, track.url)
 			).then((result) => {
-				// playTrack() sets the desired state to playing before the async
-				// source load finishes. Start playback as soon as the source is ready.
 				if (
 					result.status === 'loaded' &&
 					this.activeTrack?.id === track.id &&
@@ -163,9 +164,9 @@ export class PlayerStore {
 					if (this.equalizer.enabled) {
 						void this.equalizer.resumeContext()
 					}
-					const playPromise = this.#audio.play()
-					playPromise?.catch((error) => {
+					void this.#audio.play().catch((error) => {
 						console.warn('Audio playback failed after loading:', error)
+						this.#failedRemoteTracks.add(track.id)
 						this.playing = false
 					})
 				}
@@ -183,9 +184,9 @@ export class PlayerStore {
 						id: 'failed-to-load-audio',
 						duration: 10_000,
 					})
-
-					prevTrackId = null
-					this.#queue.setTrack(-1)
+					this.playing = false
+					this.#autoplayTrackId = null
+					this.#failedRemoteTracks.add(track.id)
 				}
 			})
 		}
@@ -233,6 +234,10 @@ export class PlayerStore {
 			}
 
 			const shouldPlay = this.playing
+			const activeTrackId = this.activeTrack?.id
+			if (shouldPlay && activeTrackId !== undefined && this.#failedRemoteTracks.has(activeTrackId)) {
+				return
+			}
 
 			if (audio.paused === !shouldPlay) {
 				return
@@ -242,15 +247,15 @@ export class PlayerStore {
 				if (this.equalizer.enabled) {
 					void this.equalizer.resumeContext()
 				}
-				const playPromise = audio.play()
-				if (playPromise !== undefined) {
-					playPromise.catch((error) => {
-						console.warn('Audio playback error:', error)
-						if (!this.#audioLoader.loading) {
-							this.playing = false
+				void audio.play().catch((error) => {
+					console.warn('Audio playback error:', error)
+					if (!this.#audioLoader.loading) {
+						this.playing = false
+						if (activeTrackId !== undefined) {
+							this.#failedRemoteTracks.add(activeTrackId)
 						}
-					})
-				}
+					}
+				})
 			} else {
 				audio.pause()
 			}
@@ -282,6 +287,26 @@ export class PlayerStore {
 		audio.onpause = () => {
 			syncPlayingFromAudio()
 			this.#updatePositionState()
+		}
+
+		audio.onerror = () => {
+			const track = this.activeTrack
+			if (!track || this.#audioLoader.loading) return
+
+			const code = audio.error?.code
+			const detail = audio.error?.message
+			console.warn('Audio media error:', { code, detail, src: audio.currentSrc || audio.src })
+
+			if (this.#failedRemoteTracks.has(track.id)) return
+			this.#failedRemoteTracks.add(track.id)
+			this.playing = false
+			this.#autoplayTrackId = null
+
+			snackbar({
+				message: `Unable to play "${truncate(track.name, 30)}". The stream is unavailable or could not be decoded.`,
+				id: 'failed-to-play-audio',
+				duration: 10_000,
+			})
 		}
 
 		audio.onseeked = () => {
@@ -470,7 +495,7 @@ export class PlayerStore {
 			if (!src) continue
 
 			const audio = new Audio()
-			audio.preload = 'auto'
+			audio.preload = 'metadata'
 			audio.src = src
 			audio.load()
 			this.#preloadedAudio.set(candidate.id, { audio, objectUrl })
