@@ -139,7 +139,12 @@ export const importPlaylistCsv = async (
 	const localTrackIds: number[] = []
 
 	const db = await getDatabase()
-	const existingEntries = await db.getAllFromIndex('playlistEntries', 'playlistTrack')
+	const playlist = await db.get('playlists', playlistId)
+	if (!playlist) throw new Error('Playlist not found.')
+
+	// Read the entries directly instead of depending on the compound index.
+	// This also works with databases created by older Adi Music versions.
+	const existingEntries = await db.getAll('playlistEntries')
 	const existing = new Set(
 		existingEntries.filter((entry) => entry.playlistId === playlistId).map((entry) => entry.trackId),
 	)
