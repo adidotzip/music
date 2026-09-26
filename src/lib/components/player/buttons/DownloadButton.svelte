@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
-	import Icon from '$lib/components/icon/Icon.svelte'
+	import { snackbar } from '$lib/components/snackbar/snackbar.ts'
 
 	interface Props {
 		trackId: number | string
@@ -12,28 +12,41 @@
 	const { trackId, large = false, downloaded = false, class: className }: Props = $props()
 
 	type DownloadState = 'idle' | 'loading' | 'done' | 'error'
-	let state = $state<DownloadState>(downloaded ? 'done' : 'idle')
+	let localState = $state<DownloadState | null>(null)
+	let state = $derived<DownloadState>(localState ?? (downloaded ? 'done' : 'idle'))
 	let progress = $state(0)
 
+	// Reset local state when trackId changes
+	$effect(() => {
+		void trackId
+		localState = null
+		progress = 0
+	})
+
 	const download = async (event: MouseEvent) => {
-		e.preventDefault()
-		e.stopPropagation()
+		event.preventDefault()
+		event.stopPropagation()
 
 		if (state === 'loading' || state === 'done') return
 
-		state = 'loading'
+		localState = 'loading'
 		try {
+			const idToDownload = typeof trackId === 'string' ? Number(trackId) : trackId
+			if (typeof idToDownload !== 'number' || Number.isNaN(idToDownload)) {
+				throw new Error('Invalid track ID for download')
+			}
+
 			await ensureTrackIsStoredLocally(
-				typeof trackId === 'string' ? Number(trackId) : trackId,
+				idToDownload,
 				(value) => (progress = value),
 			)
 			progress = 100
-			state = 'done'
+			localState = 'done'
 		} catch (error) {
-			state = 'error'
+			localState = 'error'
 			snackbar.unexpectedError(error)
 			window.setTimeout(() => {
-				if (state === 'error') state = 'idle'
+				if (localState === 'error') localState = 'idle'
 			}, 900)
 		}
 	}
