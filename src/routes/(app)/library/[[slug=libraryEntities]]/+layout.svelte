@@ -4,6 +4,7 @@
 	import { page } from '$app/state'
 	import type { RouteId } from '$app/types'
 	import AlbumsListContainer from '$lib/components/AlbumsListContainer.svelte'
+import LibraryHome from '$lib/components/LibraryHome.svelte'
 	import ArtistListContainer from '$lib/components/ArtistListContainer.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
@@ -27,7 +28,8 @@
 	const dialogs = useDialogsStore()
 
 	const itemsIds = $derived(data.itemsIdsQuery.value)
-	const slug = $derived(data.slug)
+	const slug = $derived(page.params.slug as typeof data.slug | undefined)
+	const isLibraryHome = $derived(!slug)
 	const isHandHeldDevice = isMobile()
 
 	type LibraryNavSlug = 'home' | NonNullable<typeof slug>
@@ -41,7 +43,7 @@
 	const navItems: NavItem[] = [
 		{
 			slug: 'home',
-			title: 'Library home',
+			title: 'Library',
 			icon: 'home',
 		},
 		{
@@ -123,7 +125,9 @@
 	{/if}
 {/snippet}
 
-{#if layoutMode !== 'details'}
+{#if isLibraryHome}
+	<LibraryHome />
+{:else if layoutMode !== 'details'}
 	<div
 		class={[
 			'desktop-sidebar fixed z-1 mt-20 h-max w-max flex-col items-center gap-2 [@media(max-height:500px)]:mt-2',
