@@ -409,6 +409,9 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 			}
 		})
 		.filter((track) => track.id !== undefined && track.id !== null && track.id !== '')
+		// Never surface catalog recordings explicitly marked as clean/censored.
+		// Unknown ratings are kept because some SpicyAMLL responses omit the rating.
+		.filter((track) => track.contentRating.toLowerCase() !== 'clean' && track.contentRating.toLowerCase() !== 'censored')
 }
 
 export const searchArtists = async (query: string) => {
