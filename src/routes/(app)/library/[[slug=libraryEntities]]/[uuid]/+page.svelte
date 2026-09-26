@@ -9,9 +9,10 @@
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.ts'
 	import { getAnimatedArtwork } from '$lib/helpers/animated-artwork'
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
+	import { getArtistProfile, getAlbumsForArtist, getSongsForArtist } from '$lib/services/spicyamll.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
-	import { type AlbumData, getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
+	import { type AlbumData, getLibraryValue, registerRemoteTrack, type TrackData } from '$lib/library/get/value.ts'
 	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 	import {
 		FAVORITE_PLAYLIST_ID,
@@ -58,6 +59,31 @@
 
 	let artistArtworkSrc = $state<string | undefined>()
 	let animatedArtworkSrc = $state<string | undefined>()
+	let artistProfile = $state<{
+		id: string
+		name: string
+		image: string
+		genre: string
+		bio: string
+	} | null>(null)
+	let artistAlbums = $state<Array<{
+		id: string
+		name: string
+		artist: string
+		image: string
+		year: string
+	}>>([])
+	let remoteArtistTrackIds = $state<number[]>([])
+
+	const remoteIdToNumber = (id: string | number) => {
+		const value = String(id)
+		let hash = 0
+		for (let index = 0; index < value.length; index += 1) {
+			hash = (hash * 31 + value.charCodeAt(index)) | 0
+		}
+		return -(Math.abs(hash || 1))
+	}
+
 	$effect(() => {
 		let cancelled = false
 		if (slug === 'albums' && item) {
@@ -90,9 +116,65 @@
 			}
 		} else if (slug === 'artists' && item) {
 			artistArtworkSrc = undefined
-			getArtistArtwork(item.name).then((url) => {
-				if (!cancelled) artistArtworkSrc = url
-			})
+			artistProfile = null
+			artistAlbums = []
+			remoteArtistTrackIds = []
+
+			const loadArtistProfile = async () => {
+				try {
+					const [profile, albums, songs] = await Promise.all([
+						getArtistProfile(item.id, item.name),
+						getAlbumsForArtist(item.id, item.name),
+						getSongsForArtist(item.id, item.name),
+					])
+
+					if (cancelled) return
+					artistProfile = profile
+					artistAlbums = albums.slice(0, 12)
+
+					const ids: number[] = []
+					for (const song of songs.slice(0, 50)) {
+						const remoteId = String(song.id)
+						const localId = remoteIdToNumber(remoteId)
+						const image = song.image || undefined
+						const track: TrackData = {
+							id: localId,
+							remoteId,
+							streaming: true,
+							uuid: 'spicyamll:' + remoteId,
+							name: song.name,
+							album: song.album || UNKNOWN_ITEM,
+							artists: song.artist ? [song.artist] : [profile.name],
+							year: song.year ? String(song.year) : UNKNOWN_ITEM,
+							duration: song.duration ?? 0,
+							genre: [],
+							trackNo: 0,
+							trackOf: 0,
+							discNo: 0,
+							discOf: 0,
+							language: undefined,
+							image: image ? { optimized: false, small: image, full: image } : undefined,
+							file: undefined,
+						directory: undefined,
+							fileName: undefined,
+						scannedAt: Date.now(),
+							url: 'https://api.spicyamll.online/stream?song=' + encodeURIComponent(remoteId) + '&codec=aac&fallback=true&l=en-US&websupport=true',
+							favorite: false,
+						type: 'track',
+						}
+						registerRemoteTrack(track)
+						ids.push(localId)
+					}
+					remoteArtistTrackIds = ids
+					artistArtworkSrc = profile.image || (await getArtistArtwork(profile.name)) || undefined
+				} catch {
+					if (!cancelled) {
+						artistArtworkSrc = (await getArtistArtwork(item.name)) || undefined
+					}
+				}
+			}
+
+			void loadArtistProfile()
 		} else {
 			animatedArtworkSrc = undefined
 		}
@@ -281,14 +363,51 @@
 		</div>
 	</section>
 
-	<TracksListContainer
-		items={tracks.tracksIds}
+	{#if slug === 'artists'}
+		<section class="mt-8">
+			<div class="mb-4">
+				<h2 class="text-headline-sm">Top Songs</h2>
+				<div class="text-body-sm text-onSurfaceVariant">
+					{remoteArtistTrackIds.length > 0 ? remoteArtistTrackIds.length + ' songs from the artist catalog' : 'Songs in your library'}
+				</div>
+			</div>
+			<TracksListContainer
+				items={remoteArtistTrackIds.length > 0 ? remoteArtistTrackIds : tracks.tracksIds}
+				predefinedMenuItems={{
+					disableViewAlbum: false,
+					disableViewArtist: true,
+				}}
+			/>
+		</section>
+
+		{#if artistAlbums.length > 0}
+			<section class="mt-8">
+				<h2 class="mb-4 text-headline-sm">Albums</h2>
+				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+					{#each artistAlbums as album (album.id)}
+						<div class="min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh">
+							<div class="aspect-square overflow-hidden rounded-2xl bg-surfaceContainerHighest">
+								<Artwork src={album.image} alt={album.name} fallbackIcon="album" class="size-full rounded-2xl" />
+							</div>
+							<div class="min-w-0 p-3">
+								<div class="truncate text-body-md font-medium">{album.name}</div>
+								{#if album.year}<div class="text-body-sm text-onSurfaceVariant">{album.year}</div>{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+	{:else}
+		<TracksListContainer
+			items={tracks.tracksIds}
 		predefinedMenuItems={{
 			disableViewAlbum: slug === 'albums',
 			disableViewArtist: slug === 'artists',
 			disableAddToFavorites: isFavoritesView,
 			enableMultiRemoveFromFavorites: isFavoritesView,
 		}}
-		menuItems={slug === 'playlists' ? playlistTrackMenuItems : undefined}
-	/>
+			menuItems={slug === 'playlists' ? playlistTrackMenuItems : undefined}
+		/>
+	{/if}
 </div>
