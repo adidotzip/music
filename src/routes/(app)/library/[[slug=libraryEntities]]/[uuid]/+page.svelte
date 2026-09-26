@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { MediaQuery } from 'svelte/reactivity'
+	import { resolve } from '$app/paths'
+import { MediaQuery } from 'svelte/reactivity'
 	import Artwork from '$lib/components/Artwork.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import Header from '$lib/components/Header.svelte'
@@ -13,6 +14,7 @@
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 	import { type AlbumData, getLibraryValue, registerRemoteTrack, type TrackData } from '$lib/library/get/value.ts'
+import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/ids.ts'
 	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 	import { getLibraryArtists } from '$lib/services/library.ts'
 	import {
