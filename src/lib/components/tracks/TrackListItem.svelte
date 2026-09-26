@@ -206,6 +206,7 @@
 			{#if showDownloadButton}
 				<DownloadButton
 					trackId={track.id}
+					downloaded={Boolean(track.file)}
 					large={downloadButtonLarge}
 					class={selectionEnabled && 'invisible'}
 				/>
