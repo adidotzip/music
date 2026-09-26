@@ -110,8 +110,7 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 			favorite: false,
 			type: 'track',
 		} as LibraryTrack
-		registerOfflineRemoteTrack(track)
-	}
+			}
 
 	if (track.file instanceof File) return track.id
 	if (resolvedTrackId >= 0 && track.file) return track.id
