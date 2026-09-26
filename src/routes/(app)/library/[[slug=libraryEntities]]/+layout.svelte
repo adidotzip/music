@@ -117,7 +117,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 {/snippet}
 
 {#snippet layoutBottom()}
-	{#if isHandHeldDevice && !isAlbumOrArtistDetails}
+	{#if isHandHeldDevice}
 		<div
 			class="pointer-events-auto grid h-16 w-full grid-cols-[repeat(auto-fit,minmax(0,1fr))] bg-surfaceContainer sm:hidden active-view-regular:view-name-[bottom-bar]"
 		>
