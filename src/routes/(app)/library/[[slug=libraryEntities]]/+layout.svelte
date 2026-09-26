@@ -31,7 +31,8 @@
 	const slug = $derived(page.params.slug as typeof data.slug | undefined)
 	const isLibraryHome = $derived(!slug)
 	const isHandHeldDevice = isMobile()
-	const isAlbumOrArtistDetails = $derived(Boolean(page.params.uuid) && (slug === 'albums' || slug === 'artists'))
+	const isDetailPage = $derived(Boolean(page.params.uuid))
+	const isAlbumOrArtistDetails = $derived(isDetailPage && (slug === 'albums' || slug === 'artists'))
 
 	type LibraryNavSlug = 'home' | 'tracks' | 'albums' | 'artists' | 'playlists'
 
@@ -117,7 +118,7 @@
 {/snippet}
 
 {#snippet layoutBottom()}
-	{#if isHandHeldDevice}
+	{#if isHandHeldDevice && !isDetailPage}
 		<div
 			class="pointer-events-auto grid h-16 w-full grid-cols-6 items-center border-t border-outline/10 bg-surfaceContainer px-1 pb-[env(safe-area-inset-bottom)] sm:hidden active-view-regular:view-name-[bottom-bar]"
 		>
@@ -131,7 +132,7 @@
 		'desktop-sidebar fixed left-4 top-20 z-1 hidden h-max w-16 flex-col items-center gap-2 sm:flex [@media(max-height:500px)]:top-2',
 	]}
 >
-	{#if !isAlbumOrArtistDetails}
+	{#if !isDetailPage}
 		{@render navItemsSnippet('h-14 w-20')}
 	{/if}
 </div>
