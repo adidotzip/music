@@ -404,7 +404,8 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 	{:else}
 		<TracksListContainer
 			items={tracks.tracksIds}
-		predefinedMenuItems={{
+			showDownloadButton={false}
+			predefinedMenuItems={{
 			disableViewAlbum: slug === 'albums',
 			disableViewArtist: slug === 'artists',
 			disableAddToFavorites: isFavoritesView,
