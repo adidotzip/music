@@ -230,7 +230,8 @@ import { browser } from '$app/environment'
         const params = new URLSearchParams({
             name: artist.name,
             art: artist.artUrl || '',
-        })\n        await goto(`/artist/${encodeURIComponent(artist.id)}?${params.toString()}`)
+        })
+        await goto(`/artist/${encodeURIComponent(artist.id)}?${params.toString()}`)
     }
 
     onMount(() => {
