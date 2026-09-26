@@ -50,16 +50,6 @@ import { browser } from '$app/environment'
     let recentlyPlayed = $state<DiscoveryItem[]>([])
 
 
-    const refreshDiscoveryDownloadState = async () => {
-        const ids = [
-            ...songResults.map((item) => String(item.id)),
-            ...recommendations.filter((item) => item.type === 'song').map((item) => String(item.id)),
-            ...topPicks.filter((item) => item.type === 'song').map((item) => String(item.id)),
-            ...recentlyPlayed.filter((item) => item.type === 'song').map((item) => String(item.id)),
-        ]
-        await Promise.all(ids.map((id) => getStoredLocalTrackId(id)))
-    }
-
     const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
         const key = `spicyamll:${input.id}`
         const id = generateStableId(key)
@@ -120,6 +110,16 @@ import { browser } from '$app/environment'
     let recentlyPlayedTrackIds = $derived(
         recentlyPlayed.filter((r) => r.type === 'song').map((s) => getOrRegisterRemoteTrack(s)),
     )
+
+    const refreshDiscoveryDownloadState = async () => {
+        const ids = [
+            ...songResults.map((item) => String(item.id)),
+            ...recommendations.filter((item) => item.type === 'song').map((item) => String(item.id)),
+            ...topPicks.filter((item) => item.type === 'song').map((item) => String(item.id)),
+            ...recentlyPlayed.filter((item) => item.type === 'song').map((item) => String(item.id)),
+        ]
+        await Promise.all(ids.map((id) => getStoredLocalTrackId(id)))
+    }
 
     $effect(() => {
         void refreshDiscoveryDownloadState()
