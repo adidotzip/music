@@ -68,7 +68,7 @@
 				const track = await getLibraryValue('tracks', trackId, true)
 				if (!track?.file) continue
 
-				const image = track.image?.full ?? track.image?.small
+				const image = track.image?.small ?? track.image?.full
 				if (image) {
 					artworkSource = image instanceof Blob ? await compressArtwork(image) : image
 					return
