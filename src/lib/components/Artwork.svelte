@@ -30,6 +30,7 @@
 	}: Props = $props()
 
 	let error = $state(false)
+	let fallbackApplied = $state(false)
 	let animatedError = $state(false)
 	let videoLoaded = $state(false)
 	let animatedImageLoaded = $state(false)
@@ -40,6 +41,7 @@
 
 		untrack(() => {
 			error = false
+			fallbackApplied = false
 			animatedError = false
 			videoLoaded = false
 			animatedImageLoaded = false
@@ -160,20 +162,22 @@
 		className,
 	]}
 >
-	{#if src && !error}
+	{#if (src && !error) || fallbackApplied}
 		<!-- biome-ignore lint/a11y/useAltText: false positive, alt exists -->
 		<img
-			{src}
+			src={fallbackApplied ? '/artwork.svg' : src}
 			{alt}
 			loading="eager"
 			class="size-full object-cover"
 			draggable="false"
 			onerror={() => {
-				error = true
-			}}
+			if (fallbackApplied) return
+			fallbackApplied = true
+			error = true
+		}}
 			onload={() => {
-				error = false
-			}}
+			error = false
+		}}
 		/>
 	{/if}
 
@@ -236,7 +240,7 @@
 		{/key}
 	{/if}
 
-	{#if (!src || error) && !videoLoaded && !animatedImageLoaded && fallbackIcon !== false}
+	{#if (!src || (error && !fallbackApplied)) && !videoLoaded && !animatedImageLoaded && fallbackIcon !== false}
 		<Icon type={fallbackIcon} class="m-auto size-2/3" />
 	{/if}
 
