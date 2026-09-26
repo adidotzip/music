@@ -39,8 +39,10 @@ const getDownloadUrls = (track: LibraryTrack): string[] => {
 	if (!track) return []
 
 	const urls: string[] = []
-	if (track.url?.startsWith('http')) urls.push(track.url)
 
+	// Always prefer the dedicated download endpoint for remote songs. The
+	// playback URL is a streaming source and should never be the primary
+	// source for an offline-library import.
 	if (track.remoteId !== undefined && track.remoteId > 0) {
 		urls.push(
 			spicyamll.downloadUrl(track.remoteId, {
@@ -48,6 +50,10 @@ const getDownloadUrls = (track: LibraryTrack): string[] => {
 				language: 'en-US',
 			}),
 		)
+	}
+
+	if (track.url?.startsWith('http') && !track.url.includes('/stream?')) {
+		urls.push(track.url)
 	}
 
 	return [...new Set(urls)]
