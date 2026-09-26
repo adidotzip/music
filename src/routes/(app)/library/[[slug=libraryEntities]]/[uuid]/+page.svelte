@@ -295,10 +295,16 @@
 						class="size-10 text-onSurface/54"
 					/>
 
-					<h1 class="text-headline-md">{formatNameOrUnknown(item.name)}</h1>
+					<h1 class="text-headline-md">{formatNameOrUnknown(slug === 'artists' ? (artistProfile?.name || item.name) : item.name)}</h1>
 				</div>
 
-				{#if description}
+				{#if slug === 'artists' && artistProfile?.genre}
+					<div class="text-body-lg text-onSurfaceVariant">{artistProfile.genre}</div>
+				{/if}
+
+				{#if slug === 'artists' && artistProfile?.bio}
+					<div class="max-w-3xl text-body-md text-onSurfaceVariant">{artistProfile.bio}</div>
+				{:else if description}
 					<div class="text-body-lg">{description}</div>
 				{/if}
 
@@ -315,7 +321,15 @@
 						{(item as AlbumData).year} •
 					{/if}
 
-					{m.libraryTracksCount({ count: tracks.tracksIds.length })}
+					{#if slug === 'artists' && artistAlbums.length > 0}
+						{artistAlbums.length} albums •
+					{/if}
+
+					{m.libraryTracksCount({
+						count: slug === 'artists' && remoteArtistTrackIds.length > 0
+							? remoteArtistTrackIds.length
+							: tracks.tracksIds.length,
+					})}
 				</div>
 			</div>
 
