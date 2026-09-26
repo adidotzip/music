@@ -75,7 +75,7 @@
 		snackbar('Custom source deleted')
 	}
 
-	async function selectSource(sourceId: 'lrc-red' | 'adi-lrcmux' | 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string) {
+	async function selectSource(sourceId: 'adi-lrcmux' | 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string) {
 		if (!track) return
 		fetching = true
 		activeFetchingSource = sourceId
@@ -205,24 +205,6 @@
 							<div class="text-title-small font-semibold text-onSurfaceVariant mb-1">
 								Select Lyrics Provider
 							</div>
-
-							<!-- LRC Red -->
-							<button
-								type="button"
-								disabled={fetching}
-								class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer"
-								onclick={() => selectSource('lrc-red')}
-							>
-								<div class="flex flex-col">
-									<span class="text-body-large font-bold">LRC Red</span>
-									<span class="text-body-small text-onSurfaceVariant">Secondary Provider • Adi Lyrics with LRC Mux fallback</span>
-								</div>
-								{#if fetching && activeFetchingSource === 'lrc-red'}
-									<Spinner class="size-5" />
-								{:else}
-									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
-								{/if}
-							</button>
 
 							<!-- Adi Lyrics + LRC Mux -->
 							<button
