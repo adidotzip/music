@@ -61,13 +61,9 @@ export const getArtistArtwork = async (artist: string): Promise<string | undefin
 				const artwork = track?.image?.full
 
 				if (artwork instanceof Blob) {
-					const url = URL.createObjectURL(artwork)
-					safeSetStorage(key, {
-						type: 'image',
-						value: url,
-						timestamp: Date.now(),
-					})
-					return url
+					// Blob URLs are only valid for the current document, so never
+					// persist them in localStorage.
+					return URL.createObjectURL(artwork)
 				}
 
 				if (typeof artwork === 'string' && artwork) {
