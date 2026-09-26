@@ -228,36 +228,9 @@ export class PlayerStore {
 			}
 		})
 
-		// Keep playback state synchronized with the native media element.
-		$effect(() => {
-			const shouldPlay = this.playing
-			const activeTrackId = this.activeTrack?.id
-			if (shouldPlay && activeTrackId !== undefined && this.#failedRemoteTracks.has(activeTrackId)) {
-				return
-			}
-
-			if (audio.paused === !shouldPlay) {
-				return
-			}
-
-			if (shouldPlay) {
-				if (this.equalizer.enabled) {
-					void this.equalizer.resumeContext()
-				}
-				void audio.play().catch((error) => {
-					console.warn('Audio playback error:', error)
-					if (!this.#audioLoader.loading) {
-						this.playing = false
-						if (activeTrackId !== undefined) {
-							this.#failedRemoteTracks.add(activeTrackId)
-						}
-					}
-				})
-			} else {
-				audio.pause()
-			}
-		})
-
+		// Playback is controlled explicitly by togglePlay/playTrack and synchronized
+		// from native audio events below. A reactive audio.play()/pause() effect
+		// can race source changes and user clicks, immediately undoing the command.
 		const syncPlayingFromAudio = () => {
 			const audioPlaying = !audio.paused
 			if (audioPlaying) {
@@ -278,6 +251,7 @@ export class PlayerStore {
 
 		audio.onplay = () => {
 			setPlaybackRate()
+			this.#autoplayTrackId = null
 			syncPlayingFromAudio()
 			this.#updatePositionState()
 		}
@@ -594,43 +568,41 @@ export class PlayerStore {
 		const nextState = force ?? !this.playing
 		const activeTrackId = this.#queue.activeTrackId
 
-		if (nextState) {
-			if (activeTrackId === null || this.#failedRemoteTracks.has(activeTrackId)) {
-				this.playing = false
-				this.#autoplayTrackId = null
-				return
-			}
-
-			this.playing = true
-			this.#autoplayTrackId = activeTrackId
-			this.#audio.preload = 'auto'
-
-			if (this.equalizer.enabled) {
-				void this.equalizer.resumeContext()
-			}
-
-			// If the source is still being loaded, don't call play() against
-			// the previous/empty source. The track-load completion handler and
-			// the playback effect will start it once the correct source exists.
-			if (this.#audioLoader.loading || !this.#audio.src) {
-				return
-			}
-
-			const playPromise = this.#audio.play()
-			playPromise?.catch((error) => {
-				console.warn('Audio playback request failed:', error)
-				if (this.#autoplayTrackId === activeTrackId && !this.#audioLoader.loading) {
-					this.playing = false
-					this.#autoplayTrackId = null
-				}
-			})
-		} else {
-			// Clear autoplay intent before pausing so the native pause event
-			// correctly updates the UI to the Play state.
+		if (!nextState) {
+			// A pause click must win any pending playTrack() alias lookup.
+			this.#playRequestGeneration += 1
 			this.#autoplayTrackId = null
 			this.playing = false
 			this.#audio.pause()
+			return
 		}
+
+		if (activeTrackId === null || this.#failedRemoteTracks.has(activeTrackId)) {
+			this.playing = false
+			this.#autoplayTrackId = null
+			return
+		}
+
+		this.playing = true
+		this.#autoplayTrackId = activeTrackId
+		this.#audio.preload = 'auto'
+
+		if (this.equalizer.enabled) {
+			void this.equalizer.resumeContext()
+		}
+
+		// Never play while AudioLoader is replacing the source.
+		if (this.#audioLoader.loading || !this.#audio.src) {
+			return
+		}
+
+		void this.#audio.play().catch((error) => {
+			console.warn('Audio playback request failed:', error)
+			if (this.#autoplayTrackId === activeTrackId) {
+				this.playing = false
+				this.#autoplayTrackId = null
+			}
+		})
 	}
 
 	playNextTrack = (trackId: number): void => {
@@ -665,6 +637,12 @@ export class PlayerStore {
 			if (localTrackId !== undefined) resolvedTrackId = localTrackId
 		}
 
+		// Set the desired state before changing the queue. The source change
+		// emits a native pause event, so the incoming track must already be
+		// marked for autoplay.
+		this.playing = true
+		this.#autoplayTrackId = resolvedTrackId ?? null
+
 		const currentTrackId = this.#queue.activeTrackId
 		if (queue) {
 			const resolvedQueue = [...queue]
@@ -692,7 +670,6 @@ export class PlayerStore {
 		}
 
 		this.currentTime = 0
-		this.playing = true
 		this.#autoplayTrackId = this.#queue.activeTrackId
 	}
 
