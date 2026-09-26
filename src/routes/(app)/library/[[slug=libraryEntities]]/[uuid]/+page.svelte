@@ -268,28 +268,28 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 
 <div class="@container flex grow flex-col px-4 pb-4">
 	<section
-		class="relative flex w-full flex-col items-center justify-center gap-6 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row"
+		class="relative flex w-full min-w-0 flex-col items-stretch gap-4 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row @2xl:items-stretch"
 	>
 		{#if slug !== 'playlists'}
 			<Artwork
 				src={slug === 'artists' ? artistArtworkSrc : artworkSrc()}
 				animatedSrc={animatedArtworkSrc}
 				fallbackIcon={getFallbackArtwork()}
-				class="h-49 shrink-0 rounded-2xl @2xl:h-full"
+				class="aspect-square w-full max-w-56 shrink-0 self-center rounded-2xl @2xl:h-60 @2xl:w-60 @2xl:max-w-none @2xl:self-auto"
 			/>
 		{/if}
 
 		<div
-			class="relative z-0 flex size-full flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh"
+			class="relative z-0 flex min-w-0 flex-1 flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh"
 		>
 			<div class="flex grow flex-col p-4">
-				<div class="flex items-center gap-2">
+				<div class="flex min-w-0 items-center gap-2">
 					<Icon
 						type={slug === 'albums' ? 'album' : slug === 'artists' ? 'person' : 'playlist'}
 						class="size-10 text-onSurface/54"
 					/>
 
-					<h1 class="text-headline-md">{formatNameOrUnknown(slug === 'artists' ? (artistProfile?.name || item.name) : item.name)}</h1>
+					<h1 class="min-w-0 truncate text-headline-md">{formatNameOrUnknown(slug === 'artists' ? (artistProfile?.name || item.name) : item.name)}</h1>
 				</div>
 
 				{#if slug === 'artists' && artistProfile?.genre}
