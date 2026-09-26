@@ -504,11 +504,15 @@ export class PlayerStore {
 
 			if (this.#preloadedAudio.has(candidate.id)) continue
 
-			let src = candidate.url
+			// Preload the downloaded copy when available. Never let a remote
+			// URL win over an offline file just because it is easier to preload.
+			let src: string | undefined
 			let objectUrl: string | undefined
-			if (!src && candidate.file instanceof File) {
+			if (candidate.file instanceof File) {
 				objectUrl = URL.createObjectURL(candidate.file)
 				src = objectUrl
+			} else {
+				src = candidate.url
 			}
 			if (!src) continue
 
