@@ -44,8 +44,10 @@
 
 	type Value = LibraryGridItemValue<Type>
 
-	const query =
-		(type === 'albums' ? createAlbumQuery(() => itemId) : createArtistQuery(() => itemId)) as QueryResult<Value>
+	const query = $derived.by(
+		() =>
+			(type === 'albums' ? createAlbumQuery(() => itemId) : createArtistQuery(() => itemId)) as QueryResult<Value>,
+	)
 
 	const item = $derived(query.value)
 
@@ -200,7 +202,6 @@
 </script>
 
 <a
-	role="listitem"
 	class={[
 		'library-entity-card group block min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh text-onSurface transition-transform duration-150 hover:-translate-y-0.5 hover:bg-surfaceContainerHighest active:scale-[0.99]',
 		className,
