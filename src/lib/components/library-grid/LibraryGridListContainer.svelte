@@ -26,15 +26,17 @@
 				if (!album) continue
 
 				const trackIds = await dbGetAlbumTracksIdsByName(album.name)
-				let hasDownloadedTrack = false
+				if (trackIds.length === 0) continue
+
+				let fullyDownloaded = true
 				for (const trackId of trackIds) {
 					const track = await getLibraryValue('tracks', trackId, true)
-					if (track?.file) {
-						hasDownloadedTrack = true
+					if (!track?.file) {
+						fullyDownloaded = false
 						break
 					}
 				}
-				if (hasDownloadedTrack) downloaded.push(itemId)
+				if (fullyDownloaded) downloaded.push(itemId)
 				continue
 			}
 
