@@ -125,36 +125,34 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	{/if}
 {/snippet}
 
+<div
+	class={[
+		'desktop-sidebar fixed z-1 mt-20 h-max w-max flex-col items-center gap-2 [@media(max-height:500px)]:mt-2',
+		isHandHeldDevice ? 'hidden sm:flex' : 'flex',
+	]}
+>
+	{@render navItemsSnippet('h-14 w-20')}
+
+	{#if !isLibraryHome && (slug === 'albums' || slug === 'artists') && isWideLayout}
+		<IconButton
+			icon="sidePanel"
+			tooltip={main.librarySplitLayoutEnabled
+				? m.librarySplitViewDisable()
+				: m.librarySplitViewEnable()}
+			class={['mt-4', main.librarySplitLayoutEnabled && 'rotate-180']}
+			onclick={() => {
+				main.librarySplitLayoutEnabled = !main.librarySplitLayoutEnabled
+			}}
+		/>
+	{/if}
+</div>
+
 {#if isLibraryHome}
 	<div class="mx-auto w-full max-w-(--app-max-content-width) px-4 sm:pl-20">
 		<Search name="Library" sortOptions={data.sortOptions} store={data.store} />
 	</div>
 	<LibraryHome />
 {:else}
-	{#if layoutMode !== 'details'}
-		<div
-		class={[
-			'desktop-sidebar fixed z-1 mt-20 h-max w-max flex-col items-center gap-2 [@media(max-height:500px)]:mt-2',
-			isHandHeldDevice ? 'hidden sm:flex' : 'flex',
-		]}
-	>
-		{@render navItemsSnippet('h-14 w-20')}
-
-		{#if (slug === 'albums' || slug === 'artists') && isWideLayout}
-			<IconButton
-				icon="sidePanel"
-				tooltip={main.librarySplitLayoutEnabled
-					? m.librarySplitViewDisable()
-					: m.librarySplitViewEnable()}
-				class={['mt-4', main.librarySplitLayoutEnabled && 'rotate-180']}
-				onclick={() => {
-					main.librarySplitLayoutEnabled = !main.librarySplitLayoutEnabled
-				}}
-			/>
-		{/if}
-		</div>
-	{/if}
-
 	<ListDetailsLayout mode={layoutMode} class="mx-auto w-full max-w-(--app-max-content-width) grow">
 	{#snippet list(mode)}
 		<div class={[isHandHeldDevice ? 'sm:pl-20' : 'pl-20', 'flex grow flex-col']}>
