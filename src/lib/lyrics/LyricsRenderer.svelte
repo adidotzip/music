@@ -4,15 +4,10 @@
 	interface Props {
 		ttml: string | null
 		audioElement: HTMLAudioElement | null
-		/** Song title — forwarded to <am-lyrics> so it can run its own LyricsPlus lookup if ttml is absent */
 		songTitle?: string
-		/** Comma-separated artist string */
 		songArtist?: string
-		/** Album name (optional) */
 		songAlbum?: string
-		/** Song duration in milliseconds */
 		songDurationMs?: number
-		/** "Title - Artist" search phrase for the LyricsPlus catalog fallback */
 		query?: string
 		class?: string
 	}
@@ -20,31 +15,58 @@
 	let {
 		ttml,
 		audioElement,
-		songTitle,
-		songArtist,
-		songAlbum,
-		songDurationMs,
-		query,
 		class: className,
 	}: Props = $props()
 
 	let el: HTMLElement | undefined = $state()
+	let braccatoReady = $state(false)
 
-	if (browser) {
-		void import('@uimaxbai/am-lyrics/am-lyrics.js')
+	const CORE_URL = 'https://cdn.jsdelivr.net/npm/@braccato/core@1.11.0/+esm'
+	const PARSERS_URL = 'https://cdn.jsdelivr.net/npm/@braccato/parsers@0.2.3/+esm'
+	const CSS_URLS = [
+		'https://cdn.jsdelivr.net/npm/@braccato/core@1.11.0/styles/variables.css',
+		'https://cdn.jsdelivr.net/npm/@braccato/core@1.11.0/styles/lyrics.css',
+		'https://cdn.jsdelivr.net/npm/@braccato/core@1.11.0/styles/instrumental.css',
+	]
+
+	async function ensureBraccato() {
+		if (!browser || braccatoReady) return
+
+		for (const href of CSS_URLS) {
+			if (!document.querySelector(`link[data-braccato-style="${href}"]`)) {
+				const link = document.createElement('link')
+				link.rel = 'stylesheet'
+				link.href = href
+				link.dataset.braccatoStyle = href
+				document.head.appendChild(link)
+			}
+		}
+
+		await import(/* @vite-ignore */ CORE_URL)
+		braccatoReady = true
+	}
+
+	async function renderLyrics() {
+		if (!browser || !el || !ttml) return
+
+		try {
+			await ensureBraccato()
+			if (!el) return
+
+			const { detectParser } = await import(/* @vite-ignore */ PARSERS_URL)
+			const durationMs = audioElement?.duration && Number.isFinite(audioElement.duration)
+				? audioElement.duration * 1000
+				: undefined
+			const lyrics = detectParser(ttml).parse(ttml, durationMs)
+
+			;(el as any).lyrics = lyrics
+		} catch {
+			// Keep the existing lyrics view empty if Braccato cannot be loaded.
+		}
 	}
 
 	$effect(() => {
-		const currentEl = el
-		if (currentEl?.shadowRoot) {
-			const styleId = 'am-lyrics-hide-watermark'
-			if (!currentEl.shadowRoot.getElementById(styleId)) {
-				const style = document.createElement('style')
-				style.id = styleId
-				style.textContent = '.version-info { display: none !important; }'
-				currentEl.shadowRoot.appendChild(style)
-			}
-		}
+		void renderLyrics()
 	})
 
 	$effect(() => {
@@ -52,29 +74,26 @@
 		const currentAudio = audioElement
 		if (!(currentEl && currentAudio)) return
 
-		let frameId: number
+		let frameId = 0
 
 		const updateTime = () => {
-			const timeMs = Math.floor(currentAudio.currentTime * 1000)
-			if ((currentEl as any).currentTime !== timeMs) {
-				;(currentEl as any).currentTime = timeMs
-			}
-			if (!currentAudio.paused) {
-				frameId = requestAnimationFrame(updateTime)
-			}
+			;(currentEl as any).currentTime = currentAudio.currentTime
+			;(currentEl as any).playing = !currentAudio.paused
+			if (!currentAudio.paused) frameId = requestAnimationFrame(updateTime)
 		}
 
 		const handleTimeUpdate = () => {
-			if (currentAudio.paused) {
-				;(currentEl as any).currentTime = Math.floor(currentAudio.currentTime * 1000)
-			}
+			;(currentEl as any).currentTime = currentAudio.currentTime
+			;(currentEl as any).playing = !currentAudio.paused
 		}
 
 		const handlePlay = () => {
+			;(currentEl as any).playing = true
 			frameId = requestAnimationFrame(updateTime)
 		}
 
 		const handlePause = () => {
+			;(currentEl as any).playing = false
 			if (frameId) cancelAnimationFrame(frameId)
 		}
 
@@ -82,9 +101,7 @@
 		currentAudio.addEventListener('play', handlePlay)
 		currentAudio.addEventListener('pause', handlePause)
 
-		if (!currentAudio.paused) {
-			frameId = requestAnimationFrame(updateTime)
-		}
+		if (!currentAudio.paused) frameId = requestAnimationFrame(updateTime)
 
 		return () => {
 			currentAudio.removeEventListener('timeupdate', handleTimeUpdate)
@@ -98,36 +115,38 @@
 		const currentEl = el
 		if (!currentEl) return
 
-		const handleLineClick = (e: Event) => {
-			const customEvent = e as CustomEvent<{ timestamp: number }>
-			if (audioElement && customEvent.detail && typeof customEvent.detail.timestamp === 'number') {
-				audioElement.currentTime = customEvent.detail.timestamp / 1000
+		const handleLineClick = (event: Event) => {
+			const customEvent = event as CustomEvent<{ timeS?: number; timestamp?: number }>
+			const timeS = customEvent.detail?.timeS
+			const timestamp = customEvent.detail?.timestamp
+
+			if (audioElement && typeof timeS === 'number') {
+				audioElement.currentTime = timeS
+			} else if (audioElement && typeof timestamp === 'number') {
+				audioElement.currentTime = timestamp / 1000
 			}
 		}
 
+		currentEl.addEventListener('braccato:line-click', handleLineClick)
 		currentEl.addEventListener('line-click', handleLineClick)
+
 		return () => {
+			currentEl.removeEventListener('braccato:line-click', handleLineClick)
 			currentEl.removeEventListener('line-click', handleLineClick)
 		}
 	})
 </script>
 
-<am-lyrics
+<braccato-lyrics
 	bind:this={el}
-	ttml={ttml ?? undefined}
-	song-title={songTitle}
-	song-artist={songArtist}
-	song-album={songAlbum}
-	song-duration={songDurationMs}
-	{query}
-	font-family="var(--font-sans)"
 	class={className}
-></am-lyrics>
+	style="display: block; width: 100%; height: 100%; overflow-y: auto; scrollbar-width: none;"
+></braccato-lyrics>
 
 <style lang="postcss">
 	@reference "../../app.css";
 
-	am-lyrics {
+	braccato-lyrics {
 		display: block;
 		width: 100%;
 		height: 100%;
@@ -137,13 +156,12 @@
 		scroll-behavior: auto !important;
 		transform: translateZ(0);
 
-		--highlight-color: var(--lyric-active-fill, #ffffff);
-		--am-lyrics-highlight-color: var(--lyric-active-fill, #ffffff);
-		--am-lyrics-compact-font-size: 34px;
-		--am-lyrics-compact-line-spacing: 24px;
+		--blyrics-lyric-active-color: var(--lyric-active-fill, #ffffff);
+		--blyrics-lyric-inactive-color: rgb(255 255 255 / 0.42);
+		--blyrics-font-size: 34px;
 	}
 
-	am-lyrics::-webkit-scrollbar {
+	braccato-lyrics::-webkit-scrollbar {
 		display: none;
 	}
 </style>
