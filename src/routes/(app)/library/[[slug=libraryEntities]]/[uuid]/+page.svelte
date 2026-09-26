@@ -262,7 +262,9 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 	const artists = $derived(slug === 'albums' && formatArtists((item as AlbumData).artists))
 </script>
 
-{#if !(isWideLayout.current && main.librarySplitLayoutEnabled)}
+{#if isWideLayout.current && main.librarySplitLayoutEnabled}
+	<Header title={data.singularTitle()} mode="sticky" />
+{:else}
 	<Header title={data.singularTitle()} />
 {/if}
 
