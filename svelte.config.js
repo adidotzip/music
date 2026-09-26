@@ -31,9 +31,9 @@ const config = {
 
 		csp: {
 			directives: {
-				'default-src': ['none'],
+				'default-src': ['self'],
 
-				'script-src': ['self', 'https://gc.zgo.at/', 'https://nurislamaibekuly.github.io'],
+				'script-src': ['self', 'unsafe-inline', 'https://gc.zgo.at/', 'https://nurislamaibekuly.github.io'],
 
 				'style-src': ['self', 'unsafe-inline', 'https://nurislamaibekuly.github.io'],
 
@@ -64,6 +64,7 @@ const config = {
 
 					// SpicyAMLL / Discovery artwork
 					'https://api.spicyamll.online',
+					'https:',
 				],
 
 				'media-src': [
@@ -80,13 +81,14 @@ const config = {
 					'https://*.mzstatic.com',
 
 					// Deezer previews
-					'https://cdns-preview-*.dzcdn.net',
+					'https://*.dzcdn.net',
 
 					// SpicyAMLL streaming
 					'https://api.spicyamll.online',
+					'https:',
 				],
 
-				'font-src': ['self'],
+				'font-src': ['self', 'data:'],
 
 				'connect-src': [
 					'self',
