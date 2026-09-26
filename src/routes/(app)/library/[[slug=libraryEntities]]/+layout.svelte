@@ -15,7 +15,7 @@
 	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.js'
 	import { isMobile } from '$lib/helpers/utils/ua.ts'
-	import { useSetOverlaySnippet from '$lib/layout-bottom-bar.svelte.ts'
+	import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte.ts'
 	import { FAVORITE_PLAYLIST_ID } from '$lib/library/playlists-actions.ts'
 	import { getPlaylistMenuItems } from '$lib/menu-actions/playlists.ts'
 	import Search from './Search.svelte'
