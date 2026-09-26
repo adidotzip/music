@@ -409,9 +409,6 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 			}
 		})
 		.filter((track) => track.id !== undefined && track.id !== null && track.id !== '')
-		// Never surface catalog recordings explicitly marked as clean/censored.
-		// Unknown ratings are kept because some SpicyAMLL responses omit the rating.
-		.filter((track) => track.contentRating.toLowerCase() !== 'clean' && track.contentRating.toLowerCase() !== 'censored')
 }
 
 export const searchArtists = async (query: string) => {
@@ -660,20 +657,44 @@ export const getSongsForArtist = async (artistId: string | number | undefined, a
 	return []
 }
 
+const preferExplicitRecordings = (tracks: SpicyTrack[]) => {
+	const groups = new Map<string, SpicyTrack[]>()
+	for (const track of tracks) {
+		const key = [normalizeForSearch(track.name), normalizeForSearch(track.artist ?? track.artists?.join(', '))].join('|')
+		const group = groups.get(key) ?? []
+		group.push(track)
+		groups.set(key, group)
+	}
+
+	const selected: SpicyTrack[] = []
+	for (const group of groups.values()) {
+		const explicit = group.find((track) => track.isExplicit === true || track.contentRating?.toLowerCase() === 'explicit')
+		if (explicit) selected.push(explicit)
+		else selected.push(...group.filter((track) => track.contentRating?.toLowerCase() !== 'clean' && track.contentRating?.toLowerCase() !== 'censored'))
+	}
+	return selected
+}
+
+const normalizeForSearch = (value: unknown) => String(value ?? '').normalize('NFKC').toLowerCase().replace(/[\\p{P}\\p{S}]+/gu, ' ').replace(/\\s+/g, ' ').trim()
+
 export const searchCatalog = async (query: string) => {
 	const params = {
 		term: query,
 		l: 'en-US',
-		limit: 25,
+		limit: 50,
 		offset: 0,
 	}
 
+	let tracks: SpicyTrack[] = []
 	try {
-		const response = await spicyamll.search(params)
-		const tracks = normalizeTracks(response)
-		if (tracks.length) return tracks
+		tracks = normalizeTracks(await spicyamll.search(params))
 	} catch {}
 
-	const response = await spicyamll.catalogSearch('us', params)
-	return normalizeTracks(response)
+	if (!tracks.length) {
+		try {
+			tracks = normalizeTracks(await spicyamll.catalogSearch('us', params))
+		} catch {}
+	}
+
+	return preferExplicitRecordings(tracks)
 }
