@@ -224,7 +224,10 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 				message: `Imported ${result.added} songs and downloaded them to your library.${result.duplicates ? ` ${result.duplicates} already existed.` : ''}${failedCount ? ` ${failedCount} could not be imported.` : ''}`,
 			})
 		} catch (error) {
-			snackbar.unexpectedError(error)
+			snackbar({
+				id: `playlist-csv-import-error-${item.id}`,
+				message: error instanceof Error ? error.message : String(error),
+			})
 		} finally {
 			importingCsv = false
 			if (csvInput) csvInput.value = ''
