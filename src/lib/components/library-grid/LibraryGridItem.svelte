@@ -9,10 +9,12 @@
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte.ts'
 	import { dbGetAlbumTracksIdsByName, dbGetArtistTracksIdsByName } from '$lib/library/get/ids'
+import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 	import type { AlbumData, ArtistData } from '$lib/library/get/value'
 	import { createAlbumQuery, createArtistQuery } from '$lib/library/get/value-queries'
 	import { UNKNOWN_ITEM } from '$lib/library/types'
 	import Artwork from '../Artwork.svelte'
+	import Icon from '../icon/Icon.svelte'
 
 	export type LibraryGridItemType = 'albums' | 'artists'
 
@@ -42,6 +44,7 @@
 	const menu = useMenu()
 	const dialogs = useDialogsStore()
 	const player = usePlayer()
+	let downloadingAlbum = $state(false)
 
 	type Value = LibraryGridItemValue<Type>
 
@@ -113,6 +116,25 @@
 		return dbGetArtistTracksIdsByName(name)
 	}
 
+	const downloadAlbum = async (event: MouseEvent) => {
+		event.preventDefault()
+		event.stopPropagation()
+
+		if (type !== 'albums' || !item || downloadingAlbum) return
+
+		downloadingAlbum = true
+		try {
+			const trackIds = await dbGetAlbumTracksIdsByName(item.name)
+			for (const trackId of trackIds) {
+				await ensureTrackIsStoredLocally(trackId)
+			}
+		} catch (error) {
+			snackbar.unexpectedError(error)
+		} finally {
+			downloadingAlbum = false
+		}
+	}
+
 	const menuItems = () => {
 		if (!(item && linkProps)) {
 			return []
@@ -179,12 +201,26 @@
 		})
 	}}
 >
-	<Artwork
-		src={type === 'artists' ? artistArtworkSrc : artworkSrc()}
-		animatedSrc={animatedArtworkSrc}
-		fallbackIcon={type === 'albums' ? 'album' : 'person'}
-		class="w-full rounded-[inherit]"
-	/>
+	<div class="relative">
+		<Artwork
+			src={type === 'artists' ? artistArtworkSrc : artworkSrc()}
+			animatedSrc={animatedArtworkSrc}
+			fallbackIcon={type === 'albums' ? 'album' : 'person'}
+			class="w-full rounded-[inherit]"
+		/>
+		{#if type === 'albums'}
+			<button
+				type="button"
+				class="interactable absolute right-2 bottom-2 z-2 flex size-10 items-center justify-center rounded-full bg-surfaceContainerHigh/90 text-onSurface backdrop-blur-sm"
+				aria-label="Download album for offline playback"
+				title="Download album for offline playback"
+				disabled={downloadingAlbum}
+				onclick={downloadAlbum}
+			>
+				<Icon type="download" class={downloadingAlbum ? 'animate-pulse' : undefined} />
+			</button>
+		{/if}
+	</div>
 
 	<div
 		class="flex h-18 w-full flex-col justify-center overflow-hidden px-2 text-center text-onSurfaceVariant"
