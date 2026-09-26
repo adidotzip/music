@@ -13,7 +13,10 @@ import { browser } from '$app/environment'
     import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
     import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte'
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
+    import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
+
     import { UNKNOWN_ITEM } from '$lib/library/types.ts'
+
     import {
         cacheDiscoveryRecommendations,
         getCachedDiscoveryRecommendations,
@@ -46,6 +49,16 @@ import { browser } from '$app/environment'
     let recommendations = $state<DiscoveryItem[]>([])
     let recentlyPlayed = $state<DiscoveryItem[]>([])
 
+
+    const refreshDiscoveryDownloadState = async () => {
+        const ids = [
+            ...songResults.map((item) => String(item.id)),
+            ...recommendations.filter((item) => item.type === 'song').map((item) => String(item.id)),
+            ...topPicks.filter((item) => item.type === 'song').map((item) => String(item.id)),
+            ...recentlyPlayed.filter((item) => item.type === 'song').map((item) => String(item.id)),
+        ]
+        await Promise.all(ids.map((id) => getStoredLocalTrackId(id)))
+    }
 
     const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
         const key = `spicyamll:${input.id}`
@@ -107,6 +120,14 @@ import { browser } from '$app/environment'
     let recentlyPlayedTrackIds = $derived(
         recentlyPlayed.filter((r) => r.type === 'song').map((s) => getOrRegisterRemoteTrack(s)),
     )
+
+    $effect(() => {
+        void refreshDiscoveryDownloadState()
+        const unsubscribe = onDatabaseChange(() => {
+            void refreshDiscoveryDownloadState()
+        })
+        return unsubscribe
+    })
 
     const cleanArtUrl = (url: unknown) => {
         if (typeof url !== 'string' || !url) return 'favicon.svg'
