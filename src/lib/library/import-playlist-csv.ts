@@ -92,6 +92,7 @@ const registerTrack = (track: SpicyTrack): number => {
 		discNo: 0,
 		discOf: 0,
 		language: undefined,
+		explicit: track.isExplicit ?? track.contentRating?.toLowerCase() === 'explicit',
 		image: image ? { optimized: false, small: image, full: image } : undefined,
 		file: undefined,
 		directory: undefined,
@@ -110,21 +111,29 @@ const findMatch = async (title: string, artist: string, album: string) => {
 	const wantedTitle = normalize(title)
 	const wantedArtist = normalize(artist)
 	const wantedAlbum = normalize(album)
+	const isExplicit = (track: SpicyTrack) =>
+		track.isExplicit === true || track.contentRating?.toLowerCase() === 'explicit'
+	const isClean = (track: SpicyTrack) =>
+		track.contentRating?.toLowerCase() === 'clean' || track.isExplicit === false
 
-	return (
-		results.find((track) => {
-			const titleMatch = normalize(track.name) === wantedTitle
-			const artistMatch = !wantedArtist || normalize(track.artist ?? track.artists?.join(', ')) === wantedArtist
-			const albumMatch = !wantedAlbum || normalize(track.album ?? track.albumName) === wantedAlbum
-			return titleMatch && artistMatch && albumMatch
-		}) ??
-		results.find((track) => {
-			const titleMatch = normalize(track.name) === wantedTitle
-			const artistValue = normalize(track.artist ?? track.artists?.join(', '))
-			return titleMatch && (!wantedArtist || artistValue.includes(wantedArtist) || wantedArtist.includes(artistValue))
-		}) ??
-		results.find((track) => normalize(track.name) === wantedTitle)
-	)
+	const exactMatches = results.filter((track) => {
+		const titleMatch = normalize(track.name) === wantedTitle
+		const artistMatch = !wantedArtist || normalize(track.artist ?? track.artists?.join(', ')) === wantedArtist
+		const albumMatch = !wantedAlbum || normalize(track.album ?? track.albumName) === wantedAlbum
+		return titleMatch && artistMatch && albumMatch
+	})
+	if (exactMatches.length) return exactMatches.find(isExplicit) ?? exactMatches.find((track) => !isClean(track)) ?? exactMatches[0]
+
+	const artistMatches = results.filter((track) => {
+		const titleMatch = normalize(track.name) === wantedTitle
+		const artistValue = normalize(track.artist ?? track.artists?.join(', '))
+		return titleMatch && (!wantedArtist || artistValue.includes(wantedArtist) || wantedArtist.includes(artistValue))
+	})
+	if (artistMatches.length) return artistMatches.find(isExplicit) ?? artistMatches.find((track) => !isClean(track)) ?? artistMatches[0]
+
+	const titleMatches = results.filter((track) => normalize(track.name) === wantedTitle)
+	return titleMatches.find(isExplicit) ?? titleMatches.find((track) => !isClean(track)) ?? titleMatches[0]
+
 }
 
 export const importPlaylistCsv = async (
