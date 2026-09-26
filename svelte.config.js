@@ -33,7 +33,7 @@ const config = {
 			directives: {
 				'default-src': ['self'],
 
-				'script-src': ['self', 'unsafe-inline', 'https://gc.zgo.at/', 'https://nurislamaibekuly.github.io'],
+				'script-src': ['self', 'unsafe-inline', 'https://gc.zgo.at/', 'https://nurislamaibekuly.github.io', 'https://itunes.apple.com'],
 
 				'style-src': ['self', 'unsafe-inline', 'https://nurislamaibekuly.github.io'],
 
