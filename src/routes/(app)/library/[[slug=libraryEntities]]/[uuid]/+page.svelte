@@ -15,7 +15,6 @@ import { MediaQuery } from 'svelte/reactivity'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 	import { type AlbumData, getLibraryValue, registerRemoteTrack, type TrackData } from '$lib/library/get/value.ts'
 import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/ids.ts'
-	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 	import { getLibraryArtists } from '$lib/services/library.ts'
 	import {
 		FAVORITE_PLAYLIST_ID,
@@ -211,18 +210,6 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		]
 	}
 
-	const downloadAlbum = async () => {
-		if (slug !== 'albums' || !tracks.tracksIds.length) return
-
-		try {
-			for (const trackId of tracks.tracksIds) {
-				await ensureTrackIsStoredLocally(trackId)
-			}
-		} catch (error) {
-			snackbar.unexpectedError(error)
-		}
-	}
-
 	const getMenuItems = () => {
 		const addToQueueMenuItem =
 			tracks.tracksIds.length === 0
@@ -339,16 +326,6 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			</div>
 
 			<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
-				{#if slug === 'albums'}
-					<Button
-						kind="flat"
-						class="my-1"
-						disabled={tracks.tracksIds.length === 0}
-						onclick={() => void downloadAlbum()}
-					>
-						<Icon type="download" />
-					</Button>
-				{/if}
 
 				<Button
 					kind="filled"
