@@ -14,6 +14,7 @@
     import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte'
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
     import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
+    import { onDatabaseChange } from '$lib/db/events.ts'
 
     import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
