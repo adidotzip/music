@@ -79,6 +79,13 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 	let localArtistTrackIds = $state<number[]>([])
 	let csvInput = $state<HTMLInputElement>()
 	let importingCsv = $state(false)
+	let csvProgress = $state<{
+		current: number
+		total: number
+		title: string
+		artist: string
+		status: 'searching' | 'downloading' | 'added' | 'duplicate' | 'not-found' | 'failed'
+	} | null>(null)
 
 	const remoteIdToNumber = (id: string | number) => {
 		const value = String(id)
@@ -217,7 +224,9 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		importingCsv = true
 		try {
 			const { importPlaylistCsv } = await import('$lib/library/import-playlist-csv.ts')
-			const result = await importPlaylistCsv(item.id, file)
+			const result = await importPlaylistCsv(item.id, file, (progress) => {
+				csvProgress = progress
+			})
 			const failedCount = result.notFound.length + result.failed.length
 			snackbar({
 				id: `playlist-csv-import-${item.id}`,
@@ -230,6 +239,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			})
 		} finally {
 			importingCsv = false
+			csvProgress = null
 			if (csvInput) csvInput.value = ''
 		}
 	}
@@ -311,6 +321,46 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		if (file) void importPlaylistCsvFile(file)
 	}}
 />
+
+{#if importingCsv && csvProgress}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4">
+		<div class="w-full max-w-md rounded-3xl bg-surfaceContainerHigh p-6 shadow-2xl" role="status" aria-live="polite">
+			<div class="mb-5 flex items-center justify-between gap-4">
+				<div>
+					<h2 class="text-title-lg">Importing playlist</h2>
+					<p class="mt-1 text-body-medium">Downloading songs to your library</p>
+				</div>
+				<div class="flex size-10 items-center justify-center rounded-full bg-primary/10">
+					<span class="size-5 animate-spin rounded-full border-2 border-onSurface/20 border-t-primary"></span>
+				</div>
+			</div>
+			<div class="mb-3 flex items-center justify-between text-body-small">
+				<span>{csvProgress.current} of {csvProgress.total}</span>
+				<span>{Math.round((csvProgress.current / Math.max(csvProgress.total, 1)) * 100)}%</span>
+			</div>
+			<div class="mb-5 h-2 overflow-hidden rounded-full bg-surfaceContainerHighest">
+				<div class="h-full rounded-full bg-primary transition-[width] duration-300" style:width={`${Math.min(100, (csvProgress.current / Math.max(csvProgress.total, 1)) * 100)}%`}></div>
+			</div>
+			<div class="rounded-2xl bg-surfaceContainer p-4">
+				<p class="truncate text-title-medium">{csvProgress.title}</p>
+				<p class="mt-1 truncate text-body-small text-onSurface/70">{csvProgress.artist}</p>
+				<p class="mt-3 text-body-small">
+					{csvProgress.status === 'searching'
+						? 'Searching…'
+						: csvProgress.status === 'downloading'
+							? 'Downloading…'
+							: csvProgress.status === 'added'
+								? '✓ Added and downloaded'
+								: csvProgress.status === 'duplicate'
+									? 'Already in playlist'
+									: csvProgress.status === 'not-found'
+									? 'Not found'
+									: 'Download failed'}
+				</p>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <div class="@container flex grow flex-col px-4 pb-4">
 	<section
