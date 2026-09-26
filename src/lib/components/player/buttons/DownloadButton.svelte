@@ -187,15 +187,6 @@
 		stroke-width: 1.9;
 	}
 
-	.download-icon.is-loading {
-		animation: download-pulse 650ms ease-in-out infinite;
-		opacity: 0.7;
-	}
-
-	.download-icon.is-loading svg {
-		animation: download-spin 650ms linear infinite;
-	}
-
 	.download-icon.is-done {
 		animation: download-complete 240ms var(--ease-emphasized) both;
 		color: var(--color-primary);
@@ -204,18 +195,6 @@
 	.download-icon.is-error {
 		color: var(--color-error);
 		animation: download-error 220ms var(--ease-emphasized);
-	}
-
-	@keyframes download-spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	@keyframes download-pulse {
-		50% {
-			transform: scale(0.88);
-		}
 	}
 
 	@keyframes download-complete {
