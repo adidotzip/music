@@ -22,11 +22,13 @@ import { browser } from '$app/environment'
     import { getRecentlyPlayed } from '$lib/services/library.ts'
     import {
         type DiscoveryResource,
+        type DiscoveryTrack,
+        getSongsForArtist,
         normalizeTracks,
         parseDiscoveryResults,
+        searchDiscovery,
         spicyamll,
     } from '$lib/services/spicyamll.ts'
-    import { searchMusic } from '$lib/services/music-search.ts'
 
     type DiscoveryItem = DiscoveryResource
 
@@ -45,21 +47,21 @@ import { browser } from '$app/environment'
     let recentlyPlayed = $state<DiscoveryItem[]>([])
 
 
-    const getOrRegisterRemoteTrack = (input: DiscoveryResource): number => {
-        const playbackId = input.providerId || input.id
-        const key = `spicyamll:${playbackId}`
+    const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
+        const key = `spicyamll:${input.id}`
         const id = generateStableId(key)
 
+        const isResource = 'artUrl' in input
         const name = input.name || 'Unknown'
-        const artistName = input.artist
-        const albumName = input.album
-        const imageUrl = input.artUrl
-        const rawDuration = input.duration ?? 0
-        const yearStr = UNKNOWN_ITEM
+        const artistName = isResource ? input.artist : input.artist
+        const albumName = isResource ? input.album : input.album
+        const imageUrl = isResource ? input.artUrl : input.image
+        const rawDuration = isResource ? input.duration ?? 0 : input.duration ?? 0
+        const yearStr = !isResource && input.year ? String(input.year) : UNKNOWN_ITEM
 
         registerRemoteTrack({
             id,
-            remoteId: String(playbackId),
+            remoteId: String(input.id),
             streaming: true,
             uuid: key,
             name,
@@ -79,7 +81,7 @@ import { browser } from '$app/environment'
             directory: undefined,
             fileName: undefined,
             scannedAt: Date.now(),
-            url: spicyamll.streamUrl(playbackId, {
+            url: spicyamll.streamUrl(input.id, {
                 codec: 'aac',
                 fallback: true,
                 language: 'en-US',
@@ -244,10 +246,9 @@ import { browser } from '$app/environment'
         results = []
 
         try {
-            results = await searchMusic(term)
-            results = await enrichDiscoveryArtwork(results)
+            results = await enrichDiscoveryArtwork(await searchDiscovery(term))
         } catch (e) {
-            error = e instanceof Error ? e.message : 'Unable to search music catalog'
+            error = e instanceof Error ? e.message : 'Unable to search SpicyAMLL'
         } finally {
             loading = false
         }
@@ -259,8 +260,7 @@ import { browser } from '$app/environment'
             artist: album.artist || '',
             art: album.artUrl || '',
         })
-        const albumId = album.providerId || album.id
-        await goto(`/album/${encodeURIComponent(albumId)}?${params.toString()}`)
+        await goto(`/album/${encodeURIComponent(album.id)}?${params.toString()}`)
     }
 
     const viewArtist = async (artist: DiscoveryItem) => {
