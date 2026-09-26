@@ -76,7 +76,7 @@ export class LyricsProvider {
 			const data = await response.json()
 			if (!data || !Array.isArray(data.results) || data.results.length === 0) return null
 
-			const normalize = (value: unknown) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\([^)]*\\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+			const normalize = (value: unknown) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
 			const title = normalize(track.name)
 			const artist = normalize(formatArtists(track.artists))
 			const duration = Math.round(track.duration)
