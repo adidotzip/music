@@ -78,7 +78,7 @@
             albumDownloadItems = normalized.map((song) => ({
                 id: generateStableId(`spicyamll:${song.id}`),
                 name: song.name,
-                status: 'queued',
+                status: 'queued' as const,
                 progress: 0,
             }))
 
@@ -123,12 +123,6 @@
         if (!songIds.length) return
         const randomIndex = Math.floor(Math.random() * songIds.length)
         player.playTrack(randomIndex, songIds)
-    }
-
-    const updateAlbumDownloadItem = (id: number, update: Partial<AlbumDownloadItem>) => {
-        const item = albumDownloadItems.find((entry) => entry.id === id)
-        if (!item) return
-        Object.assign(item, update)
     }
 
     const stopAlbumDownload = async () => {
