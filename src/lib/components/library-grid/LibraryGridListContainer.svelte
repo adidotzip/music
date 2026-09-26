@@ -1,6 +1,6 @@
 <script lang="ts" generics="Type extends LibraryGridItemType">
 	import { getLibraryValue, type AlbumData } from '$lib/library/get/value.ts'
-	import { dbGetAlbumTracksIdsByName } from '$lib/library/get/ids'
+	import { dbGetAlbumTracksIdsByName, dbGetArtistTracksIdsByName } from '$lib/library/get/ids'
 	import LibraryGridItem, {
 		type LibraryGridItemType,
 		type LibraryItemGridItemProps,
@@ -13,19 +13,34 @@
 	}
 
  	const { items, type, item: itemSnippet }: Props<Type> = $props()
-	let visibleItems = $state<readonly number[]>(items)
+	let visibleItems = $state<readonly number[]>([])
+	let refreshGeneration = 0
 
 	const refreshVisibleItems = async () => {
-		if (type !== 'albums') {
-			visibleItems = items
-			return
-		}
-
+		const generation = ++refreshGeneration
 		const downloaded: number[] = []
+
 		for (const itemId of items) {
-			const album = await getLibraryValue('albums', itemId, true) as AlbumData | undefined
-			if (!album) continue
-			const trackIds = await dbGetAlbumTracksIdsByName(album.name)
+			if (type === 'albums') {
+				const album = await getLibraryValue('albums', itemId, true) as AlbumData | undefined
+				if (!album) continue
+
+				const trackIds = await dbGetAlbumTracksIdsByName(album.name)
+				let hasDownloadedTrack = false
+				for (const trackId of trackIds) {
+					const track = await getLibraryValue('tracks', trackId, true)
+					if (track?.file) {
+						hasDownloadedTrack = true
+						break
+					}
+				}
+				if (hasDownloadedTrack) downloaded.push(itemId)
+				continue
+			}
+
+			const artist = await getLibraryValue('artists', itemId, true)
+			if (!artist) continue
+			const trackIds = await dbGetArtistTracksIdsByName(artist.name)
 			let hasDownloadedTrack = false
 			for (const trackId of trackIds) {
 				const track = await getLibraryValue('tracks', trackId, true)
@@ -36,20 +51,19 @@
 			}
 			if (hasDownloadedTrack) downloaded.push(itemId)
 		}
-		visibleItems = downloaded
+
+		if (generation === refreshGeneration) {
+			visibleItems = downloaded
+		}
 	}
 
 	$effect(() => {
-		let cancelled = false
-		const refresh = async () => {
-			await refreshVisibleItems()
-			if (cancelled) return
-		}
-		void refresh()
-		window.addEventListener('adi-music-library-updated', refresh)
+		void items
+		void type
+		void refreshVisibleItems()
+		window.addEventListener('adi-music-library-updated', refreshVisibleItems)
 		return () => {
-			cancelled = true
-			window.removeEventListener('adi-music-library-updated', refresh)
+			window.removeEventListener('adi-music-library-updated', refreshVisibleItems)
 		}
 	})
 </script>
