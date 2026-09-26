@@ -8,10 +8,11 @@ const MAX_DOWNLOAD_BYTES = 300 * 1024 * 1024
 const pendingDownloads = new Map<string, Promise<number>>()
 const LOCAL_ALIAS_PREFIX = 'adi_music_local_track_alias:'
 
-const getCachedLocalTrackId = (sourceId: number): number | undefined => {
-	if (typeof window === 'undefined' || sourceId >= 0) return undefined
+const getCachedLocalTrackId = (sourceId: number | string): number | undefined => {
+	if (typeof window === 'undefined') return undefined
+	const key = String(sourceId)
 	try {
-		const id = Number(localStorage.getItem(LOCAL_ALIAS_PREFIX + sourceId) || '')
+		const id = Number(localStorage.getItem(LOCAL_ALIAS_PREFIX + key) || '')
 		return Number.isFinite(id) && id > 0 ? id : undefined
 	} catch {
 		return undefined
@@ -70,13 +71,50 @@ const getDownloadUrls = (track: LibraryTrack): string[] => {
 }
 
 const downloadAndImport = async (trackId: number): Promise<number> => {
-	const track = await getLibraryValue('tracks', trackId, true)
+	let resolvedTrackId = trackId
+	let track = await getLibraryValue('tracks', resolvedTrackId, true)
 	if (!track) {
-		throw new Error('Track is no longer available.')
+		// Discovery/search tracks can expose a catalog ID without first being
+		// materialized in the local IndexedDB library. Create the same remote
+		// track record the player uses, but do not touch the player itself.
+		const remoteId = String(trackId)
+		const { parseDiscoveryResults, spicyamll } = await import('$lib/services/spicyamll.ts')
+		const response = await spicyamll.search({ term: remoteId, types: 'songs', limit: 10 })
+		const songs = parseDiscoveryResults(response).filter((item) => item.type === 'song')
+		const match = songs.find((song) => String(song.id) === remoteId)
+		if (!match) throw new Error('Track is no longer available.')
+
+		resolvedTrackId = -Math.max(1, Math.abs(hashRemoteTrackId(remoteId)))
+		track = {
+			id: resolvedTrackId,
+			remoteId: remoteId,
+			streaming: true,
+			uuid: 'spicyamll:' + remoteId,
+			name: match.name,
+			album: match.album || UNKNOWN_ITEM,
+			artists: match.artist ? [match.artist] : ['Unknown Artist'],
+			year: UNKNOWN_ITEM,
+			duration: match.duration ?? 0,
+			genre: match.genre ? [match.genre] : [],
+			trackNo: 0,
+			trackOf: 0,
+			discNo: 0,
+			discOf: 0,
+			language: undefined,
+			image: match.artUrl ? { optimized: false, small: match.artUrl, full: match.artUrl } : undefined,
+			file: undefined,
+			directory: undefined,
+			fileName: undefined,
+			scannedAt: Date.now(),
+			url: spicyamll.streamUrl(remoteId, { codec: 'aac', fallback: true, language: 'en-US' }),
+			favorite: false,
+			type: 'track',
+		} as LibraryTrack
+		registerOfflineRemoteTrack(track)
 	}
 
 	if (track.file instanceof File) return track.id
-	if (trackId >= 0 && track.file) return track.id
+	if (resolvedTrackId >= 0 && track.file) return track.id
 
 	const database = await getDatabase()
 	const existing = await database.getFromIndex('tracks', 'uuid', track.uuid)
@@ -214,9 +252,9 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 		}
 	}
 
-	const localTrackId = await dbImportTrack(parsedData, trackId >= 0 ? trackId : undefined)
+	const localTrackId = await dbImportTrack(parsedData, resolvedTrackId >= 0 ? resolvedTrackId : undefined)
 
-	if (trackId < 0) {
+	if (resolvedTrackId < 0 || resolvedTrackId !== trackId) {
 		try {
 			localStorage.setItem(LOCAL_ALIAS_PREFIX + trackId, String(localTrackId))
 		} catch {}
@@ -224,17 +262,30 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 	return localTrackId
 }
 
-export const ensureTrackIsStoredLocally = async (trackId: number): Promise<number> => {
+const hashRemoteTrackId = (value: string): number => {
+	let hash = 0
+	for (let i = 0; i < value.length; i++) hash = (hash << 5) - hash + value.charCodeAt(i) | 0
+	return hash
+}
+
+let offlineRemoteRegistry = new Map<string, LibraryTrack>()
+const registerOfflineRemoteTrack = (track: LibraryTrack) => {
+	offlineRemoteRegistry.set(String(track.remoteId ?? track.id), track)
+}
+
+export const ensureTrackIsStoredLocally = async (trackId: number | string): Promise<number> =>
 	const cachedLocalTrackId = getCachedLocalTrackId(trackId)
 	if (cachedLocalTrackId) {
 		const cachedTrack = await getLibraryValue('tracks', cachedLocalTrackId, true)
 		if (cachedTrack?.file) return cachedLocalTrackId
 	}
 
+	const numericTrackId = typeof trackId === 'string' ? Number(trackId) : trackId
+	const existingLocal = Number.isFinite(numericTrackId) ? await getLibraryValue('tracks', numericTrackId, true) : undefined
 	const existingRequest = pendingDownloads.get(String(trackId))
 	if (existingRequest) return existingRequest
 
-	const request = downloadAndImport(trackId).finally(() => {
+	const request = downloadAndImport(Number.isFinite(numericTrackId) ? numericTrackId : -Math.max(1, Math.abs(hashRemoteTrackId(String(trackId))))).finally(() => {
 		pendingDownloads.delete(String(trackId))
 	})
 
