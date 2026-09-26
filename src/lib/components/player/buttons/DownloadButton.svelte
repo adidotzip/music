@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ensureTrackIsStoredLocally, getStoredLocalTrackId } from '$lib/library/local-download.ts'
+	import { cancelTrackDownload, ensureTrackIsStoredLocally, getStoredLocalTrackId, isDownloadAbortError } from '$lib/library/local-download.ts'
 	import { snackbar } from '$lib/components/snackbar/snackbar.ts'
 
 	interface Props {
@@ -41,15 +41,22 @@
 		event.preventDefault()
 		event.stopPropagation()
 
-		if (state === 'loading' || state === 'done') return
+		const idToDownload = typeof trackId === 'string' ? Number(trackId) : trackId
+		if (typeof idToDownload !== 'number' || Number.isNaN(idToDownload)) {
+			snackbar.unexpectedError(new Error('Invalid track ID for download'))
+			return
+		}
+
+		if (state === 'loading') {
+			cancelTrackDownload(idToDownload)
+			localState = 'idle'
+			progress = 0
+			return
+		}
+		if (state === 'done') return
 
 		localState = 'loading'
 		try {
-			const idToDownload = typeof trackId === 'string' ? Number(trackId) : trackId
-			if (typeof idToDownload !== 'number' || Number.isNaN(idToDownload)) {
-				throw new Error('Invalid track ID for download')
-			}
-
 			await ensureTrackIsStoredLocally(
 				idToDownload,
 				(value) => (progress = value),
@@ -57,6 +64,12 @@
 			progress = 100
 			localState = 'done'
 		} catch (error) {
+			if (isDownloadAbortError(error)) {
+				localState = 'idle'
+				progress = 0
+				return
+			}
+
 			localState = 'error'
 			snackbar.unexpectedError(error)
 			window.setTimeout(() => {
@@ -68,11 +81,11 @@
 
 <button
 	type="button"
-	title={state === 'done' ? 'Available offline' : state === 'loading' ? 'Saving offline…' : state === 'error' ? 'Download failed. Try again' : 'Download for offline playback'}
+	title={state === 'done' ? 'Available offline' : state === 'loading' ? 'Stop downloading' : state === 'error' ? 'Download failed. Try again' : 'Download for offline playback'}
 	class={['download-button interactable', large && 'download-button-large', state === 'done' && 'is-complete', state === 'error' && 'is-error', className]}
-	aria-label={state === 'done' ? 'Downloaded for offline playback' : state === 'loading' ? 'Saving song offline' : state === 'error' ? 'Download failed, try again' : 'Download song for offline playback'}
+	aria-label={state === 'done' ? 'Downloaded for offline playback' : state === 'loading' ? 'Stop downloading song' : state === 'error' ? 'Download failed, try again' : 'Download song for offline playback'}
 	aria-busy={state === 'loading'}
-	disabled={state === 'loading' || state === 'done'}
+	disabled={state === 'done'}
 	onclick={download}
 >
 	<span class={['download-icon', state === 'loading' && 'is-loading', state === 'done' && 'is-done', state === 'error' && 'is-error']}>
