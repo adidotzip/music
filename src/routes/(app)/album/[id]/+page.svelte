@@ -24,10 +24,15 @@
     let downloadingAlbum = $state(false)
     let albumDownloadProgress = $state(0)
 
-    const artworkUrl = (url: unknown, size = 1200) =>
-        typeof url === 'string'
-            ? url.replace(/\{w\}/g, String(size)).replace(/\{h\}/g, String(size)).replace(/\{f\}/g, 'jpg').replace(/\{c\}/g, 'bb')
-            : undefined
+    const artworkUrl = (url: unknown, size = 1200) => {
+        if (typeof url !== 'string' || !url) return undefined
+        return url
+            .replace(/\{w\}/g, String(size))
+            .replace(/\{h\}/g, String(size))
+            .replace(/\{f\}/g, 'jpg')
+            .replace(/\{c\}/g, 'bb')
+            .replace(/\d+x\d+bb\./, `${size}x${size}bb.`)
+    }
 
     const load = async () => {
         loading = true
