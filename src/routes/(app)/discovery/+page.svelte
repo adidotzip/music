@@ -227,7 +227,10 @@ import { browser } from '$app/environment'
     }
 
     const viewArtist = async (artist: DiscoveryItem) => {
-        const params = new URLSearchParams({\n            name: artist.name,\n            art: artist.artUrl || '',\n        })\n        await goto(`/artist/${encodeURIComponent(artist.id)}?${params.toString()}`)
+        const params = new URLSearchParams({
+            name: artist.name,
+            art: artist.artUrl || '',
+        })\n        await goto(`/artist/${encodeURIComponent(artist.id)}?${params.toString()}`)
     }
 
     onMount(() => {
