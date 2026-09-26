@@ -4,38 +4,76 @@
 	interface Props {
 		ttml: string | null
 		audioElement: HTMLAudioElement | null
+		/** Song title — forwarded to <am-lyrics> so it can run its own LyricsPlus lookup if ttml is absent */
 		songTitle?: string
+		/** Comma-separated artist string */
 		songArtist?: string
+		/** Album name (optional) */
 		songAlbum?: string
-		songDurationMs?: number
+		/** Song duration in milliseconds */
+	songDurationMs?: number
+		/** "Title - Artist" search phrase for the LyricsPlus catalog fallback */
 		query?: string
 		class?: string
 	}
 
-	let { ttml, audioElement, songTitle, songArtist, songAlbum, songDurationMs, query, class: className }: Props = $props()
+	let {
+		ttml,
+		audioElement,
+		songTitle,
+		songArtist,
+		songAlbum,
+		songDurationMs,
+		query,
+		class: className,
+	}: Props = $props()
+
 	let el: HTMLElement | undefined = $state()
 
 	if (browser) {
-		void import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@uimaxbai/am-lyrics@1.7.2/dist/src/am-lyrics.min.js')
+		void import('@uimaxbai/am-lyrics/am-lyrics.js')
 	}
+
+	$effect(() => {
+		const currentEl = el
+		if (currentEl?.shadowRoot) {
+			const styleId = 'am-lyrics-hide-watermark'
+			if (!currentEl.shadowRoot.getElementById(styleId)) {
+				const style = document.createElement('style')
+				style.id = styleId
+				style.textContent = '.version-info { display: none !important; }'
+				currentEl.shadowRoot.appendChild(style)
+			}
+		}
+	})
 
 	$effect(() => {
 		const currentEl = el
 		const currentAudio = audioElement
 		if (!(currentEl && currentAudio)) return
 
-		let frameId = 0
+		let frameId: number
+
 		const updateTime = () => {
-			;(currentEl as any).currentTime = currentAudio.currentTime * 1000
-			if (!currentAudio.paused) frameId = requestAnimationFrame(updateTime)
+			const timeMs = Math.floor(currentAudio.currentTime * 1000)
+			if ((currentEl as any).currentTime !== timeMs) {
+				;(currentEl as any).currentTime = timeMs
+			}
+			if (!currentAudio.paused) {
+				frameId = requestAnimationFrame(updateTime)
+			}
 		}
+
 		const handleTimeUpdate = () => {
-			;(currentEl as any).currentTime = currentAudio.currentTime * 1000
+			if (currentAudio.paused) {
+				;(currentEl as any).currentTime = Math.floor(currentAudio.currentTime * 1000)
+			}
 		}
+
 		const handlePlay = () => {
-			if (frameId) cancelAnimationFrame(frameId)
 			frameId = requestAnimationFrame(updateTime)
 		}
+
 		const handlePause = () => {
 			if (frameId) cancelAnimationFrame(frameId)
 		}
@@ -43,7 +81,10 @@
 		currentAudio.addEventListener('timeupdate', handleTimeUpdate)
 		currentAudio.addEventListener('play', handlePlay)
 		currentAudio.addEventListener('pause', handlePause)
-		updateTime()
+
+		if (!currentAudio.paused) {
+			frameId = requestAnimationFrame(updateTime)
+		}
 
 		return () => {
 			currentAudio.removeEventListener('timeupdate', handleTimeUpdate)
@@ -56,12 +97,18 @@
 	$effect(() => {
 		const currentEl = el
 		if (!currentEl) return
-		const handleLineClick = (event: Event) => {
-			const timestamp = (event as CustomEvent<{ timestamp?: number }>).detail?.timestamp
-			if (audioElement && typeof timestamp === 'number') audioElement.currentTime = timestamp / 1000
+
+		const handleLineClick = (e: Event) => {
+			const customEvent = e as CustomEvent<{ timestamp: number }>
+			if (audioElement && customEvent.detail && typeof customEvent.detail.timestamp === 'number') {
+				audioElement.currentTime = customEvent.detail.timestamp / 1000
+			}
 		}
+
 		currentEl.addEventListener('line-click', handleLineClick)
-		return () => currentEl.removeEventListener('line-click', handleLineClick)
+		return () => {
+			currentEl.removeEventListener('line-click', handleLineClick)
+		}
 	})
 </script>
 
@@ -89,10 +136,14 @@
 		-webkit-overflow-scrolling: touch;
 		scroll-behavior: auto !important;
 		transform: translateZ(0);
+
 		--highlight-color: var(--lyric-active-fill, #ffffff);
 		--am-lyrics-highlight-color: var(--lyric-active-fill, #ffffff);
 		--am-lyrics-compact-font-size: 34px;
 		--am-lyrics-compact-line-spacing: 24px;
 	}
-	am-lyrics::-webkit-scrollbar { display: none; }
+
+	am-lyrics::-webkit-scrollbar {
+		display: none;
+	}
 </style>
