@@ -27,8 +27,10 @@ export class PlayerStore {
 	readonly #main = useMainStore()
 
 	readonly #audio = new Audio()
+	#audioSource: string | null = null
 	readonly #audioLoader = new AudioLoader((src) => {
-		this.#audio.preload = src ? 'auto' : 'metadata'
+		this.#audioSource = src
+		this.#audio.preload = 'metadata'
 		this.#audio.src = src ?? ''
 		if (src) {
 			this.#audio.load()
@@ -293,9 +295,11 @@ export class PlayerStore {
 			const track = this.activeTrack
 			if (!track || this.#audioLoader.loading) return
 
+			const source = audio.currentSrc || audio.src
+			if (!source || source !== this.#audioSource) return
+
 			const code = audio.error?.code
-			const detail = audio.error?.message
-			console.warn('Audio media error:', { code, detail, src: audio.currentSrc || audio.src })
+			console.warn('Audio media error:', { code, src: source })
 
 			if (this.#failedRemoteTracks.has(track.id)) return
 			this.#failedRemoteTracks.add(track.id)
@@ -307,6 +311,14 @@ export class PlayerStore {
 				id: 'failed-to-play-audio',
 				duration: 10_000,
 			})
+		}
+
+		audio.onstalled = () => {
+			// Native media loading may stall briefly; do not turn a transient stall into a hard failure.
+		}
+
+		audio.onabort = () => {
+			// Source changes intentionally abort the previous media resource.
 		}
 
 		audio.onseeked = () => {
@@ -574,6 +586,12 @@ export class PlayerStore {
 		this.playing = nextState
 		this.#autoplayTrackId = nextState ? activeTrackId : null
 		if (nextState) {
+			if (activeTrackId !== null && this.#failedRemoteTracks.has(activeTrackId)) {
+				this.playing = false
+				this.#autoplayTrackId = null
+				return
+			}
+
 			this.#audio.preload = 'auto'
 			if (this.#audioLoader.loading) {
 				return
