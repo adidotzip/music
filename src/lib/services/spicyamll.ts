@@ -89,7 +89,7 @@ export const spicyamll = {
 	recommendations: (params: SpicyApiParams) => request<unknown>('/recommendations', params),
 	catalogSearch: (storefront: string, params: SpicyApiParams) =>
 		request<unknown>(`/get/v1/catalog/${encodeURIComponent(storefront)}/search`, params).then(unwrap),
-	artist: (params: SpicyApiParams) => request<unknown>('/get/artist', params).then(unwrap),
+	artist: (params: SpicyApiParams) => request<unknown>('/artist', params).then(unwrap),
 	album: (params: SpicyApiParams) => request<unknown>('/album', params).then(unwrap),
 	albumTracks: async (albumId: string | number) => {
 		const payload = await request<unknown>('/album', { id: String(albumId), l: 'en-US' })
@@ -118,8 +118,8 @@ export const spicyamll = {
 	musicVideoById: (mvId: string | number) => request<unknown>(`/get/musicvideo/${encodeURIComponent(mvId)}`).then(unwrap),
 	musicVideoDownload: (params: SpicyApiParams) => request<unknown>('/get/musicvideo/download', params).then(unwrap),
 	musicVideoStream: (params: SpicyApiParams) => request<unknown>('/get/musicvideo/stream', params).then(unwrap),
-	artistAlbums: (params: SpicyApiParams) => request<unknown>('/get/artist/albums', params).then(unwrap),
-	artistSongs: (params: SpicyApiParams) => request<unknown>('/get/artist/songs', params).then(unwrap),
+	artistAlbums: (params: SpicyApiParams) => request<unknown>('/artist/albums', params).then(unwrap),
+	artistSongs: (params: SpicyApiParams) => request<unknown>('/artist/songs', params).then(unwrap),
 	downloadFormat: (fmt: string, params: SpicyApiParams) =>
 		request<unknown>(`/get/download/${encodeURIComponent(fmt)}`, params).then(unwrap),
 	songs: (id: string | number) => request<unknown>(`/get/songs/${encodeURIComponent(id)}`).then(unwrap),
