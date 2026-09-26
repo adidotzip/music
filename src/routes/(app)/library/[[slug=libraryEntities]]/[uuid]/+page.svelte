@@ -75,6 +75,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		artist: string
 		image: string
 		year: string
+		localUuid: string
 	}>>([])
 	let localArtistTrackIds = $state<number[]>([])
 
