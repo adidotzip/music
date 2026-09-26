@@ -127,14 +127,40 @@
 					const localArtistId = getLibraryArtists().find(
 						(artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase(),
 					)?.id
-					const [profile, albums] = await Promise.all([
+					const [profile, albums, localAlbumIds] = await Promise.all([
 						getArtistProfile(localArtistId, item.name),
 						getAlbumsForArtist(localArtistId, item.name),
+						getLibraryItemIds('albums', { sort: 'name' }),
 					])
 
 					if (cancelled) return
 					artistProfile = profile
-					artistAlbums = albums.slice(0, 12)
+
+					const localAlbums: AlbumData[] = []
+					for (const albumId of localAlbumIds) {
+						const album = await getLibraryValue('albums', albumId, true)
+						if (!album) continue
+						const trackIds = await dbGetAlbumTracksIdsByName(album.name)
+						let downloaded = false
+						for (const trackId of trackIds) {
+							const track = await getLibraryValue('tracks', trackId, true)
+							if (track?.file) {
+								downloaded = true
+								break
+							}
+						}
+						if (downloaded) localAlbums.push(album)
+					}
+
+					const normalized = (value: string) => value.trim().toLowerCase()
+					artistAlbums = albums
+						.map((album) => {
+							const localAlbum = localAlbums.find((candidate) => normalized(candidate.name) === normalized(album.name))
+							if (!localAlbum) return null
+							return { ...album, localUuid: localAlbum.uuid }
+						})
+						.filter((album): album is NonNullable<typeof album> => album !== null)
+						.slice(0, 12)
 
 					const downloadedIds: number[] = []
 					for (const trackId of tracks.tracksIds) {
@@ -373,7 +399,13 @@
 				<h2 class="mb-4 text-headline-sm">Albums</h2>
 				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
 					{#each artistAlbums as album (album.id)}
-						<div class="min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh">
+						<a
+							href={resolve('/(app)/library/[[slug=libraryEntities]]/[uuid]', {
+								slug: 'albums',
+								uuid: album.localUuid,
+							})}
+							class="min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh transition-transform hover:-translate-y-0.5 hover:bg-surfaceContainerHighest"
+						>
 							<div class="aspect-square overflow-hidden rounded-2xl bg-surfaceContainerHighest">
 								<Artwork src={album.image} alt={album.name} fallbackIcon="album" class="size-full rounded-2xl" />
 							</div>
@@ -381,7 +413,7 @@
 								<div class="truncate text-body-md font-medium">{album.name}</div>
 								{#if album.year}<div class="text-body-sm text-onSurfaceVariant">{album.year}</div>{/if}
 							</div>
-						</div>
+						</a>
 					{/each}
 				</div>
 			</section>
