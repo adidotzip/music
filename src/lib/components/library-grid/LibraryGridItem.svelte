@@ -4,6 +4,7 @@
 	import { page } from '$app/state'
 	import type { RouteId } from '$app/types'
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
+	import { getArtistProfile } from '$lib/services/spicyamll.ts'
 	import { compressArtwork } from '$lib/helpers/compress-artwork.ts'
 	import type { QueryResult } from '$lib/db/query/query.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte.ts'
@@ -83,18 +84,17 @@
 
 		const artist = value as ArtistData
 
-		const trackIds = await dbGetArtistTracksIdsByName(artist.name)
-		for (const trackId of trackIds) {
-			const track = await getLibraryValue('tracks', trackId, true)
-			if (!track?.file) continue
-
-			const image = track.image?.full ?? track.image?.small
-			if (image) {
-				artworkSource = image
-				return
-			}
+		// Artist cards must use the same artist profile artwork as the
+		// artist detail page. Track artwork is album artwork and must never
+		// be used as an artist portrait.
+		const profile = await getArtistProfile(undefined, artist.name)
+		if (profile.image) {
+			artworkSource = profile.image
+			return
 		}
 
+		// Only use a locally cached artist portrait as a fallback. Never fall
+		// back to a downloaded track's artwork because that is album art.
 		const artistArtwork = await getArtistArtwork(artist.name)
 		if (artistArtwork) artworkSource = artistArtwork
 	}
