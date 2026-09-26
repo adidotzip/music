@@ -491,8 +491,12 @@ export const getArtistProfile = async (
 	artistId: string | number | undefined,
 	artistName: string,
 ): Promise<SpicyArtistProfile> => {
+	// The canonical artist identifier for SpicyAMLL is the Apple Music/iTunes artistId.
+	// Resolve it from iTunes first so local library IDs never get sent as artist IDs.
+	const appleMusicArtistId = await resolveAppleMusicArtistId(artistName)
+	const canonicalArtistId = appleMusicArtistId ?? artistId
 	const candidates: SpicyApiParams[] = [
-		...(artistId !== undefined ? [{ artist: artistId }, { id: artistId }, { artistId }] : []),
+		...(canonicalArtistId !== undefined ? [{ artist: canonicalArtistId }] : []),
 		{ artist: artistName },
 		{ name: artistName },
 		{ query: artistName },
@@ -541,7 +545,7 @@ export const getArtistProfile = async (
 	}
 
 	return {
-		id: String(artistId ?? ''),
+		id: String(canonicalArtistId ?? ''),
 		name: artistName,
 		image: '',
 		genre: '',
@@ -550,11 +554,11 @@ export const getArtistProfile = async (
 }
 
 export const getAlbumsForArtist = async (artistId: string | number | undefined, artistName: string) => {
-	const candidates: SpicyApiParams[] = [
-		...(artistId !== undefined ? [{ artist: artistId }, { id: artistId }, { artistId }] : []),
-		{ artist: artistName },
-		{ name: artistName },
-	]
+	const appleMusicArtistId = await resolveAppleMusicArtistId(artistName)
+	const canonicalArtistId = appleMusicArtistId ?? artistId
+	const candidates: SpicyApiParams[] = canonicalArtistId !== undefined
+		? [{ artist: canonicalArtistId }]
+		: [{ artist: artistName }]
 	for (const params of candidates) {
 		try {
 			const raw = unwrap<unknown>(await spicyamll.artistAlbums(params))
@@ -606,13 +610,14 @@ export const getAlbumsForArtist = async (artistId: string | number | undefined, 
 	return []
 }
 
-export const getSongsForArtist = async (artistId: string | number, artistName?: string) => {
-	const candidates = [
-		{ artist: artistId },
-		{ id: artistId },
-		{ artistId },
-		...(artistName ? [{ name: artistName }, { artist: artistName }] : []),
-	]
+export const getSongsForArtist = async (artistId: string | number | undefined, artistName?: string) => {
+	const resolvedId = artistName ? await resolveAppleMusicArtistId(artistName) : undefined
+	const canonicalArtistId = resolvedId ?? artistId
+	const candidates: SpicyApiParams[] = canonicalArtistId !== undefined
+		? [{ artist: canonicalArtistId }]
+		: artistName
+			? [{ artist: artistName }]
+			: []
 	for (const params of candidates) {
 		try {
 			const value = normalizeTracks(await spicyamll.artistSongs(params))
