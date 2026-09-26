@@ -96,6 +96,7 @@
 		}
 
 		#mini-player .flex.h-min.w-full.grow > :first-child {
+			width: 100%;
 			max-width: 24rem;
 		}
 
