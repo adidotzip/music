@@ -30,6 +30,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	const itemsIds = $derived(data.itemsIdsQuery.value)
 	const slug = $derived(page.params.slug as typeof data.slug | undefined)
 	const isLibraryHome = $derived(!slug)
+	const isAlbumOrArtistDetails = $derived(Boolean(page.params.uuid) && (slug === 'albums' || slug === 'artists'))
 	const isHandHeldDevice = isMobile()
 
 	type LibraryNavSlug = 'home' | NonNullable<typeof slug>
@@ -116,7 +117,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 {/snippet}
 
 {#snippet layoutBottom()}
-	{#if isHandHeldDevice}
+	{#if isHandHeldDevice && !isAlbumOrArtistDetails}
 		<div
 			class="pointer-events-auto grid h-16 w-full grid-cols-[repeat(auto-fit,minmax(0,1fr))] bg-surfaceContainer sm:hidden active-view-regular:view-name-[bottom-bar]"
 		>
@@ -131,7 +132,9 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 		isHandHeldDevice ? 'hidden sm:flex' : 'flex',
 	]}
 >
-	{@render navItemsSnippet('h-14 w-20')}
+	{#if !isAlbumOrArtistDetails}
+		{@render navItemsSnippet('h-14 w-20')}
+	{/if}
 
 	{#if !isLibraryHome && (slug === 'albums' || slug === 'artists') && isWideLayout}
 		<IconButton
