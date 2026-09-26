@@ -3,434 +3,465 @@ import type { TrackData } from '$lib/library/get/value-queries.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
 export interface ProviderResponse {
-	rawLyrics: string
-	source: 'lrc-red' | 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string
-	isPlainOnly?: boolean
+    rawLyrics: string
+    source: 'lrc-red' | 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string
+    isPlainOnly?: boolean
 }
 
 export class LyricsProvider {
-	static async fetchByProviderId(
-		providerId: string,
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		if (providerId === 'lrc-red') return LyricsProvider.fetchFromLrcRed(track, signal)
-		if (providerId === 'adi-lrcmux') return LyricsProvider.fetchFromAdiLrcmux(track, signal)
-		if (providerId === 'adi') return LyricsProvider.fetchFromAdi(track, signal)
-		if (providerId === 'lrcmux') return LyricsProvider.fetchFromLrcmux(track, signal)
-		if (providerId === 'lrclib') return LyricsProvider.fetchFromLrclib(track, signal)
-		if (providerId === 'unison') return LyricsProvider.fetchFromUnison(track, signal)
-
-		if (typeof window !== 'undefined') {
-			try {
-				const rawCustoms = localStorage.getItem('snaeplayer-custom-lyrics-sources')
-				if (rawCustoms) {
-					const customs: Array<{ id: string; name: string; url: string }> =
-						JSON.parse(rawCustoms)
-					const targetCustom = customs.find((cs) => cs.id === providerId)
-					if (targetCustom) {
-						return LyricsProvider.fetchFromCustomSource(track, targetCustom, signal)
-					}
-				}
-			} catch {}
-		}
-		return null
-	}
-
-	static async getLyrics(
-		track: TrackData,
-		signal?: AbortSignal,
-		preferredProvider?: string,
-	): Promise<ProviderResponse | null> {
-		if (preferredProvider && preferredProvider !== 'auto' && preferredProvider !== 'uploaded') {
-			const preferredRes = await LyricsProvider.fetchByProviderId(
-				preferredProvider,
-				track,
-				signal,
-			)
-			if (preferredRes) return preferredRes
-		}
-
-		const standardOrder = ['lrc-red', 'adi-lrcmux', 'unison', 'lrclib']
-		for (const pid of standardOrder) {
-			if (preferredProvider && pid === preferredProvider) continue
-			const res = await LyricsProvider.fetchByProviderId(pid, track, signal)
-			if (res) return res
-		}
-
-		return null
-	}
-
-	static async fetchFromLrcRed(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		try {
-			const query = `${formatArtists(track.artists)} ${track.name}`.trim()
-			const url = new URL('https://lrc.red/api/v1')
-			url.searchParams.set('q', query)
-
-			const response = await fetch(url, { signal })
-			if (!response.ok) return null
-
-			const data = await response.json()
-			if (!data || !Array.isArray(data.results) || data.results.length === 0) return null
-
-			const normalize = (value: unknown) => String(value ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\([^)]*\)/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
-			const title = normalize(track.name)
-			const artist = normalize(formatArtists(track.artists))
-			const duration = Math.round(track.duration)
-
-			const ranked = data.results
-				.filter((item: any) => item && typeof item.lyricsUrl === 'string')
-				.map((item: any) => {
-					const itemTitle = normalize(item.track_name)
-					const itemArtist = normalize(item.artist_name)
-					const itemDuration = Number(item.duration)
-					const durationDiff = Number.isFinite(itemDuration) ? Math.abs(itemDuration - duration) : Infinity
-					const titleMatch = itemTitle === title
-					const artistMatch = itemArtist === artist || itemArtist.includes(artist) || artist.includes(itemArtist)
-					const score = (titleMatch ? 100 : 0) + (artistMatch ? 50 : 0) + (durationDiff <= 3 ? 30 : durationDiff <= 8 ? 15 : 0) - Math.min(durationDiff, 60)
-					return { item, score, titleMatch, artistMatch }
-				})
-				.sort((a: any, b: any) => b.score - a.score)
-
-			const best = ranked[0]
-			if (!best || (!best.titleMatch && !best.artistMatch)) return null
-
-			const lyricResponse = await fetch(best.item.lyricsUrl, { signal })
-			if (!lyricResponse.ok) return null
-			const rawLyrics = await lyricResponse.text()
-			if (!rawLyrics.trim()) return null
-
-			return { rawLyrics, source: 'lrc-red', isPlainOnly: false }
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
-	}
-
-	static async fetchFromAdi(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		try {
-			const query = `${track.name} ${formatArtists(track.artists)}`
-			const searchUrl = new URL('https://lyrics.imreallyadi.space/api/search')
-			searchUrl.searchParams.set('q', query)
-
-			const searchResponse = await fetch(searchUrl, { signal })
-			if (!searchResponse.ok) return null
-
-			const searchData = await searchResponse.json()
-			if (
-				!(searchData.ok && Array.isArray(searchData.results)) ||
-				searchData.results.length === 0
-			) {
-				return null
-			}
-
-			const bestMatch = searchData.results[0]
-			if (!(bestMatch && bestMatch.id)) return null
-
-			const lyricUrl = `https://lyrics.imreallyadi.space/api/lyrics/${bestMatch.id}?format=ttml`
-			const lyricResponse = await fetch(lyricUrl, { signal })
-			if (!lyricResponse.ok) return null
-
-			const lyricData = await lyricResponse.json()
-			if (!(lyricData.ok && lyricData.lyric)) return null
-
-			if (
-				(lyricData.lyric.format === 'ttml' || lyricData.lyric.format === 'qrc') &&
-				lyricData.lyric.rawContent
-			) {
-				return {
-					rawLyrics: lyricData.lyric.rawContent,
-					source: 'adi',
-					isPlainOnly: false,
-				}
-			}
-
-			if (lyricData.lyric.lyrics) {
-				return {
-					rawLyrics: lyricData.lyric.lyrics,
-					source: 'adi',
-					isPlainOnly: true,
-				}
-			}
-
-			return null
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
-	}
-
-	static async fetchFromAdiLrcmux(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		const adi = await LyricsProvider.fetchFromAdi(track, signal)
-		if (adi) return adi
-		return LyricsProvider.fetchFromLrcmux(track, signal)
-	}
-
-	static async fetchFromLrcmux(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		try {
-			const url = new URL('https://api.lrcmux.dev/compat/kpoe/v2/lyrics/get')
-			url.searchParams.set('artist', formatArtists(track.artists))
-			url.searchParams.set('title', track.name)
-
-			const response = await fetch(url, { signal })
-			if (!response.ok) return null
-
-			const data = await response.json()
-			if (!(data && Array.isArray(data.lyrics)) || data.lyrics.length === 0) {
-				return null
-			}
-
-			const formattedLines: string[] = []
-
-			for (const line of data.lyrics) {
-				if (typeof line.time !== 'number') continue
-
-				const text = line.text || ''
-
-				if (Array.isArray(line.syllabus) && line.syllabus.length > 0) {
-					const duration = typeof line.duration === 'number' ? line.duration : 0
-
-					const syllabusParts = line.syllabus
-						.map((word: any) => {
-							const wordText = word.text || ''
-							const wordTime = typeof word.time === 'number' ? word.time : line.time
-							const wordDur = typeof word.duration === 'number' ? word.duration : 0
-
-							return `${wordText}(${wordTime},${wordDur})`
-						})
-						.join('')
-
-					formattedLines.push(`[${line.time},${duration}]${syllabusParts}`)
-				} else {
-					const timeMs = line.time
-					const min = String(Math.floor(timeMs / 60_000)).padStart(2, '0')
-					const sec = String(Math.floor((timeMs % 60_000) / 1000)).padStart(2, '0')
-					const ms = String(Math.floor((timeMs % 1000) / 10)).padStart(2, '0')
-					const timestamp = `[${min}:${sec}.${ms}]`
-
-					formattedLines.push(`${timestamp}${text}`)
-				}
-			}
-
-			const rawLyrics = formattedLines.join('\n')
-			if (rawLyrics.trim().length === 0) return null
-
-			return {
-				rawLyrics,
-				source: 'lrcmux',
-				isPlainOnly: false,
-			}
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
-	}
-
-	static async fetchFromLrclib(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		const durationSeconds = Math.round(track.duration)
-
-		try {
-			const exactUrl = new URL('https://lrclib.net/api/get')
-			exactUrl.searchParams.set('track_name', track.name)
-			exactUrl.searchParams.set('artist_name', formatArtists(track.artists))
-			if (track.album && track.album !== UNKNOWN_ITEM) {
-				exactUrl.searchParams.set('album_name', track.album)
-			}
-			exactUrl.searchParams.set('duration', String(durationSeconds))
-
-			const exactResponse = await fetch(exactUrl, { signal })
-
-			if (exactResponse.ok) {
-				const data = await exactResponse.json()
-
-				if (data.instrumental) {
-					return {
-						rawLyrics: 'Instrumental',
-						source: 'lrclib',
-						isPlainOnly: false,
-					}
-				}
-
-				if (data.syncedLyrics) {
-					return {
-						rawLyrics: data.syncedLyrics,
-						source: 'lrclib',
-						isPlainOnly: false,
-					}
-				}
-
-				if (data.plainLyrics) {
-					return {
-						rawLyrics: data.plainLyrics,
-						source: 'lrclib',
-						isPlainOnly: true,
-					}
-				}
-			}
-
-			const searchUrl = new URL('https://lrclib.net/api/search')
-			searchUrl.searchParams.set('track_name', track.name)
-			searchUrl.searchParams.set('artist_name', formatArtists(track.artists))
-			searchUrl.searchParams.set('duration', String(durationSeconds))
-
-			const searchResponse = await fetch(searchUrl, { signal })
-			if (!searchResponse.ok) return null
-
-			const searchData = await searchResponse.json()
-			if (!Array.isArray(searchData) || searchData.length === 0) {
-				return null
-			}
-
-			const bestMatch = searchData.find(
-				(item: any) => item.duration && Math.abs(item.duration - durationSeconds) <= 4,
-			)
-
-			if (!bestMatch) return null
-
-			if (bestMatch.syncedLyrics) {
-				return {
-					rawLyrics: bestMatch.syncedLyrics,
-					source: 'lrclib',
-					isPlainOnly: false,
-				}
-			}
-
-			if (bestMatch.plainLyrics) {
-				return {
-					rawLyrics: bestMatch.plainLyrics,
-					source: 'lrclib',
-					isPlainOnly: true,
-				}
-			}
-
-			return null
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
-	}
-
-	static async fetchFromUnison(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		try {
-			const url = new URL('https://unison.boidu.dev/lyrics')
-			url.searchParams.set('song', track.name)
-			url.searchParams.set('artist', formatArtists(track.artists))
-
-			const response = await fetch(url, { signal })
-			if (!response.ok) return null
-
-			const resData = await response.json()
-			if (!(resData && resData.success && resData.data)) return null
-
-			const data = resData.data
-			if (!data.lyrics) return null
-
-			const matchTitle = track.name.trim().toLowerCase()
-			const matchArtist = formatArtists(track.artists).trim().toLowerCase()
-			const responseTitle = (data.song || '').trim().toLowerCase()
-			const responseArtist = (data.artist || '').trim().toLowerCase()
-
-			if (matchTitle !== responseTitle || matchArtist !== responseArtist) {
-				return null
-			}
-
-			const rawLyrics = data.lyrics
-			const isPlainOnly =
-				data.syncType === 'plain' || !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
-
-			return {
-				rawLyrics,
-				source: 'unison',
-				isPlainOnly,
-			}
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
-	}
-
-	static async fetchFromCustomSource(
-		track: TrackData,
-		customSource: { url: string; name: string },
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		try {
-			let urlStr = customSource.url
-
-			urlStr = urlStr.replace('{title}', encodeURIComponent(track.name))
-			urlStr = urlStr.replace('{artist}', encodeURIComponent(formatArtists(track.artists)))
-			urlStr = urlStr.replace(
-				'{album}',
-				encodeURIComponent(track.album && track.album !== UNKNOWN_ITEM ? track.album : ''),
-			)
-			urlStr = urlStr.replace(
-				'{duration}',
-				encodeURIComponent(String(Math.round(track.duration))),
-			)
-
-			const url = new URL(urlStr)
-			const response = await fetch(url, { signal })
-
-			if (!response.ok) return null
-
-			const contentType = response.headers.get('content-type') || ''
-
-			if (contentType.includes('application/json')) {
-				const data = await response.json()
-
-				const rawLyrics =
-					data.syncedLyrics ||
-					data.plainLyrics ||
-					data.lyrics ||
-					data.rawLyrics ||
-					data.rawContent ||
-					data.content
-
-				if (typeof rawLyrics === 'string') {
-					const isPlainOnly = !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
-
-					return {
-						rawLyrics,
-						source: customSource.name,
-						isPlainOnly,
-					}
-				}
-			} else {
-				const rawLyrics = await response.text()
-
-				if (rawLyrics.trim().length > 0) {
-					const isPlainOnly = !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
-
-					return {
-						rawLyrics,
-						source: customSource.name,
-						isPlainOnly,
-					}
-				}
-			}
-
-			return null
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
-	}
+    static async fetchByProviderId(
+        providerId: string,
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        if (providerId === 'lrc-red') return LyricsProvider.fetchFromLrcRed(track, signal)
+        if (providerId === 'adi-lrcmux') return LyricsProvider.fetchFromAdiLrcmux(track, signal)
+        if (providerId === 'adi') return LyricsProvider.fetchFromAdi(track, signal)
+        if (providerId === 'lrcmux') return LyricsProvider.fetchFromLrcmux(track, signal)
+        if (providerId === 'lrclib') return LyricsProvider.fetchFromLrclib(track, signal)
+        if (providerId === 'unison') return LyricsProvider.fetchFromUnison(track, signal)
+
+        if (typeof window !== 'undefined') {
+            try {
+                const rawCustoms = localStorage.getItem('snaeplayer-custom-lyrics-sources')
+                if (rawCustoms) {
+                    const customs: Array<{ id: string; name: string; url: string }> =
+                        JSON.parse(rawCustoms)
+                    const targetCustom = customs.find((cs) => cs.id === providerId)
+                    if (targetCustom) {
+                        return LyricsProvider.fetchFromCustomSource(track, targetCustom, signal)
+                    }
+                }
+            } catch {}
+        }
+        return null
+    }
+
+    static async getLyrics(
+        track: TrackData,
+        signal?: AbortSignal,
+        preferredProvider?: string,
+    ): Promise<ProviderResponse | null> {
+        if (preferredProvider && preferredProvider !== 'auto' && preferredProvider !== 'uploaded') {
+            const preferredRes = await LyricsProvider.fetchByProviderId(
+                preferredProvider,
+                track,
+                signal,
+            )
+            if (preferredRes) return preferredRes
+        }
+
+        const standardOrder = ['lrc-red', 'adi-lrcmux', 'unison', 'lrclib']
+        for (const pid of standardOrder) {
+            if (preferredProvider && pid === preferredProvider) continue
+            const res = await LyricsProvider.fetchByProviderId(pid, track, signal)
+            if (res) return res
+        }
+
+        return null
+    }
+
+    static async fetchFromLrcRed(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            const query = `${formatArtists(track.artists)} ${track.name}`.trim()
+            const url = new URL('https://lrc.red/api/v1')
+            url.searchParams.set('q', query)
+
+            const response = await fetch(url, { signal })
+            if (!response.ok) return null
+
+            const data = await response.json()
+
+            const results = Array.isArray(data) ? data : data?.results || data?.data
+            if (!Array.isArray(results) || results.length === 0) return null
+
+            const normalize = (value: unknown) =>
+                String(value ?? '')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/\([^)]*\)/g, '')
+                    .replace(/[^a-z0-9]+/g, ' ')
+                    .trim()
+
+            const title = normalize(track.name)
+            const artist = normalize(formatArtists(track.artists))
+            const duration = Math.round(track.duration)
+
+            const ranked = results
+                .map((item: any) => {
+                    if (!item) return null
+
+                    const itemTitle = normalize(item.track_name || item.trackName || item.name || item.title)
+                    const itemArtist = normalize(item.artist_name || item.artistName || item.artist)
+                    const itemDuration = Number(item.duration)
+
+                    const durationDiff = Number.isFinite(itemDuration) ? Math.abs(itemDuration - duration) : Infinity
+                    const titleMatch = Boolean(itemTitle && (itemTitle === title || itemTitle.includes(title) || title.includes(itemTitle)))
+                    const artistMatch = Boolean(itemArtist && (itemArtist === artist || itemArtist.includes(artist) || artist.includes(itemArtist)))
+
+                    const score =
+                        (titleMatch ? 100 : 0) +
+                        (artistMatch ? 50 : 0) +
+                        (durationDiff <= 3 ? 30 : durationDiff <= 8 ? 15 : 0) -
+                        Math.min(durationDiff, 60)
+
+                    return { item, score, titleMatch, artistMatch }
+                })
+                .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+                .sort((a, b) => b.score - a.score)
+
+            const best = ranked[0]
+            if (!best) return null
+
+            if (best.item.syncedLyrics || best.item.plainLyrics || best.item.lyrics) {
+                const rawLyrics = best.item.syncedLyrics || best.item.plainLyrics || best.item.lyrics
+                const isPlain = !best.item.syncedLyrics && (best.item.isPlainOnly || !rawLyrics.includes('['))
+                return { rawLyrics, source: 'lrc-red', isPlainOnly: isPlain }
+            }
+
+            const downloadUrl = best.item.lyricsUrl || best.item.downloadUrl || best.item.url
+            if (typeof downloadUrl === 'string') {
+                const lyricResponse = await fetch(downloadUrl, { signal })
+                if (!lyricResponse.ok) return null
+                const rawLyrics = await lyricResponse.text()
+                if (!rawLyrics.trim()) return null
+
+                const isPlainOnly = !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
+                return { rawLyrics, source: 'lrc-red', isPlainOnly }
+            }
+
+            return null
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
+    static async fetchFromAdi(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            const query = `${track.name} ${formatArtists(track.artists)}`
+            const searchUrl = new URL('https://lyrics.imreallyadi.space/api/search')
+            searchUrl.searchParams.set('q', query)
+
+            const searchResponse = await fetch(searchUrl, { signal })
+            if (!searchResponse.ok) return null
+
+            const searchData = await searchResponse.json()
+            if (
+                !(searchData.ok && Array.isArray(searchData.results)) ||
+                searchData.results.length === 0
+            ) {
+                return null
+            }
+
+            const bestMatch = searchData.results[0]
+            if (!(bestMatch && bestMatch.id)) return null
+
+            const lyricUrl = `https://lyrics.imreallyadi.space/api/lyrics/${bestMatch.id}?format=ttml`
+            const lyricResponse = await fetch(lyricUrl, { signal })
+            if (!lyricResponse.ok) return null
+
+            const lyricData = await lyricResponse.json()
+            if (!(lyricData.ok && lyricData.lyric)) return null
+
+            if (
+                (lyricData.lyric.format === 'ttml' || lyricData.lyric.format === 'qrc') &&
+                lyricData.lyric.rawContent
+            ) {
+                return {
+                    rawLyrics: lyricData.lyric.rawContent,
+                    source: 'adi',
+                    isPlainOnly: false,
+                }
+            }
+
+            if (lyricData.lyric.lyrics) {
+                return {
+                    rawLyrics: lyricData.lyric.lyrics,
+                    source: 'adi',
+                    isPlainOnly: true,
+                }
+            }
+
+            return null
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
+    static async fetchFromAdiLrcmux(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        const adi = await LyricsProvider.fetchFromAdi(track, signal)
+        if (adi) return adi
+        return LyricsProvider.fetchFromLrcmux(track, signal)
+    }
+
+    static async fetchFromLrcmux(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            const url = new URL('https://api.lrcmux.dev/compat/kpoe/v2/lyrics/get')
+            url.searchParams.set('artist', formatArtists(track.artists))
+            url.searchParams.set('title', track.name)
+
+            const response = await fetch(url, { signal })
+            if (!response.ok) return null
+
+            const data = await response.json()
+            if (!(data && Array.isArray(data.lyrics)) || data.lyrics.length === 0) {
+                return null
+            }
+
+            const formattedLines: string[] = []
+
+            for (const line of data.lyrics) {
+                if (typeof line.time !== 'number') continue
+
+                const text = line.text || ''
+
+                if (Array.isArray(line.syllabus) && line.syllabus.length > 0) {
+                    const duration = typeof line.duration === 'number' ? line.duration : 0
+
+                    const syllabusParts = line.syllabus
+                        .map((word: any) => {
+                            const wordText = word.text || ''
+                            const wordTime = typeof word.time === 'number' ? word.time : line.time
+                            const wordDur = typeof word.duration === 'number' ? word.duration : 0
+
+                            return `${wordText}(${wordTime},${wordDur})`
+                        })
+                        .join('')
+
+                    formattedLines.push(`[${line.time},${duration}]${syllabusParts}`)
+                } else {
+                    const timeMs = line.time
+                    const min = String(Math.floor(timeMs / 60_000)).padStart(2, '0')
+                    const sec = String(Math.floor((timeMs % 60_000) / 1000)).padStart(2, '0')
+                    const ms = String(Math.floor((timeMs % 1000) / 10)).padStart(2, '0')
+                    const timestamp = `[${min}:${sec}.${ms}]`
+
+                    formattedLines.push(`${timestamp}${text}`)
+                }
+            }
+
+            const rawLyrics = formattedLines.join('\n')
+            if (rawLyrics.trim().length === 0) return null
+
+            return {
+                rawLyrics,
+                source: 'lrcmux',
+                isPlainOnly: false,
+            }
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
+    static async fetchFromLrclib(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        const durationSeconds = Math.round(track.duration)
+
+        try {
+            const exactUrl = new URL('https://lrclib.net/api/get')
+            exactUrl.searchParams.set('track_name', track.name)
+            exactUrl.searchParams.set('artist_name', formatArtists(track.artists))
+            if (track.album && track.album !== UNKNOWN_ITEM) {
+                exactUrl.searchParams.set('album_name', track.album)
+            }
+            exactUrl.searchParams.set('duration', String(durationSeconds))
+
+            const exactResponse = await fetch(exactUrl, { signal })
+
+            if (exactResponse.ok) {
+                const data = await exactResponse.json()
+
+                if (data.instrumental) {
+                    return {
+                        rawLyrics: 'Instrumental',
+                        source: 'lrclib',
+                        isPlainOnly: false,
+                    }
+                }
+
+                if (data.syncedLyrics) {
+                    return {
+                        rawLyrics: data.syncedLyrics,
+                        source: 'lrclib',
+                        isPlainOnly: false,
+                    }
+                }
+
+                if (data.plainLyrics) {
+                    return {
+                        rawLyrics: data.plainLyrics,
+                        source: 'lrclib',
+                        isPlainOnly: true,
+                    }
+                }
+            }
+
+            const searchUrl = new URL('https://lrclib.net/api/search')
+            searchUrl.searchParams.set('track_name', track.name)
+            searchUrl.searchParams.set('artist_name', formatArtists(track.artists))
+            searchUrl.searchParams.set('duration', String(durationSeconds))
+
+            const searchResponse = await fetch(searchUrl, { signal })
+            if (!searchResponse.ok) return null
+
+            const searchData = await searchResponse.json()
+            if (!Array.isArray(searchData) || searchData.length === 0) {
+                return null
+            }
+
+            const bestMatch = searchData.find(
+                (item: any) => item.duration && Math.abs(item.duration - durationSeconds) <= 4,
+            )
+
+            if (!bestMatch) return null
+
+            if (bestMatch.syncedLyrics) {
+                return {
+                    rawLyrics: bestMatch.syncedLyrics,
+                    source: 'lrclib',
+                    isPlainOnly: false,
+                }
+            }
+
+            if (bestMatch.plainLyrics) {
+                return {
+                    rawLyrics: bestMatch.plainLyrics,
+                    source: 'lrclib',
+                    isPlainOnly: true,
+                }
+            }
+
+            return null
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
+    static async fetchFromUnison(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            const url = new URL('https://unison.boidu.dev/lyrics')
+            url.searchParams.set('song', track.name)
+            url.searchParams.set('artist', formatArtists(track.artists))
+
+            const response = await fetch(url, { signal })
+            if (!response.ok) return null
+
+            const resData = await response.json()
+            if (!(resData && resData.success && resData.data)) return null
+
+            const data = resData.data
+            if (!data.lyrics) return null
+
+            const matchTitle = track.name.trim().toLowerCase()
+            const matchArtist = formatArtists(track.artists).trim().toLowerCase()
+            const responseTitle = (data.song || '').trim().toLowerCase()
+            const responseArtist = (data.artist || '').trim().toLowerCase()
+
+            if (matchTitle !== responseTitle || matchArtist !== responseArtist) {
+                return null
+            }
+
+            const rawLyrics = data.lyrics
+            const isPlainOnly =
+                data.syncType === 'plain' || !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
+
+            return {
+                rawLyrics,
+                source: 'unison',
+                isPlainOnly,
+            }
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
+    static async fetchFromCustomSource(
+        track: TrackData,
+        customSource: { url: string; name: string },
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            let urlStr = customSource.url
+
+            urlStr = urlStr.replace('{title}', encodeURIComponent(track.name))
+            urlStr = urlStr.replace('{artist}', encodeURIComponent(formatArtists(track.artists)))
+            urlStr = urlStr.replace(
+                '{album}',
+                encodeURIComponent(track.album && track.album !== UNKNOWN_ITEM ? track.album : ''),
+            )
+            urlStr = urlStr.replace(
+                '{duration}',
+                encodeURIComponent(String(Math.round(track.duration))),
+            )
+
+            const url = new URL(urlStr)
+            const response = await fetch(url, { signal })
+
+            if (!response.ok) return null
+
+            const contentType = response.headers.get('content-type') || ''
+
+            if (contentType.includes('application/json')) {
+                const data = await response.json()
+
+                const rawLyrics =
+                    data.syncedLyrics ||
+                    data.plainLyrics ||
+                    data.lyrics ||
+                    data.rawLyrics ||
+                    data.rawContent ||
+                    data.content
+
+                if (typeof rawLyrics === 'string') {
+                    const isPlainOnly = !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
+
+                    return {
+                        rawLyrics,
+                        source: customSource.name,
+                        isPlainOnly,
+                    }
+                }
+            } else {
+                const rawLyrics = await response.text()
+
+                if (rawLyrics.trim().length > 0) {
+                    const isPlainOnly = !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
+
+                    return {
+                        rawLyrics,
+                        source: customSource.name,
+                        isPlainOnly,
+                    }
+                }
+            }
+
+            return null
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
 }
