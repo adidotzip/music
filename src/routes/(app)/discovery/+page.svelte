@@ -61,7 +61,7 @@ import { browser } from '$app/environment'
 
         registerRemoteTrack({
             id,
-            remoteId: Number(input.id) || 0,
+            remoteId: String(input.id),
             streaming: true,
             uuid: key,
             name,
