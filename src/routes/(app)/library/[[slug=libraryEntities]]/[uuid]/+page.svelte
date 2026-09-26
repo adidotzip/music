@@ -123,9 +123,9 @@
 			const loadArtistProfile = async () => {
 				try {
 					const [profile, albums, songs] = await Promise.all([
-						getArtistProfile(item.id, item.name),
-						getAlbumsForArtist(item.id, item.name),
-						getSongsForArtist(item.id, item.name),
+						getArtistProfile(undefined, item.name),
+						getAlbumsForArtist(undefined, item.name),
+						getSongsForArtist(undefined, item.name),
 					])
 
 					if (cancelled) return
