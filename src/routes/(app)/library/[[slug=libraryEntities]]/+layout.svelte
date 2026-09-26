@@ -126,6 +126,9 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 {/snippet}
 
 {#if isLibraryHome}
+	<div class="mx-auto w-full max-w-(--app-max-content-width) px-4 sm:pl-20">
+		<Search name="Library" sortOptions={data.sortOptions} store={data.store} />
+	</div>
 	<LibraryHome />
 {:else if layoutMode !== 'details'}
 	<div
