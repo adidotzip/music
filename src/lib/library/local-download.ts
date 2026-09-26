@@ -19,6 +19,44 @@ const getCachedLocalTrackId = (sourceId: number | string): number | undefined =>
 	}
 }
 
+const setCachedLocalTrackId = (sourceId: number | string, localTrackId: number) => {
+	if (typeof window === 'undefined') return
+	try {
+		localStorage.setItem(LOCAL_ALIAS_PREFIX + String(sourceId), String(localTrackId))
+	} catch {}
+}
+
+const isNumericId = (value: number | string) => {
+	const normalized = String(value).trim()
+	return normalized !== '' && Number.isFinite(Number(normalized))
+}
+
+/** Return the IndexedDB track id backing a remote/stable discovery id, when one exists. */
+export const getStoredLocalTrackId = async (sourceId: number | string): Promise<number | undefined> => {
+	const cachedId = getCachedLocalTrackId(sourceId)
+	if (cachedId) {
+		const cachedTrack = await getLibraryValue('tracks', cachedId, true)
+		if (cachedTrack?.file) return cachedId
+	}
+
+	const remoteTrack = isNumericId(sourceId)
+		? await getLibraryValue('tracks', Number(sourceId), true)
+		: undefined
+
+	if (remoteTrack?.file) return remoteTrack.id
+
+	const database = await getDatabase()
+	const remoteUuid = remoteTrack?.uuid ?? `spicyamll:${String(sourceId)}`
+	const existing = await database.getFromIndex('tracks', 'uuid', remoteUuid)
+
+	if (existing?.file) {
+		setCachedLocalTrackId(sourceId, existing.id)
+		return existing.id
+	}
+
+	return undefined
+}
+
 const sanitizeFilename = (value: string) =>
 	value.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || 'Unknown'
 
@@ -82,11 +120,7 @@ const downloadAndImport = async (trackId: number, onProgress?: (progress: number
 	const database = await getDatabase()
 	const existing = await database.getFromIndex('tracks', 'uuid', track.uuid)
 	if (existing?.file) {
-		if (trackId < 0) {
-			try {
-				localStorage.setItem(LOCAL_ALIAS_PREFIX + trackId, String(existing.id))
-			} catch {}
-		}
+		if (trackId < 0) setCachedLocalTrackId(trackId, existing.id)
 		return existing.id
 	}
 
@@ -250,11 +284,7 @@ const downloadAndImport = async (trackId: number, onProgress?: (progress: number
 
 	const localTrackId = await dbImportTrack(parsedData, trackId >= 0 ? trackId : undefined)
 
-	if (trackId < 0) {
-		try {
-			localStorage.setItem(LOCAL_ALIAS_PREFIX + trackId, String(localTrackId))
-		} catch {}
-	}
+	if (trackId < 0) setCachedLocalTrackId(trackId, localTrackId)
 	return localTrackId
 }
 

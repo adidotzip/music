@@ -9,6 +9,8 @@
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
     import { generateStableId } from '$lib/services/jiosaavn.ts'
     import { normalizeTracks, spicyamll } from '$lib/services/spicyamll.ts'
+    import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
+    import { snackbar } from '$lib/components/snackbar/snackbar.ts'
 
     const player = usePlayer()
 
@@ -19,6 +21,8 @@
     let artistName = $state('')
     let artwork = $state<string | undefined>()
     let songIds = $state<number[]>([])
+    let downloadingAlbum = $state(false)
+    let albumDownloadProgress = $state(0)
 
     const artworkUrl = (url: unknown, size = 1200) =>
         typeof url === 'string'
@@ -90,6 +94,29 @@
         player.playTrack(randomIndex, songIds)
     }
 
+    const downloadAlbum = async () => {
+        if (!songIds.length || downloadingAlbum) return
+
+        downloadingAlbum = true
+        albumDownloadProgress = 0
+        try {
+            let completed = 0
+            for (const id of songIds) {
+                await ensureTrackIsStoredLocally(id, (progress) => {
+                    albumDownloadProgress = Math.round(
+                        ((completed + progress / 100) / songIds.length) * 100,
+                    )
+                })
+                completed += 1
+                albumDownloadProgress = Math.round((completed / songIds.length) * 100)
+            }
+        } catch (error) {
+            snackbar.unexpectedError(error)
+        } finally {
+            downloadingAlbum = false
+        }
+    }
+
     onMount(() => {
         albumId = decodeURIComponent(page.params.id)
         void load()
@@ -136,6 +163,32 @@
                     </div>
 
                     <div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
+                        <button
+                            type="button"
+                            class="interactable flex size-13 shrink-0 items-center justify-center rounded-full text-onSurfaceVariant"
+                            disabled={downloadingAlbum || songIds.length === 0}
+                            aria-label={downloadingAlbum ? 'Downloading album' : 'Download album for offline playback'}
+                            title={downloadingAlbum ? 'Downloading album' : 'Download album for offline playback'}
+                            onclick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                void downloadAlbum()
+                            }}
+                        >
+                            {#if downloadingAlbum}
+                                <span class="relative flex size-8 items-center justify-center rounded-full">
+                                    <span
+                                        class="absolute inset-0 rounded-full"
+                                        style="background: conic-gradient(var(--color-primary) {albumDownloadProgress}%, color-mix(in srgb, var(--color-onSurface) 14%, transparent) 0)"
+                                    ></span>
+                                    <span class="absolute inset-1 rounded-full bg-surfaceContainerHigh"></span>
+                                    <Icon type="download" class="relative z-1 size-5" />
+                                </span>
+                            {:else}
+                                <Icon type="download" class="size-6" />
+                            {/if}
+                        </button>
+
                         <Button
                             kind="filled"
                             class="my-1"

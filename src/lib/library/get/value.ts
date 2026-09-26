@@ -22,6 +22,16 @@ const getPersistedLocalTrackAlias = (sourceId: number): number | undefined => {
     }
 }
 
+const isLocalAliasValid = async (sourceId: number, localId: number) => {
+    try {
+        const db = await getDatabase()
+        const localTrack = await db.get('tracks', localId)
+        return Boolean(localTrack?.file)
+    } catch {
+        return false
+    }
+}
+
 const recoverRemoteTrack = async (id: number): Promise<TrackData | undefined> => {
     if (typeof window === 'undefined' || id >= 0) return undefined
 
@@ -176,9 +186,9 @@ const trackConfig: QueryConfig<TrackData> = {
     fetch: async (id) => {
         if (id < 0) {
             const localAlias = getPersistedLocalTrackAlias(id)
-            if (localAlias) {
+            if (localAlias && await isLocalAliasValid(id, localAlias)) {
                 const localTrack = await trackConfig.fetch(localAlias)
-                if (localTrack) return localTrack
+                if (localTrack?.file) return localTrack
             }
 
             const remote = remoteTrackMap.get(id) ?? getPersistedRemoteTrack(id)
@@ -189,7 +199,7 @@ const trackConfig: QueryConfig<TrackData> = {
                     FAVORITE_PLAYLIST_ID,
                     id,
                 ])
-                return { ...remote, favorite: !!favorite }
+                return { ...remote, favorite: !!favorite, file: undefined }
             }
 
             const recovered = await recoverRemoteTrack(id)

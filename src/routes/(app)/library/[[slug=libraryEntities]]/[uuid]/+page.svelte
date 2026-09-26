@@ -18,6 +18,7 @@
 	} from '$lib/library/playlists-actions.ts'
 	import { type Album, type Playlist, UNKNOWN_ITEM } from '$lib/library/types.ts'
 	import { getPlaylistMenuItems } from '$lib/menu-actions/playlists.ts'
+	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 
 	const { data } = $props()
 
@@ -94,6 +95,18 @@
 				},
 			},
 		]
+	}
+
+	const downloadAlbum = async () => {
+		if (slug !== 'albums' || !tracks.tracksIds.length) return
+
+		try {
+			for (const trackId of tracks.tracksIds) {
+				await ensureTrackIsStoredLocally(trackId)
+			}
+		} catch (error) {
+			snackbar.unexpectedError(error)
+		}
 	}
 
 	const getMenuItems = () => {
@@ -200,6 +213,17 @@
 			</div>
 
 			<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
+				{#if slug === 'albums'}
+					<Button
+						kind="flat"
+						class="my-1"
+						disabled={tracks.tracksIds.length === 0}
+						onclick={() => void downloadAlbum()}
+					>
+						<Icon type="download" />
+					</Button>
+				{/if}
+
 				<Button
 					kind="filled"
 					class="my-1"

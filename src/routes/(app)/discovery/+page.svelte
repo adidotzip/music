@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte'
-import { browser } from '$app/environment'
+    import { browser } from '$app/environment'
     import { goto } from '$app/navigation'
     import Artwork from '$lib/components/Artwork.svelte'
     import Button from '$lib/components/Button.svelte'
@@ -13,7 +13,10 @@ import { browser } from '$app/environment'
     import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
     import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte'
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
+    import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
+
     import { UNKNOWN_ITEM } from '$lib/library/types.ts'
+
     import {
         cacheDiscoveryRecommendations,
         getCachedDiscoveryRecommendations,
@@ -107,6 +110,24 @@ import { browser } from '$app/environment'
     let recentlyPlayedTrackIds = $derived(
         recentlyPlayed.filter((r) => r.type === 'song').map((s) => getOrRegisterRemoteTrack(s)),
     )
+
+    const refreshDiscoveryDownloadState = async () => {
+        const ids = [
+            ...songResults.map((item) => String(item.id)),
+            ...recommendations.filter((item) => item.type === 'song').map((item) => String(item.id)),
+            ...topPicks.filter((item) => item.type === 'song').map((item) => String(item.id)),
+            ...recentlyPlayed.filter((item) => item.type === 'song').map((item) => String(item.id)),
+        ]
+        await Promise.all(ids.map((id) => getStoredLocalTrackId(id)))
+    }
+
+    $effect(() => {
+        void refreshDiscoveryDownloadState()
+        const unsubscribe = onDatabaseChange(() => {
+            void refreshDiscoveryDownloadState()
+        })
+        return unsubscribe
+    })
 
     const cleanArtUrl = (url: unknown) => {
         if (typeof url !== 'string' || !url) return 'favicon.svg'
