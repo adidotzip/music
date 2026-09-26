@@ -130,8 +130,9 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 		<Search name="Library" sortOptions={data.sortOptions} store={data.store} />
 	</div>
 	<LibraryHome />
-{:else if layoutMode !== 'details'}
-	<div
+{:else}
+	{#if layoutMode !== 'details'}
+		<div
 		class={[
 			'desktop-sidebar fixed z-1 mt-20 h-max w-max flex-col items-center gap-2 [@media(max-height:500px)]:mt-2',
 			isHandHeldDevice ? 'hidden sm:flex' : 'flex',
@@ -151,10 +152,10 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 				}}
 			/>
 		{/if}
-	</div>
-{/if}
+		</div>
+	{/if}
 
-<ListDetailsLayout mode={layoutMode} class="mx-auto w-full max-w-(--app-max-content-width) grow">
+	<ListDetailsLayout mode={layoutMode} class="mx-auto w-full max-w-(--app-max-content-width) grow">
 	{#snippet list(mode)}
 		<div class={[isHandHeldDevice ? 'sm:pl-20' : 'pl-20', 'flex grow flex-col']}>
 			<div class={[mode === 'both' && 'w-100', 'flex grow flex-col px-4']}>
@@ -236,4 +237,5 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 			{/key}
 		</div>
 	{/snippet}
-</ListDetailsLayout>
+	</ListDetailsLayout>
+{/if}
