@@ -446,6 +446,135 @@ export const searchAlbums = async (query: string) => {
 	return []
 }
 
+export interface SpicyArtistProfile {
+	id: string
+	name: string
+	image: string
+	genre: string
+	bio: string
+}
+
+const cleanArtistImage = (value: unknown) => cleanDiscoveryArtwork(value, 1200)
+
+export const getArtistProfile = async (
+	artistId: string | number | undefined,
+	artistName: string,
+): Promise<SpicyArtistProfile> => {
+	const candidates: SpicyApiParams[] = [
+		...(artistId !== undefined ? [{ artist: artistId }, { id: artistId }, { artistId }] : []),
+		{ artist: artistName },
+		{ name: artistName },
+		{ query: artistName },
+	]
+
+	for (const params of candidates) {
+		try {
+			const raw = unwrap<unknown>(await spicyamll.artist(params))
+			const values = Array.isArray(raw) ? raw : [raw]
+
+			for (const value of values) {
+				if (!value || typeof value !== 'object') continue
+				const record = value as Record<string, unknown>
+				const attributes =
+					record.attributes && typeof record.attributes === 'object'
+						? record.attributes as Record<string, unknown>
+						: record
+				const artwork =
+					attributes.artwork && typeof attributes.artwork === 'object'
+						? attributes.artwork as Record<string, unknown>
+						: {}
+
+				const name = String(attributes.name ?? record.name ?? artistName)
+				const id = String(attributes.artistId ?? record.artistId ?? record.id ?? artistId ?? '')
+				const image = cleanArtistImage(
+					artwork.url ?? attributes.artworkUrl100 ?? attributes.artworkUrl ?? record.image ?? record.artwork,
+				)
+				const genreNames = Array.isArray(attributes.genreNames) ? attributes.genreNames : []
+				const genre = String(attributes.genre ?? genreNames[0] ?? record.genre ?? '')
+				const editorial =
+					attributes.editorialNotes && typeof attributes.editorialNotes === 'object'
+						? attributes.editorialNotes as Record<string, unknown>
+						: {}
+				const bio = String(
+					attributes.bio ??
+						attributes.description ??
+						editorial.standard ??
+						editorial.short ??
+						record.bio ??
+						'',
+				)
+
+				return { id, name, image, genre, bio }
+			}
+		} catch {}
+	}
+
+	return {
+		id: String(artistId ?? ''),
+		name: artistName,
+		image: '',
+		genre: '',
+		bio: '',
+	}
+}
+
+export const getAlbumsForArtist = async (artistId: string | number | undefined, artistName: string) => {
+	const candidates: SpicyApiParams[] = [
+		...(artistId !== undefined ? [{ artist: artistId }, { id: artistId }, { artistId }] : []),
+		{ artist: artistName },
+		{ name: artistName },
+	]
+	for (const params of candidates) {
+		try {
+			const raw = unwrap<unknown>(await spicyamll.artistAlbums(params))
+			const values = Array.isArray(raw) ? raw : [raw]
+			const albums: Array<{ id: string; name: string; artist: string; image: string; year: string }> = []
+
+			const collect = (value: unknown) => {
+				if (Array.isArray(value)) {
+					for (const entry of value) collect(entry)
+					return
+				}
+				if (!value || typeof value !== 'object') return
+				const record = value as Record<string, unknown>
+				const attributes =
+					record.attributes && typeof record.attributes === 'object'
+						? record.attributes as Record<string, unknown>
+						: record
+				const type = String(record.type ?? '')
+				if (type && type !== 'albums' && type !== 'album' && !record.collectionId && !record.albumId) {
+					for (const child of Object.values(record)) collect(child)
+					return
+				}
+				const id = String(record.id ?? attributes.collectionId ?? attributes.albumId ?? record.albumId ?? '')
+				const name = String(attributes.name ?? attributes.collectionName ?? record.name ?? record.title ?? '')
+				if (!id || !name) {
+					for (const child of Object.values(record)) collect(child)
+					return
+				}
+				const artwork =
+					attributes.artwork && typeof attributes.artwork === 'object'
+						? attributes.artwork as Record<string, unknown>
+						: {}
+				const image = cleanArtistImage(
+					artwork.url ?? attributes.artworkUrl100 ?? record.image ?? record.artwork,
+				)
+				const releaseDate = String(attributes.releaseDate ?? record.releaseDate ?? attributes.year ?? '')
+				albums.push({
+					id,
+					name,
+					artist: String(attributes.artistName ?? record.artist ?? artistName),
+					image,
+					year: releaseDate.slice(0, 4),
+				})
+			}
+			for (const value of values) collect(value)
+			return albums.filter((album, index, all) => all.findIndex((entry) => entry.id === album.id) === index)
+		} catch {}
+	}
+	return []
+}
+
 export const getSongsForArtist = async (artistId: string | number, artistName?: string) => {
 	const candidates = [
 		{ artist: artistId },
