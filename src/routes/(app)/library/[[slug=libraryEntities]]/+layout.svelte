@@ -155,7 +155,7 @@
 							tooltip={main.librarySplitLayoutEnabled
 								? m.librarySplitViewDisable()
 								: m.librarySplitViewEnable()}
-							class={main.librarySplitLayoutEnabled && 'rotate-180'}
+							class={['size-10', main.librarySplitLayoutEnabled && 'rotate-180']}
 							onclick={() => {
 								main.librarySplitLayoutEnabled = !main.librarySplitLayoutEnabled
 							}}
