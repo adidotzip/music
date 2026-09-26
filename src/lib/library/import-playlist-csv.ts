@@ -6,6 +6,14 @@ import { registerRemoteTrack } from '$lib/library/get/value.ts'
 import { searchCatalog, spicyamll, type SpicyTrack } from '$lib/services/spicyamll.ts'
 import { dispatchDatabaseChangedEvent } from '$lib/db/events.ts'
 
+export interface PlaylistCsvImportProgress {
+	current: number
+	total: number
+	title: string
+	artist: string
+	status: 'searching' | 'downloading' | 'added' | 'duplicate' | 'not-found' | 'failed'
+}
+
 export interface PlaylistCsvImportResult {
 	added: number
 	duplicates: number
@@ -121,6 +129,7 @@ const findMatch = async (title: string, artist: string, album: string) => {
 export const importPlaylistCsv = async (
 	playlistId: number,
 	file: File,
+	onProgress?: (progress: PlaylistCsvImportProgress) => void,
 ): Promise<PlaylistCsvImportResult> => {
 	const text = await file.text()
 	const rows = parseCsv(text)
@@ -149,35 +158,45 @@ export const importPlaylistCsv = async (
 		existingEntries.filter((entry) => entry.playlistId === playlistId).map((entry) => entry.trackId),
 	)
 
-	for (const row of rows.slice(1)) {
+	const songRows = rows.slice(1)
+	let current = 0
+
+	for (const row of songRows) {
 		const title = row[titleIndex]?.trim() ?? ''
 		const artist = row[artistIndex]?.trim() ?? ''
 		const album = albumIndex >= 0 ? row[albumIndex]?.trim() ?? '' : ''
 		if (!title || !artist) continue
+			current += 1
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'searching' })
 
 		try {
 			const match = await findMatch(title, artist, album)
 			if (!match) {
 				result.notFound.push({ title, artist, album })
+				onProgress?.({ current, total: songRows.length, title, artist, status: 'not-found' })
 				continue
 			}
 
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'downloading' })
 			const remoteId = registerTrack(match)
 			const localId = await ensureTrackIsStoredLocally(remoteId)
 			if (existing.has(localId)) {
 				result.duplicates += 1
+				onProgress?.({ current, total: songRows.length, title, artist, status: 'duplicate' })
 				continue
 			}
 
 			localTrackIds.push(localId)
 			existing.add(localId)
 			result.added += 1
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'added' })
 		} catch (error) {
 			result.failed.push({
 				title,
 				artist,
 				reason: error instanceof Error ? error.message : 'Download failed',
 			})
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'failed' })
 		}
 	}
 
