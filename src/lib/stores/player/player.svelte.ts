@@ -30,11 +30,8 @@ export class PlayerStore {
 	#audioSource: string | null = null
 	readonly #audioLoader = new AudioLoader((src) => {
 		this.#audioSource = src
-		this.#audio.preload = 'metadata'
+		this.#audio.preload = src ? 'auto' : 'metadata'
 		this.#audio.src = src ?? ''
-		if (src) {
-			this.#audio.load()
-		}
 	})
 	readonly #queue = new QueueStore()
 	readonly equalizer = new EqualizerStore(this.#audio)
@@ -229,12 +226,8 @@ export class PlayerStore {
 			}
 		})
 
-		// Guarded by loading: prevents play() on an empty/stale src during file fetch.
+		// Keep playback state synchronized with the native media element.
 		$effect(() => {
-			if (this.#audioLoader.loading) {
-				return
-			}
-
 			const shouldPlay = this.playing
 			const activeTrackId = this.activeTrack?.id
 			if (shouldPlay && activeTrackId !== undefined && this.#failedRemoteTracks.has(activeTrackId)) {
@@ -593,10 +586,6 @@ export class PlayerStore {
 			}
 
 			this.#audio.preload = 'auto'
-			if (this.#audioLoader.loading) {
-				return
-			}
-
 			if (this.equalizer.enabled) {
 				void this.equalizer.resumeContext()
 			}
