@@ -208,7 +208,7 @@
 					trackId={track.id}
 					downloaded={Boolean(track.file)}
 					large={downloadButtonLarge}
-					class={selectionEnabled && 'invisible'}
+					class={selectionEnabled ? 'invisible' : undefined}
 				/>
 			{/if}
 
