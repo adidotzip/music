@@ -58,7 +58,7 @@
 	let fallbackArtworkSrc = $state<Blob | string | undefined>()
 	const artworkSrc = createManagedArtwork(() => {
 		if (type === 'albums') {
-			return item ? (item as AlbumData).image ?? fallbackArtworkSrc : fallbackArtworkSrc
+			return item ? ((item as AlbumData).image ?? fallbackArtworkSrc) : fallbackArtworkSrc
 		}
 
 		return fallbackArtworkSrc
@@ -77,7 +77,7 @@
 			for (const trackId of trackIds.slice(0, 3)) {
 				try {
 					const track = await getLibraryValue('tracks', trackId, true)
-					const image = track?.image?.full
+					const image = track?.image?.full ?? track?.image?.small
 					if (image && !cancelled) {
 						fallbackArtworkSrc = image
 						return
