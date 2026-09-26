@@ -6,7 +6,6 @@
     import Header from '$lib/components/Header.svelte'
     import Icon from '$lib/components/icon/Icon.svelte'
     import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
-    import DownloadButton from '$lib/components/player/buttons/DownloadButton.svelte'
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
     import { generateStableId } from '$lib/services/jiosaavn.ts'
     import { normalizeTracks, spicyamll } from '$lib/services/spicyamll.ts'
