@@ -223,3 +223,4 @@ pnpm run dev
 Adi Music is a fork of **[Snae Player](https://snaeplayer.com)**.
 
 Built and maintained by **[Aditya](https://github.com/adidotzip)**.
+
