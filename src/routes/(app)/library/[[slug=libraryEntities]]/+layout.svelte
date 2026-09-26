@@ -128,7 +128,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 
 <div
 	class={[
-		'desktop-sidebar fixed z-1 mt-20 h-max w-max flex-col items-center gap-2 [@media(max-height:500px)]:mt-2',
+		'desktop-sidebar fixed left-4 top-20 z-1 flex h-max w-16 flex-col items-center gap-2 [@media(max-height:500px)]:top-2',
 		isHandHeldDevice ? 'hidden sm:flex' : 'flex',
 	]}
 >
