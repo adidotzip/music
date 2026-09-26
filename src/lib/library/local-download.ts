@@ -284,6 +284,7 @@ const downloadAndImport = async (trackId: number, onProgress?: (progress: number
 
 	const localTrackId = await dbImportTrack(parsedData, trackId >= 0 ? trackId : undefined)
 
+	if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('adi-music-library-updated'))
 	if (trackId < 0) setCachedLocalTrackId(trackId, localTrackId)
 	return localTrackId
 }
