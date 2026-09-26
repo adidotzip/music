@@ -10,8 +10,8 @@ const normalizeText = (value: unknown) =>
 	String(value ?? '')
 		.toLowerCase()
 		.normalize('NFKD')
-		.replace(/[\\u0300-\\u036f]/g, '')
-		.replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^\p{L}\p{N}]+/gu, ' ')
 		.trim()
 
 const cleanArtwork = (url: unknown, size = 600) => {
@@ -19,11 +19,11 @@ const cleanArtwork = (url: unknown, size = 600) => {
 	return url
 		.trim()
 		.replace(/^http:/i, 'https:')
-		.replace(/\\{w\\}/g, String(size))
-		.replace(/\\{h\\}/g, String(size))
-		.replace(/\\{c\\}/g, 'bb')
-		.replace(/\\{f\\}/g, 'jpg')
-		.replace(/\\d+x\\d+bb\\./, size + 'x' + size + 'bb.')
+		.replace(/\{w\}/g, String(size))
+		.replace(/\{h\}/g, String(size))
+		.replace(/\{c\}/g, 'bb')
+		.replace(/\{f\}/g, 'jpg')
+		.replace(/\d+x\d+bb\./, size + 'x' + size + 'bb.')
 }
 
 const providerIdFromTrack = (track: SpicyTrack): string => String(track.id)
