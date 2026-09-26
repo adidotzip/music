@@ -12,6 +12,7 @@ export interface PlaylistCsvImportProgress {
 	title: string
 	artist: string
 	status: 'searching' | 'downloading' | 'added' | 'duplicate' | 'not-found' | 'failed'
+	rowIndex: number
 }
 
 export interface PlaylistCsvImportResult {
@@ -128,10 +129,11 @@ const findMatch = async (title: string, artist: string, album: string) => {
 
 export const importPlaylistCsv = async (
 	playlistId: number,
-	file: File,
+	file: File | string,
 	onProgress?: (progress: PlaylistCsvImportProgress) => void,
+	resumeFrom = 0,
 ): Promise<PlaylistCsvImportResult> => {
-	const text = await file.text()
+	const text = typeof file === 'string' ? file : await file.text()
 	const rows = parseCsv(text)
 	if (rows.length < 2) throw new Error('The CSV needs a header row and at least one song.')
 
@@ -161,42 +163,44 @@ export const importPlaylistCsv = async (
 	const songRows = rows.slice(1)
 	let current = 0
 
-	for (const row of songRows) {
+	for (let rowIndex = 0; rowIndex < songRows.length; rowIndex += 1) {
+		if (rowIndex < resumeFrom) continue
+		const row = songRows[rowIndex]
 		const title = row[titleIndex]?.trim() ?? ''
 		const artist = row[artistIndex]?.trim() ?? ''
 		const album = albumIndex >= 0 ? row[albumIndex]?.trim() ?? '' : ''
 		if (!title || !artist) continue
 			current += 1
-			onProgress?.({ current, total: songRows.length, title, artist, status: 'searching' })
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'searching', rowIndex })
 
 		try {
 			const match = await findMatch(title, artist, album)
 			if (!match) {
 				result.notFound.push({ title, artist, album })
-				onProgress?.({ current, total: songRows.length, title, artist, status: 'not-found' })
+				onProgress?.({ current, total: songRows.length, title, artist, status: 'not-found', rowIndex })
 				continue
 			}
 
-			onProgress?.({ current, total: songRows.length, title, artist, status: 'downloading' })
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'downloading', rowIndex })
 			const remoteId = registerTrack(match)
 			const localId = await ensureTrackIsStoredLocally(remoteId)
 			if (existing.has(localId)) {
 				result.duplicates += 1
-				onProgress?.({ current, total: songRows.length, title, artist, status: 'duplicate' })
+				onProgress?.({ current, total: songRows.length, title, artist, status: 'duplicate', rowIndex })
 				continue
 			}
 
 			localTrackIds.push(localId)
 			existing.add(localId)
 			result.added += 1
-			onProgress?.({ current, total: songRows.length, title, artist, status: 'added' })
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'added', rowIndex })
 		} catch (error) {
 			result.failed.push({
 				title,
 				artist,
 				reason: error instanceof Error ? error.message : 'Download failed',
 			})
-			onProgress?.({ current, total: songRows.length, title, artist, status: 'failed' })
+			onProgress?.({ current, total: songRows.length, title, artist, status: 'failed', rowIndex })
 		}
 	}
 
