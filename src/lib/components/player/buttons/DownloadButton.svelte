@@ -5,13 +5,14 @@
 	interface Props {
 		trackId: number
 		large?: boolean
+		downloaded?: boolean
 		class?: ClassValue
 	}
 
-	const { trackId, large = false, class: className }: Props = $props()
+	const { trackId, large = false, downloaded = false, class: className }: Props = $props()
 
 	type DownloadState = 'idle' | 'loading' | 'done' | 'error'
-	let state = $state<DownloadState>('idle')
+	let state = $state<DownloadState>(downloaded ? 'done' : 'idle')
 
 	const download = async (event: MouseEvent) => {
 		e.preventDefault()
@@ -35,6 +36,7 @@
 
 <button
 	type="button"
+	title={state === 'done' ? 'Available offline' : state === 'loading' ? 'Saving offline…' : 'Download for offline playback'}
 	class={['download-button interactable', large && 'download-button-large', className]}
 	aria-label={state === 'done' ? 'Downloaded for offline playback' : state === 'loading' ? 'Saving song offline' : 'Download song for offline playback'}
 	aria-busy={state === 'loading'}
