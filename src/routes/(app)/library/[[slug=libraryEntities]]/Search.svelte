@@ -11,9 +11,12 @@
 		name: string
 		sortOptions: PageData['sortOptions']
 		store: PageData['store']
+		showSplitButton?: boolean
+		splitEnabled?: boolean
+		onToggleSplit?: () => void
 	}
 
-	const { name, sortOptions, store }: Props = $props()
+	const { name, sortOptions, store, showSplitButton = false, splitEnabled = false, onToggleSplit }: Props = $props()
 
 	const searchHandler = debounce((e: InputEvent) => {
 		const term = (e.target as HTMLInputElement).value
@@ -95,4 +98,14 @@
 		menuItems={generalMenuItems}
 		width={200}
 	/>
+
+	{#if showSplitButton && onToggleSplit}
+		<Separator vertical class="my-auto hidden h-6 @sm:flex" />
+		<IconButton
+			icon="sidePanel"
+			tooltip={splitEnabled ? m.librarySplitViewDisable() : m.librarySplitViewEnable()}
+			class={['size-10', splitEnabled && 'rotate-180']}
+			onclick={onToggleSplit}
+		/>
+	{/if}
 </div>
