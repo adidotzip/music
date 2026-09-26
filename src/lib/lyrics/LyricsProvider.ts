@@ -4,7 +4,7 @@ import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
 export interface ProviderResponse {
     rawLyrics: string
-    source: 'lrc-red' | 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string
+    source: 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string
     isPlainOnly?: boolean
 }
 
@@ -14,7 +14,6 @@ export class LyricsProvider {
         track: TrackData,
         signal?: AbortSignal,
     ): Promise<ProviderResponse | null> {
-        if (providerId === 'lrc-red') return LyricsProvider.fetchFromLrcRed(track, signal)
         if (providerId === 'adi-lrcmux') return LyricsProvider.fetchFromAdiLrcmux(track, signal)
         if (providerId === 'adi') return LyricsProvider.fetchFromAdi(track, signal)
         if (providerId === 'lrcmux') return LyricsProvider.fetchFromLrcmux(track, signal)
@@ -51,7 +50,7 @@ export class LyricsProvider {
             if (preferredRes) return preferredRes
         }
 
-        const standardOrder = ['lrc-red', 'adi-lrcmux', 'unison', 'lrclib']
+        const standardOrder = ['adi-lrcmux', 'unison', 'lrclib']
         for (const pid of standardOrder) {
             if (preferredProvider && pid === preferredProvider) continue
             const res = await LyricsProvider.fetchByProviderId(pid, track, signal)
@@ -59,86 +58,6 @@ export class LyricsProvider {
         }
 
         return null
-    }
-
-    static async fetchFromLrcRed(
-        track: TrackData,
-        signal?: AbortSignal,
-    ): Promise<ProviderResponse | null> {
-        try {
-            const query = `${formatArtists(track.artists)} ${track.name}`.trim()
-            const url = new URL('https://lrc.red/api/v1')
-            url.searchParams.set('q', query)
-
-            const response = await fetch(url, { signal })
-            if (!response.ok) return null
-
-            const data = await response.json()
-
-            const results = Array.isArray(data) ? data : data?.results || data?.data
-            if (!Array.isArray(results) || results.length === 0) return null
-
-            const normalize = (value: unknown) =>
-                String(value ?? '')
-                    .toLowerCase()
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .replace(/\([^)]*\)/g, '')
-                    .replace(/[^a-z0-9]+/g, ' ')
-                    .trim()
-
-            const title = normalize(track.name)
-            const artist = normalize(formatArtists(track.artists))
-            const duration = Math.round(track.duration)
-
-            const ranked = results
-                .map((item: any) => {
-                    if (!item) return null
-
-                    const itemTitle = normalize(item.track_name || item.trackName || item.name || item.title)
-                    const itemArtist = normalize(item.artist_name || item.artistName || item.artist)
-                    const itemDuration = Number(item.duration)
-
-                    const durationDiff = Number.isFinite(itemDuration) ? Math.abs(itemDuration - duration) : Infinity
-                    const titleMatch = Boolean(itemTitle && (itemTitle === title || itemTitle.includes(title) || title.includes(itemTitle)))
-                    const artistMatch = Boolean(itemArtist && (itemArtist === artist || itemArtist.includes(artist) || artist.includes(itemArtist)))
-
-                    const score =
-                        (titleMatch ? 100 : 0) +
-                        (artistMatch ? 50 : 0) +
-                        (durationDiff <= 3 ? 30 : durationDiff <= 8 ? 15 : 0) -
-                        Math.min(durationDiff, 60)
-
-                    return { item, score, titleMatch, artistMatch }
-                })
-                .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
-                .sort((a, b) => b.score - a.score)
-
-            const best = ranked[0]
-            if (!best) return null
-
-            if (best.item.syncedLyrics || best.item.plainLyrics || best.item.lyrics) {
-                const rawLyrics = best.item.syncedLyrics || best.item.plainLyrics || best.item.lyrics
-                const isPlain = !best.item.syncedLyrics && (best.item.isPlainOnly || !rawLyrics.includes('['))
-                return { rawLyrics, source: 'lrc-red', isPlainOnly: isPlain }
-            }
-
-            const downloadUrl = best.item.lyricsUrl || best.item.downloadUrl || best.item.url
-            if (typeof downloadUrl === 'string') {
-                const lyricResponse = await fetch(downloadUrl, { signal })
-                if (!lyricResponse.ok) return null
-                const rawLyrics = await lyricResponse.text()
-                if (!rawLyrics.trim()) return null
-
-                const isPlainOnly = !(rawLyrics.includes('[') || rawLyrics.includes('<tt'))
-                return { rawLyrics, source: 'lrc-red', isPlainOnly }
-            }
-
-            return null
-        } catch (error) {
-            if (error instanceof Error && error.name === 'AbortError') throw error
-            return null
-        }
     }
 
     static async fetchFromAdi(
