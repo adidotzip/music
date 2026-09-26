@@ -231,7 +231,9 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			localStorage.setItem(storageKey, JSON.stringify({ csvText, resumeFrom }))
 			const result = await importPlaylistCsv(csvText, (progress) => {
 				csvProgress = progress
-				localStorage.setItem(storageKey, JSON.stringify({ csvText, resumeFrom: progress.rowIndex + 1 }))
+				if (['added', 'duplicate', 'not-found', 'failed'].includes(progress.status)) {
+					localStorage.setItem(storageKey, JSON.stringify({ csvText, resumeFrom: progress.rowIndex + 1 }))
+				}
 			}, resumeFrom)
 			const failedCount = result.notFound.length + result.failed.length
 			snackbar({
@@ -258,7 +260,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		if (!saved) return
 		try {
 			const state = JSON.parse(saved) as { csvText?: string; resumeFrom?: number }
-			if (!state.csvText || !state.resumeFrom || state.resumeFrom <= 0) return
+			if (!state.csvText || typeof state.resumeFrom !== 'number' || state.resumeFrom < 0) return
 			const file = new File([state.csvText], 'playlist-import.csv', { type: 'text/csv' })
 			void importPlaylistCsvFile(file, state.resumeFrom)
 		} catch {
