@@ -36,18 +36,28 @@
 
 <button
 	type="button"
-	title={state === 'done' ? 'Available offline' : state === 'loading' ? 'Saving offline…' : 'Download for offline playback'}
-	class={['download-button interactable', large && 'download-button-large', className]}
-	aria-label={state === 'done' ? 'Downloaded for offline playback' : state === 'loading' ? 'Saving song offline' : 'Download song for offline playback'}
+	title={state === 'done' ? 'Available offline' : state === 'loading' ? 'Saving offline…' : state === 'error' ? 'Download failed. Try again' : 'Download for offline playback'}
+	class={['download-button interactable', large && 'download-button-large', state === 'done' && 'is-complete', state === 'error' && 'is-error', className]}
+	aria-label={state === 'done' ? 'Downloaded for offline playback' : state === 'loading' ? 'Saving song offline' : state === 'error' ? 'Download failed, try again' : 'Download song for offline playback'}
 	aria-busy={state === 'loading'}
 	disabled={state === 'loading' || state === 'done'}
 	onclick={download}
 >
-	<span class={['download-icon', state === 'loading' && 'is-loading', state === 'done' && 'is-done']}>
+	<span class={['download-icon', state === 'loading' && 'is-loading', state === 'done' && 'is-done', state === 'error' && 'is-error']}>
 		{#if state === 'done'}
-			<Icon type="check" />
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M5 12.5 9.2 16.7 19 7" />
+			</svg>
+		{:else if state === 'error'}
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M12 7v6M12 17.5v.5" />
+			</svg>
 		{:else}
-			<Icon type="download" />
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M12 3v12" />
+				<path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+				<path d="M5 20h14" />
+			</svg>
 		{/if}
 	</span>
 </button>
@@ -58,8 +68,8 @@
 	.download-button {
 		position: relative;
 		display: inline-flex;
-		height: 44px;
-		width: 44px;
+		height: 40px;
+		width: 40px;
 		flex: 0 0 auto;
 		align-items: center;
 		justify-content: center;
@@ -69,8 +79,8 @@
 		color: var(--color-onSurfaceVariant);
 		cursor: pointer;
 		transition:
-			color 180ms var(--ease-standard),
-			background-color 180ms var(--ease-standard),
+			color 160ms var(--ease-standard),
+			background-color 160ms var(--ease-standard),
 			transform 180ms var(--ease-emphasized);
 	}
 
@@ -82,10 +92,6 @@
 
 	.download-button:active:not(:disabled) {
 		transform: scale(0.9);
-	}
-
-	.download-button:disabled {
-		cursor: default;
 	}
 
 	.download-button-large {
@@ -100,7 +106,7 @@
 		place-items: center;
 		transform-origin: center;
 		transition:
-			transform 220ms var(--ease-emphasized),
+			transform 180ms var(--ease-emphasized),
 			opacity 160ms var(--ease-standard);
 	}
 
@@ -109,46 +115,75 @@
 		width: 24px;
 	}
 
+	.download-icon svg {
+		display: block;
+		height: 100%;
+		width: 100%;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 1.9;
+	}
+
 	.download-icon.is-loading {
-		animation: download-spin 700ms linear infinite;
+		animation: download-pulse 650ms ease-in-out infinite;
 		opacity: 0.7;
 	}
 
+	.download-icon.is-loading svg {
+		animation: download-spin 650ms linear infinite;
+	}
+
 	.download-icon.is-done {
-		animation: download-complete 260ms var(--ease-emphasized) both;
+		animation: download-complete 240ms var(--ease-emphasized) both;
 		color: var(--color-primary);
 	}
 
+	.download-icon.is-error {
+		color: var(--color-error);
+		animation: download-error 220ms var(--ease-emphasized);
+	}
+
 	@keyframes download-spin {
-		from {
-			transform: rotate(0deg) scale(0.92);
-		}
-		50% {
-			transform: rotate(180deg) scale(1.05);
-		}
 		to {
-			transform: rotate(360deg) scale(0.92);
+			transform: rotate(360deg);
+		}
+	}
+
+	@keyframes download-pulse {
+		50% {
+			transform: scale(0.88);
 		}
 	}
 
 	@keyframes download-complete {
 		0% {
-			transform: scale(0.55) rotate(-18deg);
+			transform: scale(0.65);
 			opacity: 0;
 		}
-		65% {
-			transform: scale(1.12) rotate(4deg);
+		70% {
+			transform: scale(1.08);
 			opacity: 1;
 		}
 		100% {
-			transform: scale(1) rotate(0deg);
+			transform: scale(1);
 			opacity: 1;
 		}
 	}
 
+	@keyframes download-error {
+		25% { transform: translateX(-2px); }
+		50% { transform: translateX(2px); }
+		75% { transform: translateX(-1px); }
+		100% { transform: translateX(0); }
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.download-icon.is-loading,
-		.download-icon.is-done {
+		.download-icon.is-done,
+		.download-icon.is-error,
+		.download-icon.is-loading svg {
 			animation: none;
 		}
 	}
