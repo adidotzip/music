@@ -259,7 +259,8 @@ import { browser } from '$app/environment'
             artist: album.artist || '',
             art: album.artUrl || '',
         })
-        await goto(`/album/${encodeURIComponent(album.id)}?${params.toString()}`)
+        const albumId = album.providerId || album.id
+        await goto(`/album/${encodeURIComponent(albumId)}?${params.toString()}`)
     }
 
     const viewArtist = async (artist: DiscoveryItem) => {
