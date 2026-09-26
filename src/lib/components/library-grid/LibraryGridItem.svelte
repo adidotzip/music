@@ -9,12 +9,10 @@
 	import type { QueryResult } from '$lib/db/query/query.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte.ts'
 	import { dbGetAlbumTracksIdsByName, dbGetArtistTracksIdsByName } from '$lib/library/get/ids'
-	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 	import { getLibraryValue, type AlbumData, type ArtistData } from '$lib/library/get/value'
 	import { createAlbumQuery, createArtistQuery } from '$lib/library/get/value-queries'
 	import { UNKNOWN_ITEM } from '$lib/library/types'
 	import Artwork from '../Artwork.svelte'
-	import Icon from '../icon/Icon.svelte'
 
 	export type LibraryGridItemType = 'albums' | 'artists'
 
@@ -54,8 +52,6 @@
 	const item = $derived(query.value)
 
 	let artworkSource = $state<Blob | string | undefined>()
-	let downloading = $state(false)
-
 	const artworkUrl = createManagedArtwork(() => artworkSource)
 
 	const loadArtwork = async (value: Value) => {
@@ -139,25 +135,6 @@
 	const getTrackIds = (name: string) =>
 		type === 'albums' ? dbGetAlbumTracksIdsByName(name) : dbGetArtistTracksIdsByName(name)
 
-	const downloadAlbum = async (event: MouseEvent) => {
-		event.preventDefault()
-		event.stopPropagation()
-
-		if (type !== 'albums' || !item || downloading) return
-
-		downloading = true
-		try {
-			const trackIds = await dbGetAlbumTracksIdsByName(item.name)
-			for (const trackId of trackIds) {
-				await ensureTrackIsStoredLocally(trackId)
-			}
-		} catch (error) {
-			snackbar.unexpectedError(error)
-		} finally {
-			downloading = false
-		}
-	}
-
 	const menuItems = () => {
 		if (!item || !linkProps) return []
 
@@ -225,18 +202,6 @@
 			loading="lazy"
 		/>
 
-		{#if type === 'albums'}
-			<button
-				type="button"
-				class="absolute right-3 bottom-3 z-2 flex size-10 items-center justify-center rounded-full bg-black/65 text-white opacity-0 shadow-lg backdrop-blur-md transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100"
-				aria-label="Download album for offline playback"
-				title="Download album for offline playback"
-				disabled={downloading}
-				onclick={downloadAlbum}
-			>
-				<Icon type="download" class={downloading ? 'animate-pulse' : 'size-5'} />
-			</button>
-		{/if}
 	</div>
 
 	<div class="min-w-0 px-2.5 py-3">
