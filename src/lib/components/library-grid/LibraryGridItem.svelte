@@ -58,7 +58,10 @@
 	let fallbackArtworkSrc = $state<Blob | string | undefined>()
 	const artworkSrc = createManagedArtwork(() => {
 		if (type === 'albums') {
-			return item ? ((item as AlbumData).image ?? fallbackArtworkSrc) : fallbackArtworkSrc
+			// Downloaded/imported albums can retain stale or non-displayable
+			// album artwork metadata. Prefer the artwork attached to one of the
+			// album's actual tracks once it is available.
+			return item ? (fallbackArtworkSrc ?? (item as AlbumData).image) : fallbackArtworkSrc
 		}
 
 		return fallbackArtworkSrc
