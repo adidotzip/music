@@ -9,7 +9,7 @@
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.ts'
 	import { getAnimatedArtwork } from '$lib/helpers/animated-artwork'
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
-	import { getArtistProfile, getAlbumsForArtist, getSongsForArtist } from '$lib/services/spicyamll.ts'
+	import { getArtistProfile, getAlbumsForArtist } from '$lib/services/spicyamll.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 	import { type AlbumData, getLibraryValue, registerRemoteTrack, type TrackData } from '$lib/library/get/value.ts'
@@ -74,7 +74,7 @@
 		image: string
 		year: string
 	}>>([])
-	let remoteArtistTrackIds = $state<number[]>([])
+	let localArtistTrackIds = $state<number[]>([])
 
 	const remoteIdToNumber = (id: string | number) => {
 		const value = String(id)
@@ -119,7 +119,7 @@
 			artistArtworkSrc = undefined
 			artistProfile = null
 			artistAlbums = []
-			remoteArtistTrackIds = []
+			localArtistTrackIds = []
 
 			const loadArtistProfile = async () => {
 				try {
@@ -127,50 +127,21 @@
 					const localArtistId = getLibraryArtists().find(
 						(artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase(),
 					)?.id
-					const [profile, albums, songs] = await Promise.all([
+					const [profile, albums] = await Promise.all([
 						getArtistProfile(localArtistId, item.name),
 						getAlbumsForArtist(localArtistId, item.name),
-						getSongsForArtist(localArtistId, item.name),
 					])
 
 					if (cancelled) return
 					artistProfile = profile
 					artistAlbums = albums.slice(0, 12)
 
-					const ids: number[] = []
-					for (const song of songs.slice(0, 50)) {
-						const remoteId = String(song.id)
-						const localId = remoteIdToNumber(remoteId)
-						const image = song.image || undefined
-						const track: TrackData = {
-							id: localId,
-							remoteId,
-							streaming: true,
-							uuid: 'spicyamll:' + remoteId,
-							name: song.name,
-							album: song.album || UNKNOWN_ITEM,
-							artists: song.artist ? [song.artist] : [profile.name],
-							year: song.year ? String(song.year) : UNKNOWN_ITEM,
-							duration: song.duration ?? 0,
-							genre: [],
-							trackNo: 0,
-							trackOf: 0,
-							discNo: 0,
-							discOf: 0,
-							language: undefined,
-							image: image ? { optimized: false, small: image, full: image } : undefined,
-							file: undefined,
-						directory: undefined,
-							fileName: undefined,
-						scannedAt: Date.now(),
-							url: 'https://api.spicyamll.online/stream?song=' + encodeURIComponent(remoteId) + '&codec=aac&fallback=true&l=en-US&websupport=true',
-							favorite: false,
-						type: 'track',
-						}
-						registerRemoteTrack(track)
-						ids.push(localId)
+					const downloadedIds: number[] = []
+					for (const trackId of tracks.tracksIds) {
+						const track = await getLibraryValue('tracks', trackId, true)
+						if (track?.file) downloadedIds.push(trackId)
 					}
-					remoteArtistTrackIds = ids
+					localArtistTrackIds = downloadedIds
 					artistArtworkSrc = profile.image || (await getArtistArtwork(profile.name)) || undefined
 				} catch {
 					if (!cancelled) {
@@ -331,9 +302,7 @@
 					{/if}
 
 					{m.libraryTracksCount({
-						count: slug === 'artists' && remoteArtistTrackIds.length > 0
-							? remoteArtistTrackIds.length
-							: tracks.tracksIds.length,
+						count: slug === 'artists' ? localArtistTrackIds.length : tracks.tracksIds.length,
 					})}
 				</div>
 			</div>
@@ -387,11 +356,11 @@
 			<div class="mb-4">
 				<h2 class="text-headline-sm">Top Songs</h2>
 				<div class="text-body-sm text-onSurfaceVariant">
-					{remoteArtistTrackIds.length > 0 ? remoteArtistTrackIds.length + ' songs from the artist catalog' : 'Songs in your library'}
+					{localArtistTrackIds.length > 0 ? localArtistTrackIds.length + ' downloaded songs' : 'No downloaded songs'}
 				</div>
 			</div>
 			<TracksListContainer
-				items={remoteArtistTrackIds.length > 0 ? remoteArtistTrackIds : tracks.tracksIds}
+				items={localArtistTrackIds}
 				predefinedMenuItems={{
 					disableViewAlbum: false,
 					disableViewArtist: true,
