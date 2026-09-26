@@ -132,9 +132,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 		isHandHeldDevice ? 'hidden sm:flex' : 'flex',
 	]}
 >
-	{#if !isAlbumOrArtistDetails}
-		{@render navItemsSnippet('h-14 w-20')}
-	{/if}
+	{@render navItemsSnippet('h-14 w-20')}
 
 </div>
 
