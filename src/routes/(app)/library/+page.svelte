@@ -68,11 +68,15 @@
 		}
 	}
 
+	let refreshTimer: number | undefined
+
 	const scheduleDailyRefresh = () => {
+		if (refreshTimer !== undefined) window.clearTimeout(refreshTimer)
+
 		const now = new Date()
 		const nextDay = new Date(now)
 		nextDay.setHours(24, 0, 2, 0)
-		return window.setTimeout(() => {
+		refreshTimer = window.setTimeout(() => {
 			void loadLibraryHome()
 			scheduleDailyRefresh()
 		}, Math.max(1000, nextDay.getTime() - now.getTime()))
@@ -84,11 +88,11 @@
 		const onLibraryUpdated = () => void loadLibraryHome()
 		window.addEventListener('adi-music-library-updated', onLibraryUpdated)
 
-		const refreshTimer = scheduleDailyRefresh()
+		scheduleDailyRefresh()
 
 		return () => {
 			window.removeEventListener('adi-music-library-updated', onLibraryUpdated)
-			window.clearTimeout(refreshTimer)
+			if (refreshTimer !== undefined) window.clearTimeout(refreshTimer)
 		}
 	})
 </script>
