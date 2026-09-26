@@ -35,18 +35,22 @@ const getAudioExtension = (blob: Blob): string => {
 
 type LibraryTrack = Awaited<ReturnType<typeof getLibraryValue<'tracks', true>>>
 
-const getDownloadUrl = (track: LibraryTrack) => {
-	if (!track) return undefined
-	if (track.url?.startsWith('http')) return track.url
+const getDownloadUrls = (track: LibraryTrack): string[] => {
+	if (!track) return []
+
+	const urls: string[] = []
+	if (track.url?.startsWith('http')) urls.push(track.url)
 
 	if (track.remoteId !== undefined && track.remoteId > 0) {
-		return spicyamll.downloadUrl(track.remoteId, {
-			codec: 'aac',
-			language: 'en-US',
-		})
+		urls.push(
+			spicyamll.downloadUrl(track.remoteId, {
+				codec: 'aac',
+				language: 'en-US',
+			}),
+		)
 	}
 
-	return undefined
+	return [...new Set(urls)]
 }
 
 const downloadAndImport = async (trackId: number): Promise<number> => {
@@ -69,40 +73,51 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 		return existing.id
 	}
 
-	const url = getDownloadUrl(track)
-	if (!url) {
+	const urls = getDownloadUrls(track)
+	if (!urls.length) {
 		throw new Error(`No downloadable source is available for "${track.name}".`)
 	}
 
-	let response: Response
-	try {
-		response = await fetch(url, {
-			method: 'GET',
-			mode: 'cors',
-			credentials: 'omit',
-			cache: 'no-store',
-			headers: { Accept: 'audio/*,application/octet-stream;q=0.9,*/*;q=0.5' },
-		})
-	} catch (error) {
+	let response: Response | undefined
+	let lastError: unknown
+
+	for (const url of urls) {
+		try {
+			const candidate = await fetch(url, {
+				method: 'GET',
+				mode: 'cors',
+				credentials: 'omit',
+				cache: 'no-store',
+				headers: { Accept: 'audio/*,application/octet-stream;q=0.9,*/*;q=0.5' },
+			})
+
+			const contentType = candidate.headers.get('content-type')?.toLowerCase() ?? ''
+			if (
+				candidate.ok &&
+				!contentType.includes('application/json') &&
+				!contentType.includes('text/html')
+			) {
+				response = candidate
+				break
+			}
+
+			let detail = ''
+			try {
+				detail = (await candidate.text()).slice(0, 160)
+			} catch {}
+			lastError = new Error(
+				`Download failed (${candidate.status})${detail ? `: ${detail}` : '.'}`,
+			)
+		} catch (error) {
+			lastError = error
+		}
+	}
+
+	if (!response) {
 		throw new Error(
 			`Unable to fetch the audio for "${track.name}". Check your connection or whether this song is available offline.`,
-			{ cause: error },
+			{ cause: lastError },
 		)
-	}
-
-	if (!response.ok) {
-		let detail = ''
-		try {
-			detail = (await response.text()).slice(0, 160)
-		} catch {}
-		throw new Error(
-			`Download failed (${response.status})${detail ? `: ${detail}` : '.'}`,
-		)
-	}
-
-	const contentType = response.headers.get('content-type')?.toLowerCase() ?? ''
-	if (contentType.includes('application/json') || contentType.includes('text/html')) {
-		throw new Error('The music service returned an error instead of an audio file.')
 	}
 
 	const contentLength = Number(response.headers.get('content-length') || 0)
