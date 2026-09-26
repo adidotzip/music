@@ -144,15 +144,17 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 						const album = await getLibraryValue('albums', albumId, true)
 						if (!album) continue
 						const trackIds = await dbGetAlbumTracksIdsByName(album.name)
-						let downloaded = false
+						if (trackIds.length === 0) continue
+
+						let fullyDownloaded = true
 						for (const trackId of trackIds) {
 							const track = await getLibraryValue('tracks', trackId, true)
-							if (track?.file) {
-								downloaded = true
+							if (!track?.file) {
+								fullyDownloaded = false
 								break
 							}
 						}
-						if (downloaded) localAlbums.push(album)
+						if (fullyDownloaded) localAlbums.push(album)
 					}
 
 					const normalized = (value: string) => value.trim().toLowerCase()
