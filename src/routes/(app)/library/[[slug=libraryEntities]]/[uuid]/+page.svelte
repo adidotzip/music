@@ -11,14 +11,14 @@
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
-	import type { AlbumData, TrackData } from '$lib/library/get/value.ts'
+	import { type AlbumData, getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
+	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 	import {
 		FAVORITE_PLAYLIST_ID,
 		removeTrackEntryFromPlaylist,
 	} from '$lib/library/playlists-actions.ts'
 	import { type Album, type Playlist, UNKNOWN_ITEM } from '$lib/library/types.ts'
 	import { getPlaylistMenuItems } from '$lib/menu-actions/playlists.ts'
-	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
 
 	const { data } = $props()
 
@@ -46,9 +46,11 @@
 		return 'person'
 	}
 
+	let albumFallbackArtworkSrc = $state<Blob | string | undefined>()
+
 	const artworkSrc = createManagedArtwork(() => {
 		if (slug !== 'playlists') {
-			return (item as Album).image
+			return (item as Album).image ?? albumFallbackArtworkSrc
 		}
 
 		return null
@@ -57,23 +59,46 @@
 	let artistArtworkSrc = $state<string | undefined>()
 	let animatedArtworkSrc = $state<string | undefined>()
 	$effect(() => {
+		let cancelled = false
 		if (slug === 'albums' && item) {
 			const album = item as AlbumData
 			const artist = (album.artists[0] as string) ?? ''
-			if (artist === UNKNOWN_ITEM || album.name === UNKNOWN_ITEM) {
-				animatedArtworkSrc = undefined
-				return
+			albumFallbackArtworkSrc = undefined
+
+			if (artist !== UNKNOWN_ITEM && album.name !== UNKNOWN_ITEM) {
+				getAnimatedArtwork(artist, album.name).then((result) => {
+					if (!cancelled) animatedArtworkSrc = result?.url
+				})
 			}
-			getAnimatedArtwork(artist, album.name).then((result) => {
-				animatedArtworkSrc = result?.url
-			})
+
+			if (!album.image && tracks.tracksIds.length > 0) {
+				const loadAlbumFallback = async () => {
+					for (const trackId of tracks.tracksIds.slice(0, 3)) {
+						try {
+							const track = await getLibraryValue('tracks', trackId, true)
+							const image = track?.image?.full
+							if (image && !cancelled) {
+								albumFallbackArtworkSrc = image
+								return
+							}
+						} catch {
+							// Try next track
+						}
+					}
+				}
+				void loadAlbumFallback()
+			}
 		} else if (slug === 'artists' && item) {
 			artistArtworkSrc = undefined
 			getArtistArtwork(item.name).then((url) => {
-				artistArtworkSrc = url
+				if (!cancelled) artistArtworkSrc = url
 			})
 		} else {
 			animatedArtworkSrc = undefined
+		}
+
+		return () => {
+			cancelled = true
 		}
 	})
 

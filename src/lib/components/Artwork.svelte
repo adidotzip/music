@@ -156,7 +156,7 @@
 
 <div
 	class={[
-		'relative flex overflow-hidden ring-1 ring-surfaceContainerHigh contain-strict',
+		'relative flex overflow-hidden ring-1 ring-surfaceContainerHigh contain-strict text-onSurfaceVariant/60',
 		!noAspectSquare && 'aspect-square',
 		!noFallbackBg && 'bg-surfaceContainerHighest',
 		className,
@@ -171,13 +171,15 @@
 			class="size-full object-cover"
 			draggable="false"
 			onerror={() => {
-			if (fallbackApplied) return
-			fallbackApplied = true
-			error = true
-		}}
+				error = true
+				if (fallbackIcon === false) {
+					if (fallbackApplied) return
+					fallbackApplied = true
+				}
+			}}
 			onload={() => {
-			error = false
-		}}
+				error = false
+			}}
 		/>
 	{/if}
 

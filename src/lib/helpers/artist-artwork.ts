@@ -47,6 +47,11 @@ export const getArtistArtwork = async (artist: string): Promise<string | undefin
 		return cached.value
 	}
 
+	const FIVE_MINUTES = 5 * 60 * 1000
+	if (cached?.type === 'none' && Date.now() - cached.timestamp < FIVE_MINUTES) {
+		return undefined
+	}
+
 	const pending = pendingRequests.get(artist)
 	if (pending) {
 		return pending
