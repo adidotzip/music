@@ -131,8 +131,9 @@
 		'desktop-sidebar fixed left-4 top-20 z-1 hidden h-max w-16 flex-col items-center gap-2 sm:flex [@media(max-height:500px)]:top-2',
 	]}
 >
-	{@render navItemsSnippet('h-14 w-20')}
-
+	{#if !isAlbumOrArtistDetails}
+		{@render navItemsSnippet('h-14 w-20')}
+	{/if}
 </div>
 
 {#if isLibraryHome}
