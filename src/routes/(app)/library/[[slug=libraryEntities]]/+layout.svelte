@@ -14,8 +14,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	import PlaylistListContainer from '$lib/components/playlists/PlaylistListContainer.svelte'
 	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.js'
-	import { isMobile } from '$lib/helpers/utils/ua.ts'
-	import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte.ts'
+		import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte.ts'
 	import { FAVORITE_PLAYLIST_ID } from '$lib/library/playlists-actions.ts'
 	import { getPlaylistMenuItems } from '$lib/menu-actions/playlists.ts'
 	import Search from './Search.svelte'
@@ -31,7 +30,6 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	const slug = $derived(page.params.slug as typeof data.slug | undefined)
 	const isLibraryHome = $derived(!slug)
 	const isAlbumOrArtistDetails = $derived(Boolean(page.params.uuid) && (slug === 'albums' || slug === 'artists'))
-	const isHandHeldDevice = isMobile()
 
 	type LibraryNavSlug = 'home' | NonNullable<typeof slug>
 
@@ -119,17 +117,16 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 {#snippet layoutBottom()}
 	{#if isHandHeldDevice}
 		<div
-			class="pointer-events-auto grid h-16 w-full grid-cols-[repeat(auto-fit,minmax(0,1fr))] bg-surfaceContainer sm:hidden active-view-regular:view-name-[bottom-bar]"
+			class="pointer-events-auto grid h-16 w-full grid-cols-6 items-center border-t border-outline/10 bg-surfaceContainer px-1 pb-[env(safe-area-inset-bottom)] sm:hidden active-view-regular:view-name-[bottom-bar]"
 		>
-			{@render navItemsSnippet('h-full')}
+			{@render navItemsSnippet('h-full min-w-0')}
 		</div>
 	{/if}
 {/snippet}
 
 <div
 	class={[
-		'desktop-sidebar fixed left-4 top-20 z-1 flex h-max w-16 flex-col items-center gap-2 [@media(max-height:500px)]:top-2',
-		isHandHeldDevice ? 'hidden sm:flex' : 'flex',
+		'desktop-sidebar fixed left-4 top-20 z-1 hidden h-max w-16 flex-col items-center gap-2 sm:flex [@media(max-height:500px)]:top-2',
 	]}
 >
 	{@render navItemsSnippet('h-14 w-20')}
@@ -144,7 +141,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 {:else}
 	<ListDetailsLayout mode={layoutMode} class="mx-auto w-full max-w-(--app-max-content-width) grow">
 	{#snippet list(mode)}
-		<div class={[isHandHeldDevice ? 'sm:pl-20' : 'pl-20', 'flex grow flex-col']}>
+		<div class="flex grow flex-col pl-20">
 			<div class={[mode === 'both' && 'w-100', 'flex grow flex-col px-4']}>
 				<div class="flex items-center gap-2">
 					<div class="min-w-0 grow">
