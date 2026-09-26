@@ -22,7 +22,6 @@ import { browser } from '$app/environment'
     import { getRecentlyPlayed } from '$lib/services/library.ts'
     import {
         type DiscoveryResource,
-        type DiscoveryTrack,
         normalizeTracks,
         parseDiscoveryResults,
         spicyamll,
@@ -46,18 +45,17 @@ import { browser } from '$app/environment'
     let recentlyPlayed = $state<DiscoveryItem[]>([])
 
 
-    const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
-        const playbackId = 'providerId' in input && input.providerId ? input.providerId : input.id
+    const getOrRegisterRemoteTrack = (input: DiscoveryResource): number => {
+        const playbackId = input.providerId || input.id
         const key = `spicyamll:${playbackId}`
         const id = generateStableId(key)
 
-        const isResource = 'artUrl' in input
         const name = input.name || 'Unknown'
-        const artistName = isResource ? input.artist : input.artist
-        const albumName = isResource ? input.album : input.album
-        const imageUrl = isResource ? input.artUrl : input.image
-        const rawDuration = isResource ? input.duration ?? 0 : input.duration ?? 0
-        const yearStr = !isResource && input.year ? String(input.year) : UNKNOWN_ITEM
+        const artistName = input.artist
+        const albumName = input.album
+        const imageUrl = input.artUrl
+        const rawDuration = input.duration ?? 0
+        const yearStr = UNKNOWN_ITEM
 
         registerRemoteTrack({
             id,
