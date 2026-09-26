@@ -369,6 +369,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			</div>
 			<TracksListContainer
 				items={localArtistTrackIds}
+				showDownloadButton={false}
 				predefinedMenuItems={{
 					disableViewAlbum: false,
 					disableViewArtist: true,
