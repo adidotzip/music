@@ -6,7 +6,6 @@ settings:
 
 patchedDependencies:
   '@material/material-color-utilities': ba9c0fd32469c32e8fbc40d212f789ab9438cca094fa57f398755793916bd133
-  '@uimaxbai/am-lyrics': 61e33940b091c4e7df730ba3a53816bbbbdce51b672555a47813ec26fba06637
 
 importers:
 
@@ -21,9 +20,6 @@ importers:
       '@tanstack/virtual-core':
         specifier: ^3.14.0
         version: 3.17.11
-      '@uimaxbai/am-lyrics':
-        specifier: 1.6.3
-        version: 1.6.3(patch_hash=61e33940b091c4e7df730ba3a53816bbbbdce51b672555a47813ec26fba06637)
       hls.js:
         specifier: ^1.6.17
         version: 1.7.3
@@ -865,17 +861,6 @@ packages:
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
-
-  '@uimaxbai/am-lyrics@1.6.3':
-    resolution: {integrity: sha512-g/QklkpmOewKogJc582KH+NKx7jEAqeqvQ2JJv8lHAyDKtZJ7STOn71vz3D6SjNapbAVGoMLwxOk0pr5KKextw==}
-    peerDependencies:
-      '@lit/react': ^1.0.0
-      react: '>=17.0.0'
-    peerDependenciesMeta:
-      '@lit/react':
-        optional: true
-      react:
-        optional: true
 
   '@vitest/expect@4.1.11':
     resolution: {integrity: sha512-VX2x5vNJXET47KAFzwERI+KRMtTTCSWTfSMKsW7JsUsXV4psq++e3DvZpuTDOpHcxytiDs6p2nhVb2tVDiiUYw==}
@@ -2368,11 +2353,6 @@ snapshots:
   '@types/ws@8.18.1':
     dependencies:
       '@types/node': 24.13.6
-
-  '@uimaxbai/am-lyrics@1.6.3(patch_hash=61e33940b091c4e7df730ba3a53816bbbbdce51b672555a47813ec26fba06637)':
-    dependencies:
-      '@babel/runtime': 7.29.7
-      lit: 3.3.3
 
   '@vitest/expect@4.1.11':
     dependencies:
