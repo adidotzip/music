@@ -60,6 +60,8 @@ export interface UnknownTrack extends ParsedTrackData {
 	remoteId?: number | string
 	/** True when the track is backed by an online catalog stream. */
 	streaming?: boolean
+	/** True when the catalog recording is explicitly rated. */
+	explicit?: boolean
 }
 
 export interface Track extends BaseMusicItem, UnknownTrack {}
