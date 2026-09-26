@@ -130,7 +130,10 @@ export const searchItunes = async (
 	return response.results.filter((result) => result && typeof result === 'object')
 }
 
-export const searchItunesSongs = (term: string, limit = 20) => searchItunes(term, 'musicTrack', limit)
+export const searchItunesSongs = async (term: string, limit = 20) => {
+	const results = await searchItunes(term, 'musicTrack', limit)
+	return results.filter((result) => result.kind === 'song')
+}
 export const searchItunesAlbums = (term: string, limit = 20) => searchItunes(term, 'album', limit)
 export const searchItunesArtists = (term: string, limit = 20) => searchItunes(term, 'musicArtist', limit)
 
