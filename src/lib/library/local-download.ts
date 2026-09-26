@@ -82,11 +82,7 @@ const downloadAndImport = async (trackId: number, onProgress?: (progress: number
 	const database = await getDatabase()
 	const existing = await database.getFromIndex('tracks', 'uuid', track.uuid)
 	if (existing?.file) {
-		if (trackId < 0) {
-			try {
-				localStorage.setItem(LOCAL_ALIAS_PREFIX + trackId, String(existing.id))
-			} catch {}
-		}
+		if (trackId < 0) setCachedLocalTrackId(trackId, existing.id)
 		return existing.id
 	}
 
@@ -250,11 +246,7 @@ const downloadAndImport = async (trackId: number, onProgress?: (progress: number
 
 	const localTrackId = await dbImportTrack(parsedData, trackId >= 0 ? trackId : undefined)
 
-	if (trackId < 0) {
-		try {
-			localStorage.setItem(LOCAL_ALIAS_PREFIX + trackId, String(localTrackId))
-		} catch {}
-	}
+	if (trackId < 0) setCachedLocalTrackId(trackId, localTrackId)
 	return localTrackId
 }
 
