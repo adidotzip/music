@@ -109,14 +109,15 @@ import { browser } from '$app/environment'
     )
 
     const cleanArtUrl = (url: unknown) => {
-        if (typeof url !== 'string' || !url) return 'favicon.svg'
+        if (typeof url !== 'string' || !url.trim()) return ''
         const value = url
+            .trim()
             .replace(/\{w\}/g, '600')
             .replace(/\{h\}/g, '600')
             .replace(/\{c\}/g, 'bb')
             .replace(/\{f\}/g, 'jpg')
             .replace(/\d+x\d+bb\./, '600x600bb.')
-        return /^https?:\/\//i.test(value) ? value : 'favicon.svg'
+        return /^https?:\/\//i.test(value) ? value : ''
     }
 
     const shuffle = <T,>(items: T[]) => {
