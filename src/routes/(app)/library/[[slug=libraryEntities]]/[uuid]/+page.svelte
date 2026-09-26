@@ -105,7 +105,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 					for (const trackId of tracks.tracksIds.slice(0, 3)) {
 						try {
 							const track = await getLibraryValue('tracks', trackId, true)
-							const image = track?.image?.full
+							const image = track?.image?.small ?? track?.image?.full
 							if (image && !cancelled) {
 								albumFallbackArtworkSrc = image
 								return
