@@ -3,7 +3,7 @@
 	import Icon from '$lib/components/icon/Icon.svelte'
 
 	interface Props {
-		trackId: number
+		trackId: number | string
 		large?: boolean
 		downloaded?: boolean
 		class?: ClassValue
@@ -22,7 +22,7 @@
 
 		state = 'loading'
 		try {
-			await ensureTrackIsStoredLocally(trackId)
+			await ensureTrackIsStoredLocally(typeof trackId === 'string' ? Number(trackId) : trackId)
 			state = 'done'
 		} catch (error) {
 			state = 'error'
