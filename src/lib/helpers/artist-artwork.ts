@@ -63,7 +63,7 @@ export const getArtistArtwork = async (artist: string): Promise<string | undefin
 
 			for (const trackId of trackIds.slice(0, 8)) {
 				const track = await getLibraryValue('tracks', trackId, true)
-				const artwork = track?.image?.full
+				const artwork = track?.image?.small ?? track?.image?.full
 
 				if (artwork instanceof Blob) {
 					// Blob URLs are only valid for the current document, so never
