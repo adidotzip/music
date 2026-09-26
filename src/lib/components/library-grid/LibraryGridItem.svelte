@@ -221,6 +221,7 @@
 			alt={item?.name}
 			fallbackIcon={type === 'artists' ? 'person' : 'album'}
 			class={['size-full', type === 'artists' ? 'rounded-full' : 'rounded-2xl']}
+			loading="lazy"
 		/>
 
 		{#if type === 'albums'}
