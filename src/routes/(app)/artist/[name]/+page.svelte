@@ -66,9 +66,11 @@
 		try {
 			const profile = await getLyricsflowArtistProfile(artistId, artistNameHint)
 			artist = profile.name
-			artistArt = profile.artUrl
 			songs = profile.songs
 			albums = profile.albums
+			// Prefer the profile artwork, then fall back to the first known
+			// track artwork so the profile never depends on a separate artwork service.
+			artistArt = profile.artUrl || profile.songs.find((song) => song.artUrl)?.artUrl
 			registerSongs()
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unable to load artist profile.'
@@ -189,7 +191,7 @@
 								class="interactable flex min-w-0 flex-col overflow-hidden rounded-2xl bg-surfaceContainerHigh text-left"
 							>
 								<Artwork
-									src={album.artUrl}
+									src={album.artUrl || songs.find((song) => song.album === album.name)?.artUrl}
 									fallbackIcon="album"
 									class="aspect-square w-full rounded-[inherit]"
 								/>
