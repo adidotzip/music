@@ -53,7 +53,7 @@ const recoverRemoteTrack = async (id: number): Promise<TrackData | undefined> =>
 
 		const recovered: TrackData = {
 			id,
-			remoteId: Number(match.id) || 0,
+			remoteId: String(match.id),
 			streaming: true,
 			uuid: 'spicyamll:' + match.id,
 			name: match.name,
