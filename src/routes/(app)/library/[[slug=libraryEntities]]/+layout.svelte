@@ -4,7 +4,7 @@
 	import { page } from '$app/state'
 	import type { RouteId } from '$app/types'
 	import AlbumsListContainer from '$lib/components/AlbumsListContainer.svelte'
-import LibraryHome from '$lib/components/LibraryHome.svelte'
+	import LibraryHome from '$lib/components/LibraryHome.svelte'
 	import ArtistListContainer from '$lib/components/ArtistListContainer.svelte'
 	import Button from '$lib/components/Button.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
@@ -33,7 +33,7 @@ import LibraryHome from '$lib/components/LibraryHome.svelte'
 	const isHandHeldDevice = isMobile()
 	const isAlbumOrArtistDetails = $derived(Boolean(page.params.uuid) && (slug === 'albums' || slug === 'artists'))
 
-	type LibraryNavSlug = 'home' | NonNullable<typeof slug>
+	type LibraryNavSlug = 'home' | 'tracks' | 'albums' | 'artists' | 'playlists'
 
 	interface NavItem {
 		slug: LibraryNavSlug
