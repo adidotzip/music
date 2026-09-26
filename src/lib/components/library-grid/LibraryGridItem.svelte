@@ -6,7 +6,6 @@
 	import { ripple } from '$lib/attachments/ripple.ts'
 	import type { QueryResult } from '$lib/db/query/query.ts'
 	import { getAnimatedArtwork } from '$lib/helpers/animated-artwork.ts'
-	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte.ts'
 	import { dbGetAlbumTracksIdsByName, dbGetArtistTracksIdsByName } from '$lib/library/get/ids'
 	import { ensureTrackIsStoredLocally } from '$lib/library/local-download.ts'
@@ -56,7 +55,6 @@
 		) as QueryResult<Value>
 	const { value: item } = $derived(query)
 
-	let artistArtworkSrc = $state<string | undefined>()
 	let fallbackArtworkSrc = $state<Blob | string | undefined>()
 	const artworkSrc = createManagedArtwork(() => {
 		if (type === 'albums') {
@@ -69,7 +67,6 @@
 	let animatedArtworkSrc = $state<string | undefined>()
 	$effect(() => {
 		let cancelled = false
-		artistArtworkSrc = undefined
 		fallbackArtworkSrc = undefined
 
 		const loadFallbackArtwork = async () => {
@@ -108,12 +105,8 @@
 				void loadFallbackArtwork()
 			}
 		} else if (type === 'artists' && item) {
-			const artist = item as ArtistData
-			getArtistArtwork(artist.name)
-				.then((url) => {
-					if (!cancelled && url) artistArtworkSrc = url
-				})
-				.catch(() => undefined)
+			// Artist cards use artwork from the artist's own library tracks.
+			// Do not depend on an external artist-artwork service.
 			void loadFallbackArtwork()
 		} else {
 			animatedArtworkSrc = undefined
@@ -239,7 +232,7 @@
 >
 	<div class="relative">
 		<Artwork
-			src={type === 'artists' ? (artistArtworkSrc ?? artworkSrc()) : artworkSrc()}
+			src={artworkSrc()}
 			animatedSrc={animatedArtworkSrc}
 			fallbackIcon={type === 'albums' ? 'album' : 'person'}
 			class="w-full rounded-[inherit]"
