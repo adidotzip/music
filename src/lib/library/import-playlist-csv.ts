@@ -128,7 +128,7 @@ export const importPlaylistCsv = async (
 
 	const headers = rows[0].map((value) => value.replace(/^\uFEFF/, '').trim())
 	const titleIndex = getColumn(headers, ['title', 'track name', 'trackname', 'name'])
-	const artistIndex = getColumn(headers, ['artist', 'artist name', 'artistname'])
+	const artistIndex = getColumn(headers, ['artist', 'artist name', 'artistname', 'artist name(s)', 'artists', 'artists name'])
 	const albumIndex = getColumn(headers, ['album', 'album name', 'albumname'])
 
 	if (titleIndex < 0 || artistIndex < 0) {
