@@ -345,9 +345,11 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 			const artworkUrl = String(
 				artwork.url ?? item.image ?? item.artwork ?? item.cover ?? item.coverUrl ?? '',
 			)
-				.replace('{w}', '600')
-				.replace('{h}', '600')
-				.replace('{f}', 'jpg')
+				.replace(/\{w\}/g, '600')
+				.replace(/\{h\}/g, '600')
+				.replace(/\{c\}/g, 'bb')
+				.replace(/\{f\}/g, 'jpg')
+				.replace(/\d+x\d+bb\./, '600x600bb.')
 
 			const artistName = String(attributes.artistName ?? item.artist ?? item.artistName ?? '')
 			const albumName = String(attributes.albumName ?? item.album ?? item.albumName ?? '')
