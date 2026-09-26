@@ -70,7 +70,7 @@ const getDownloadUrls = (track: LibraryTrack): string[] => {
 	return [...new Set(urls)]
 }
 
-const downloadAndImport = async (trackId: number): Promise<number> => {
+const downloadAndImport = async (trackId: number, onProgress?: (progress: number) => void): Promise<number> => {
 	const track = await getLibraryValue('tracks', trackId, true)
 	if (!track) {
 		throw new Error('Track is no longer available. Open the song once and try Download again.')
@@ -142,7 +142,40 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 		throw new Error('The track is too large to store locally.')
 	}
 
-	const blob = await response.blob()
+	// Read the response ourselves so the UI can show real download progress.
+	// Do not use an <a download> or media element here: this is an IndexedDB
+	// import and must never start playback.
+	const total = Number(response.headers.get('content-length') || 0)
+	if (total > MAX_DOWNLOAD_BYTES) {
+		throw new Error('The track is too large to store locally.')
+	}
+
+	let blob: Blob
+	if (response.body) {
+		const reader = response.body.getReader()
+		const chunks: Uint8Array[] = []
+		let received = 0
+
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) break
+			if (value) {
+				chunks.push(value)
+				received += value.byteLength
+				if (received > MAX_DOWNLOAD_BYTES) {
+					await reader.cancel()
+					throw new Error('The track is too large to store locally.')
+				}
+				if (total > 0) onProgress?.(Math.min(99, Math.round((received / total) * 100)))
+			}
+		}
+		onProgress?.(100)
+		blob = new Blob(chunks, { type: response.headers.get('content-type') || 'audio/mp4' })
+	} else {
+		blob = await response.blob()
+		onProgress?.(100)
+	}
+
 	if (blob.size === 0) {
 		throw new Error('The downloaded track was empty.')
 	}
@@ -225,7 +258,7 @@ const downloadAndImport = async (trackId: number): Promise<number> => {
 	return localTrackId
 }
 
-export const ensureTrackIsStoredLocally = async (trackId: number): Promise<number> => {
+export const ensureTrackIsStoredLocally = async (trackId: number, onProgress?: (progress: number) => void): Promise<number> => {
 	const cachedLocalTrackId = getCachedLocalTrackId(trackId)
 	if (cachedLocalTrackId) {
 		const cachedTrack = await getLibraryValue('tracks', cachedLocalTrackId, true)
@@ -235,7 +268,7 @@ export const ensureTrackIsStoredLocally = async (trackId: number): Promise<numbe
 	const existingRequest = pendingDownloads.get(String(trackId))
 	if (existingRequest) return existingRequest
 
-	const request = downloadAndImport(trackId).finally(() => {
+	const request = downloadAndImport(trackId, onProgress).finally(() => {
 		pendingDownloads.delete(String(trackId))
 	})
 
