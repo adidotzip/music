@@ -66,10 +66,11 @@
 			}
 
 			const trackIds = await dbGetAlbumTracksIdsByName(album.name)
-			for (const trackId of trackIds.slice(0, 5)) {
+			for (const trackId of trackIds) {
 				const track = await getLibraryValue('tracks', trackId, true)
-				const image = track?.image?.full ?? track?.image?.small
+				if (!track?.file) continue
 
+				const image = track.image?.full ?? track.image?.small
 				if (image) {
 					artworkSource = image
 					return
@@ -81,24 +82,20 @@
 
 		const artist = value as ArtistData
 
-		// Keep the artist helper as the first lookup, then fall back to the
-		// artist's own local tracks. Both paths avoid third-party artwork APIs.
-		const artistArtwork = await getArtistArtwork(artist.name)
-		if (artistArtwork) {
-			artworkSource = artistArtwork
-			return
-		}
-
 		const trackIds = await dbGetArtistTracksIdsByName(artist.name)
-		for (const trackId of trackIds.slice(0, 8)) {
+		for (const trackId of trackIds) {
 			const track = await getLibraryValue('tracks', trackId, true)
-			const image = track?.image?.full ?? track?.image?.small
+			if (!track?.file) continue
 
+			const image = track.image?.full ?? track.image?.small
 			if (image) {
 				artworkSource = image
 				return
 			}
 		}
+
+		const artistArtwork = await getArtistArtwork(artist.name)
+		if (artistArtwork) artworkSource = artistArtwork
 	}
 
 	$effect(() => {
