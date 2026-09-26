@@ -4,7 +4,7 @@ import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
 export interface ProviderResponse {
 	rawLyrics: string
-	source: 'adi' | 'lrcmux' | 'am-lyrics' | 'unison' | 'lrclib' | string
+	source: 'lrc-red' | 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string
 	isPlainOnly?: boolean
 }
 
@@ -14,12 +14,11 @@ export class LyricsProvider {
 		track: TrackData,
 		signal?: AbortSignal,
 	): Promise<ProviderResponse | null> {
-		if (providerId === 'amll') return LyricsProvider.fetchFromAmll(track, signal)
+		if (providerId === 'lrc-red') return LyricsProvider.fetchFromLrcRed(track, signal)
+		if (providerId === 'adi-lrcmux') return LyricsProvider.fetchFromAdiLrcmux(track, signal)
 		if (providerId === 'adi') return LyricsProvider.fetchFromAdi(track, signal)
 		if (providerId === 'lrcmux') return LyricsProvider.fetchFromLrcmux(track, signal)
 		if (providerId === 'lrclib') return LyricsProvider.fetchFromLrclib(track, signal)
-		if (providerId === 'am-lyrics' || providerId === 'am')
-			return LyricsProvider.fetchFromAmLyrics(track, signal)
 		if (providerId === 'unison') return LyricsProvider.fetchFromUnison(track, signal)
 
 		if (typeof window !== 'undefined') {
@@ -52,7 +51,7 @@ export class LyricsProvider {
 			if (preferredRes) return preferredRes
 		}
 
-		const standardOrder = ['amll', 'adi', 'lrcmux', 'lrclib', 'am-lyrics', 'unison']
+		const standardOrder = ['lrc-red', 'adi-lrcmux', 'unison', 'lrclib']
 		for (const pid of standardOrder) {
 			if (preferredProvider && pid === preferredProvider) continue
 			const res = await LyricsProvider.fetchByProviderId(pid, track, signal)
@@ -60,33 +59,6 @@ export class LyricsProvider {
 		}
 
 		return null
-	}
-
-	static async fetchFromAmll(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		if (!track.remoteId) return null
-
-		try {
-			const url = new URL('https://api.amll.dev/v1/lyrics/get')
-			url.searchParams.set('id', String(track.remoteId))
-			const response = await fetch(url, { signal })
-			if (!response.ok) return null
-
-			const payload = await response.json()
-			const rawLyrics = payload?.data?.lyrics
-			if (typeof rawLyrics !== 'string' || !rawLyrics.trim()) return null
-
-			return {
-				rawLyrics,
-				source: 'amll',
-				isPlainOnly: false,
-			}
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
 	}
 
 	static async fetchFromAdi(
@@ -143,6 +115,15 @@ export class LyricsProvider {
 			if (error instanceof Error && error.name === 'AbortError') throw error
 			return null
 		}
+	}
+
+	static async fetchFromAdiLrcmux(
+		track: TrackData,
+		signal?: AbortSignal,
+	): Promise<ProviderResponse | null> {
+		const adi = await LyricsProvider.fetchFromAdi(track, signal)
+		if (adi) return adi
+		return LyricsProvider.fetchFromLrcmux(track, signal)
 	}
 
 	static async fetchFromLrcmux(
@@ -291,96 +272,6 @@ export class LyricsProvider {
 			return null
 		} catch (error) {
 			if (error instanceof Error && error.name === 'AbortError') throw error
-			return null
-		}
-	}
-
-	static async fetchFromAmLyrics(
-		track: TrackData,
-		signal?: AbortSignal,
-	): Promise<ProviderResponse | null> {
-		const title = track.name
-		const artist = formatArtists(track.artists)
-		const durationSeconds = track.duration > 0 ? Math.round(track.duration) : undefined
-
-		console.debug('[am-lyrics] Starting lookup', {
-			title,
-			artist,
-			album: track.album,
-			durationSeconds,
-		})
-
-		try {
-			const biniUrl = new URL('https://lyrics-api.binimum.org/')
-			biniUrl.searchParams.set('track', title)
-			biniUrl.searchParams.set('artist', artist)
-
-			if (track.album && track.album !== UNKNOWN_ITEM) {
-				biniUrl.searchParams.set('album', track.album)
-			}
-
-			if (durationSeconds !== undefined) {
-				biniUrl.searchParams.set('duration', String(durationSeconds))
-			}
-
-			console.debug('[am-lyrics] Fetching catalog:', biniUrl.toString())
-			const biniRes = await fetch(biniUrl, { signal })
-
-			if (!biniRes.ok) {
-				console.warn('[am-lyrics] Catalog request failed', {
-					status: biniRes.status,
-					url: biniUrl.toString(),
-				})
-				return null
-			}
-
-			const biniData = await biniRes.json()
-
-			if (!(biniData && Array.isArray(biniData.results))) {
-				console.warn('[am-lyrics] Unexpected catalog response shape', biniData)
-				return null
-			}
-
-			if (biniData.results.length === 0) {
-				console.debug('[am-lyrics] No results in catalog for', { title, artist })
-				return null
-			}
-
-			const best = biniData.results[0]
-			console.debug('[am-lyrics] Best catalog match', best)
-
-			if (!best?.lyricsUrl) {
-				console.warn('[am-lyrics] Catalog result has no lyricsUrl', best)
-				return null
-			}
-
-			console.debug('[am-lyrics] Fetching TTML from', best.lyricsUrl)
-			const ttmlRes = await fetch(best.lyricsUrl, { signal })
-
-			if (!ttmlRes.ok) {
-				console.warn('[am-lyrics] TTML fetch failed', {
-					status: ttmlRes.status,
-					url: best.lyricsUrl,
-				})
-				return null
-			}
-
-			const rawLyrics = await ttmlRes.text()
-
-			if (rawLyrics.trim().length === 0) {
-				console.warn('[am-lyrics] TTML response was empty', { url: best.lyricsUrl })
-				return null
-			}
-
-			console.debug('[am-lyrics] TTML fetched successfully, length:', rawLyrics.length)
-			return {
-				rawLyrics,
-				source: 'am-lyrics',
-				isPlainOnly: false,
-			}
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') throw error
-			console.error('[am-lyrics] Unexpected error during lookup', error)
 			return null
 		}
 	}
