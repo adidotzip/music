@@ -239,7 +239,7 @@
 >
 	<div class="relative">
 		<Artwork
-			src={type === 'artists' ? artistArtworkSrc : artworkSrc()}
+			src={type === 'artists' ? (artistArtworkSrc ?? artworkSrc()) : artworkSrc()}
 			animatedSrc={animatedArtworkSrc}
 			fallbackIcon={type === 'albums' ? 'album' : 'person'}
 			class="w-full rounded-[inherit]"
