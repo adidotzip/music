@@ -13,6 +13,8 @@ export interface SpicyTrack {
 	artwork?: string
 	duration?: number
 	year?: number | string
+	contentRating?: string
+	isExplicit?: boolean
 	[key: string]: unknown
 }
 
@@ -377,6 +379,8 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 				.replace(/\d+x\d+bb\./, '400x400bb.')
 
 			const artistName = String(attributes.artistName ?? item.artist ?? item.artistName ?? '')
+			const contentRating = String(attributes.contentRating ?? item.contentRating ?? item.content_rating ?? '')
+			const isExplicit = contentRating.toLowerCase() === 'explicit' || item.isExplicit === true || item.isExplicit === 'true'
 			const albumName = String(attributes.albumName ?? item.album ?? item.albumName ?? '')
 			const rawId = item.id ?? item.songId ?? item.song_id ?? item.trackId ?? item.musicId
 			const parsedId = rawId !== undefined && rawId !== null && rawId !== '' ? rawId : index
@@ -397,6 +401,8 @@ export const normalizeTracks = (input: unknown): SpicyTrack[] => {
 				duration:
 					Number(attributes.durationInMillis ?? item.duration ?? item.durationSeconds ?? 0) /
 					(attributes.durationInMillis !== undefined ? 1000 : 1),
+				contentRating,
+				isExplicit,
 				year: attributes.releaseDate
 					? String(attributes.releaseDate).slice(0, 4)
 					: (item.year as string | number | undefined),
