@@ -50,6 +50,16 @@ const getDownloadUrls = (track: LibraryTrack): string[] => {
 				language: 'en-US',
 			}),
 		)
+		// Keep the official SpicyAMLL stream URL as a fallback source for
+		// offline import. Downloading the response into IndexedDB is still
+		// what makes the track offline; this does not start the player.
+		urls.push(
+			spicyamll.streamUrl(track.remoteId, {
+				codec: 'aac',
+				fallback: true,
+				language: 'en-US',
+			}),
+		)
 	}
 
 	if (track.url?.startsWith('http') && !track.url.includes('/stream?')) {
