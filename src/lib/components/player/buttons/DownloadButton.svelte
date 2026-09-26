@@ -13,7 +13,7 @@
 
 	type DownloadState = 'idle' | 'loading' | 'done' | 'error'
 	let localState = $state<DownloadState | null>(null)
-	let persistedDownloaded = $state(downloaded)
+	let persistedDownloaded = $state(false)
 	let state = $derived<DownloadState>(localState ?? (persistedDownloaded ? 'done' : 'idle'))
 	let progress = $state(0)
 
