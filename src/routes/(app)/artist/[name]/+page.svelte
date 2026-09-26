@@ -70,7 +70,7 @@
 			albums = profile.albums
 			// Prefer the profile artwork, then fall back to the first known
 			// track artwork so the profile never depends on a separate artwork service.
-			artistArt = profile.artUrl || profile.songs.find((song) => song.artUrl)?.artUrl
+			artistArt = page.url.searchParams.get('art') || profile.artUrl || profile.songs.find((song) => song.artUrl)?.artUrl
 			registerSongs()
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unable to load artist profile.'
