@@ -577,12 +577,15 @@ export class PlayerStore {
 			return
 		}
 
-		if (activeTrackId === null || this.#failedRemoteTracks.has(activeTrackId)) {
+		if (activeTrackId === null) {
 			this.playing = false
 			this.#autoplayTrackId = null
 			return
 		}
 
+		// Explicit user play is also a retry. A previous transient media error
+		// must not permanently lock this track in a failed state.
+		this.#failedRemoteTracks.delete(activeTrackId)
 		this.playing = true
 		this.#autoplayTrackId = activeTrackId
 		this.#audio.preload = 'auto'
