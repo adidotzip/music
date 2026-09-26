@@ -61,14 +61,14 @@
 </script>
 
 <div
-	class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex w-full max-w-125 items-center gap-1 rounded-lg border border-primary/10 bg-surfaceContainerHighest px-2 @sm:gap-2"
+	class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex min-h-14 w-full max-w-150 items-center gap-1 rounded-2xl border border-primary/10 bg-surfaceContainerHighest px-2.5 @sm:gap-1.5"
 >
 	<input
 		value={store.searchTerm}
 		type="text"
 		name="search"
 		placeholder={`${m.librarySearch()} ${name.toLowerCase()}`}
-		class="h-12 w-60 grow bg-transparent pl-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
+		class="h-11 min-w-0 w-60 grow bg-transparent px-2 text-body-md placeholder:text-onSurface/54 focus:outline-none"
 		oninput={(e) => searchHandler(e as unknown as InputEvent)}
 	/>
 
@@ -79,7 +79,7 @@
 	{/if}
 
 	<IconButton
-		class={[store.order === 'desc' && 'rotate-180', 'transition-transform']}
+		class={['size-10', store.order === 'desc' && 'rotate-180', 'transition-transform']}
 		icon="sortAscending"
 		tooltip={m.libraryToggleSortOrder()}
 		onclick={() => {
