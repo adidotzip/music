@@ -12,6 +12,7 @@ const REQUEST_TIMEOUT = 1500
 
 let lastPayload: string | null = null
 let lastSentAt = 0
+let clearSentAt = 0
 
 const post = async (path: string, body?: unknown): Promise<boolean> => {
 	if (typeof window === 'undefined') return false
@@ -36,26 +37,27 @@ const post = async (path: string, body?: unknown): Promise<boolean> => {
 }
 
 export const updateDiscordPresence = (payload: DiscordPresencePayload): void => {
-	const roundedPosition = Math.max(0, Math.floor(payload.position))
+	const positionBucket = Math.floor(Math.max(0, payload.position) / 5) * 5
 	const normalized = JSON.stringify({
 		...payload,
-		position: roundedPosition,
+		position: positionBucket,
 		duration: Math.max(0, Math.floor(payload.duration)),
 	})
 
 	const now = Date.now()
-	// Playback position changes every 100ms in the player. Do not turn that
-	// into a localhost request storm. Always send state changes immediately,
-	// otherwise refresh the timestamp at most once every 5 seconds.
 	if (normalized === lastPayload && now - lastSentAt < 5000) return
 
 	lastPayload = normalized
 	lastSentAt = now
+	clearSentAt = 0
 	void post('/v1/presence', payload)
 }
 
 export const clearDiscordPresence = (): void => {
+	const now = Date.now()
+	if (now - clearSentAt < 5000) return
+
 	lastPayload = null
-	lastSentAt = Date.now()
+	clearSentAt = now
 	void post('/v1/presence/clear')
 }
