@@ -23,20 +23,31 @@ const getAutoImportPlugin = (dts: string | false = false) =>
 		],
 	})
 
+const tauriDevHost = process.env.TAURI_DEV_HOST
+
 export default defineConfig({
+	clearScreen: false,
 	server: {
+		host: tauriDevHost || false,
+		port: 5173,
+		strictPort: true,
 		fs: {
 			allow: ['./.generated'],
 		},
 		warmup: {
-			// Avoids page reloading in Dev mode. When vite supports bundled-dev mode this can be removed.
 			clientFiles: [
 				'src/lib/components/**/*.svelte',
 				'src/lib/library/scan-actions/scanner/worker.ts',
 			],
 		},
+		hmr: tauriDevHost
+			? {
+					protocol: 'ws',
+					host: tauriDevHost,
+					port: 1421,
+				}
+			: undefined,
 	},
-	// Tell Vitest to use the `browser` entry points in `package.json` files, even though it's running in Node
 	resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
 	build: {
 		target: ['chrome130', 'safari18'],
@@ -46,14 +57,12 @@ export default defineConfig({
 				advancedChunks: {
 					groups: [
 						{
-							// Merge all css into a single file
 							name: 'styles',
 							test: /\.css$/,
 							minModuleSize: 0,
 							priority: 100,
 						},
 						{
-							// Merge smaller chunks than together
 							name: 'small-chunks',
 							maxModuleSize: 1 * 1024,
 						},
@@ -82,10 +91,7 @@ export default defineConfig({
 			name: 'ssr-config',
 			config(config) {
 				const isSsr = config?.build?.ssr
-
-				// Since this is mostly SPA, server logs are mostly noise.
 				config.logLevel = isSsr ? 'warn' : 'info'
-
 				return config
 			},
 		},
