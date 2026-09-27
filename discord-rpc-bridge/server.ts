@@ -135,7 +135,6 @@ class DiscordIpc {
 				if (settled) return
 				settled = true
 				if (handshakeTimer) clearTimeout(handshakeTimer)
-
 				if (!success) {
 					this.#rejectPending(new Error('Discord IPC connection closed.'))
 					socket.destroy()
@@ -144,27 +143,6 @@ class DiscordIpc {
 			}
 
 			socket.setTimeout(3000)
-
-			socket.on('connect', () => {
-				this.#socket = socket
-				this.#buffer = Buffer.alloc(0)
-				this.#ready = false
-				this.#authenticated = false
-
-				this.#attachSocketHandlers(socket, () => {
-					this.#ready = true
-					void this.#authenticate()
-						.then(() => {
-							this.#authenticated = true
-							finish(true)
-							resolve(true)
-						})
-						.catch((error) => {
-							console.error(`Discord RPC authentication failed: ${error instanceof Error ? error.message : error}`)
-							finish(false)
-						})
-			})
-
 			socket.on('connect', () => {
 				this.#socket = socket
 				this.#buffer = Buffer.alloc(0)
@@ -185,31 +163,30 @@ class DiscordIpc {
 						})
 				})
 
+				// Discord requires the handshake to be sent after the IPC socket connects.
 				this.#sendFrame(0, {
 					v: 1,
 					client_id: CLIENT_ID,
 				})
 				handshakeTimer = setTimeout(() => finish(false), 5000)
 			})
-		})
 
-		socket.on('timeout', () => finish(false))
-		socket.on('error', (error) => {
-			if (!settled) console.error(`Discord IPC error: ${error.message}`)
-			finish(false)
+			socket.on('timeout', () => finish(false))
+			socket.on('error', (error) => {
+				if (!settled) console.error(`Discord IPC error: ${error.message}`)
+				finish(false)
+			})
+			socket.on('close', () => {
+				if (this.#socket === socket) {
+					this.#socket = null
+					this.#ready = false
+					this.#authenticated = false
+				}
+				this.#rejectPending(new Error('Discord IPC connection closed.'))
+				if (!settled) finish(false)
+			})
 		})
-		socket.on('close', () => {
-			if (this.#socket === socket) {
-				this.#socket = null
-				this.#ready = false
-				this.#authenticated = false
-			}
-			this.#rejectPending(new Error('Discord IPC connection closed.'))
-			if (!settled) finish(false)
-		})
-	})
 	}
-
 	#attachSocketHandlers(socket: Socket, onReady: () => void): void {
 		socket.on('data', (chunk) => {
 			this.#buffer = Buffer.concat([this.#buffer, chunk])
