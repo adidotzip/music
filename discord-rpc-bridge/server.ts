@@ -240,8 +240,6 @@ class DiscordIpc {
 			client_id: CLIENT_ID,
 			scopes: ['rpc'],
 			rpc_token: rpcToken,
-			response_type: 'code',
-			redirect_uri: REDIRECT_URI,
 		})
 
 		const code = typeof authorize.data?.code === 'string' ? authorize.data.code : undefined
