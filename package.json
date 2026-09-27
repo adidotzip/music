@@ -19,7 +19,13 @@
 		"test": "vitest run",
 		"gen-color-theme": "node scripts/gen-color-theme.ts",
 		"knip": "knip",
-		"discord-rpc": "node --experimental-strip-types discord-rpc-bridge/server.ts"
+		"discord-rpc": "node --experimental-strip-types discord-rpc-bridge/server.ts",
+		"tauri": "pnpm dlx @tauri-apps/cli@latest",
+		"tauri:dev": "pnpm tauri dev",
+		"tauri:build": "pnpm tauri build",
+		"tauri:android:init": "pnpm tauri android init",
+		"tauri:android:dev": "pnpm tauri android dev",
+		"tauri:android:build": "pnpm tauri android build"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.14",
