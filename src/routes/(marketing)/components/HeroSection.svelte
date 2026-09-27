@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/Button.svelte'
-	import productShowcase from '../assets/hero.avif'
+	import heroTimerImg from '../assets/hero-timer.png'
 
 	interface Props {
 		onOpenPlayerClick: (event: MouseEvent) => void
@@ -61,21 +61,22 @@
 		<div class="product-frame">
 			<img
 				class="product-image block h-auto w-full"
-				src={productShowcase.src}
+				src={heroTimerImg}
 				alt="Adi Music showing the player with lyrics alongside artist and album views"
 				loading="eager"
 				fetchpriority="high"
 			/>
 		</div>
 
-		<div class="product-chip product-chip-top">
-			<div class="text-label-sm text-onSurfaceVariant">Adaptive interface</div>
-			<div class="mt-1 text-title-sm font-semibold text-onSurface">Artwork colors follow the track</div>
-		</div>
-
-		<div class="product-chip product-chip-bottom">
-			<div class="text-label-sm text-onSurfaceVariant">Listening tools</div>
-			<div class="mt-1 text-title-sm font-semibold text-onSurface">Lyrics · Queue · Equalizer</div>
+		<div class="mt-4 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+			<div class="rounded-2xl border border-outlineVariant/40 bg-surfaceContainerHighest/90 px-4 py-2.5 shadow-sm backdrop-blur-md">
+				<div class="text-label-sm text-onSurfaceVariant">Adaptive interface</div>
+				<div class="text-title-sm font-semibold text-onSurface">Artwork colors follow the track</div>
+			</div>
+			<div class="rounded-2xl border border-outlineVariant/40 bg-surfaceContainerHighest/90 px-4 py-2.5 shadow-sm backdrop-blur-md">
+				<div class="text-label-sm text-onSurfaceVariant">Listening tools</div>
+				<div class="text-title-sm font-semibold text-onSurface">Lyrics · Queue · Equalizer</div>
+			</div>
 		</div>
 	</div>
 </section>
@@ -122,46 +123,13 @@
 		pointer-events: none;
 	}
 
-	.product-chip {
-		position: absolute;
-		z-index: 2;
-		border: 1px solid --alpha(var(--color-outline) / 0.22);
-		border-radius: 1.25rem;
-		background: --alpha(var(--color-surfaceContainerHighest) / 0.92);
-		padding: 0.75rem 0.9rem;
-		box-shadow: 0 12px 28px --alpha(var(--color-shadow) / 0.16);
-		backdrop-filter: blur(16px);
-	}
-
-	.product-chip-top {
-		top: 0;
-		right: -0.5rem;
-	}
-
-	.product-chip-bottom {
-		bottom: 0;
-		left: -0.5rem;
-	}
-
 	@media (width < --theme(--breakpoint-lg)) {
 		.product-frame {
 			transform: none;
 		}
-
-		.product-chip-top {
-			right: 0;
-		}
-
-		.product-chip-bottom {
-			left: 0;
-		}
 	}
 
 	@media (width < --theme(--breakpoint-sm)) {
-		.product-chip {
-			display: none;
-		}
-
 		.product-stage {
 			padding-inline: 0;
 		}

@@ -1,11 +1,17 @@
 <script lang="ts">
 	import Icon, { type IconType } from '$lib/components/icon/Icon.svelte'
+	import analyticsImg from '../assets/analytics-stats.png'
+	import bottomPlayerImg from '../assets/bottom-player.png'
+	import soundCatalogImg from '../assets/sound-catalog.png'
+	import soundPresetsImg from '../assets/sound-presets.png'
 	import Section from './Section.svelte'
 
 	interface Feature {
 		icon: IconType
 		title: string
 		description: string
+		image?: string
+		imageAlt?: string
 		accent: 'primary' | 'secondary' | 'tertiary'
 	}
 
@@ -15,6 +21,8 @@
 			title: 'Artists and albums, one library',
 			description:
 				'Move between tracks, albums, and artist pages without losing the music you are playing.',
+			image: soundCatalogImg,
+			imageAlt: 'Adi Music library and catalog overview',
 			accent: 'primary',
 		},
 		{
@@ -22,6 +30,8 @@
 			title: 'Lyrics that stay with the player',
 			description:
 				'Follow synced lyrics while the artwork and player controls remain right where you need them.',
+			image: analyticsImg,
+			imageAlt: 'Adi Music player with lyrics and stats',
 			accent: 'secondary',
 		},
 		{
@@ -29,6 +39,8 @@
 			title: 'A UI that follows the music',
 			description:
 				'Album artwork can drive the Material color palette, so the interface changes with what you play.',
+			image: soundPresetsImg,
+			imageAlt: 'Adi Music dynamic theme presets',
 			accent: 'tertiary',
 		},
 		{
@@ -36,6 +48,8 @@
 			title: 'Playlists, queue, and history',
 			description:
 				'Build playlists, mark favorites, shuffle or repeat, and decide what comes next.',
+			image: bottomPlayerImg,
+			imageAlt: 'Adi Music queue and bottom control bar',
 			accent: 'primary',
 		},
 	]
@@ -48,7 +62,7 @@
 	title="A music player that feels like one system"
 	description="Material surfaces, expressive artwork, and the controls you actually use while listening."
 >
-	<div class="grid max-w-6xl grid-cols-1 gap-5 md:grid-cols-2">
+	<div class="grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2">
 		{#each features as feature}
 			<article
 				class={[
@@ -60,7 +74,7 @@
 							: 'feature-primary',
 				]}
 			>
-				<div class="feature-card-icon mb-6">
+				<div class="feature-card-icon mb-5">
 					<Icon type={feature.icon} />
 				</div>
 
@@ -68,6 +82,17 @@
 				<p class="max-w-xl text-body-lg leading-relaxed text-onSurfaceVariant">
 					{feature.description}
 				</p>
+
+				{#if feature.image}
+					<div class="mt-5 overflow-hidden rounded-xl border border-outlineVariant/40 bg-surfaceContainerLow p-1">
+						<img
+							src={feature.image}
+							alt={feature.imageAlt}
+							class="h-auto w-full rounded-lg object-cover"
+							loading="lazy"
+						/>
+					</div>
+				{/if}
 
 				<div class="feature-line" aria-hidden="true"></div>
 			</article>
@@ -80,7 +105,6 @@
 		position: relative;
 		overflow: hidden;
 		display: flex;
-		min-height: 15rem;
 		flex-direction: column;
 		border: 1px solid --alpha(var(--color-outline) / 0.18);
 		border-radius: 1.75rem;

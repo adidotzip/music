@@ -4,7 +4,6 @@
 	import Button from '$lib/components/Button.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
-	import productShowcase from './assets/hero.avif'
 	import FeaturesSection from './components/FeaturesSection.svelte'
 	import GettingStartedSection from './components/GettingStartedSection.svelte'
 	import HeroSection from './components/HeroSection.svelte'
@@ -12,7 +11,8 @@
 	import SoundControlsSection from './components/SoundControlsSection.svelte'
 
 	const seoTitle = `${APP_NAME_EN} - A music player built around your library`
-	const seoDescription = 'Browse your music by artist and album, follow synced lyrics, build playlists, and tune playback with a Material interface that adapts to your music.'
+	const seoDescription =
+		'Browse your music by artist and album, follow synced lyrics, build playlists, and tune playback with a Material interface that adapts to your music.'
 	const canonicalUrl = `${APP_URL}${page.url.pathname}`
 
 	const trackOpenPlayerClick = (location: 'header' | 'hero' | 'getting-started') => {
@@ -36,7 +36,7 @@
 					browserRequirements: 'Requires a modern web browser',
 					description: seoDescription,
 					url: canonicalUrl,
-					image: `${APP_URL}${productShowcase.src}`,
+					image: `${APP_URL}/marketing-hero-timer.png`,
 					offers: {
 						'@type': 'Offer',
 						price: '0',
@@ -72,12 +72,12 @@
 	<meta property="og:title" content={seoTitle} />
 	<meta property="og:description" content={seoDescription} />
 	<meta property="og:url" content={canonicalUrl} />
-	<meta property="og:image" content={`${APP_URL}${productShowcase.src}`} />
+	<meta property="og:image" content={`${APP_URL}/marketing-hero-timer.png`} />
 	<meta property="og:image:alt" content="Adi Music showing artist, album, and lyrics player views" />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={seoTitle} />
 	<meta name="twitter:description" content={seoDescription} />
-	<meta name="twitter:image" content={`${page.url.origin}${productShowcase.src}`} />
+	<meta name="twitter:image" content={`${page.url.origin}/marketing-hero-timer.png`} />
 
 	<link rel="canonical" href={canonicalUrl} />
 

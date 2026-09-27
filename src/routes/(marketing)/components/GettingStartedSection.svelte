@@ -59,14 +59,16 @@
 			Works in modern browsers on Android and iOS, plus Chromebooks, Windows PCs, and Macs.
 		</p>
 
-		<Button
-			as="a"
-			href="/library/tracks"
-			kind="filled"
-			class="marketing-scroll-enter-soft mt-10 w-full sm:w-60"
-			onclick={onOpenPlayerClick}
-		>
-			Open Player
-		</Button>
+		<div class="mt-10 flex justify-center">
+			<Button
+				as="a"
+				href="/library/tracks"
+				kind="filled"
+				class="marketing-scroll-enter-soft w-full sm:w-60"
+				onclick={onOpenPlayerClick}
+			>
+				Open Player
+			</Button>
+		</div>
 	</Section>
 </div>
