@@ -15,6 +15,7 @@ import { recordRecentTrack } from '$lib/services/library.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 import { AudioLoader } from './audio-loader.svelte.js'
 import { EqualizerStore } from './equalizer.svelte.js'
+import { updateDiscordPresence, clearDiscordPresence } from '$lib/helpers/discord-rpc.ts'
 import { type PlayTrackOptions, QueueStore } from './queue.svelte.js'
 
 export type { PlayTrackOptions }
@@ -375,6 +376,23 @@ export class PlayerStore {
 
 		$effect(() => {
 			audio.muted = this.muted
+		})
+
+		$effect(() => {
+			const track = this.activeTrack
+			if (!track || !this.playing) {
+				clearDiscordPresence()
+				return
+			}
+
+			updateDiscordPresence({
+				title: track.name,
+				artist: formatArtists(track.artists),
+				album: track.album,
+				playing: true,
+				position: this.currentTime,
+				duration: this.duration,
+			})
 		})
 
 		const ms = typeof window === 'undefined' ? undefined : window.navigator.mediaSession

@@ -18,7 +18,8 @@
 		"compile-i18n": "paraglide-js compile --project ./project.inlang",
 		"test": "vitest run",
 		"gen-color-theme": "node scripts/gen-color-theme.ts",
-		"knip": "knip"
+		"knip": "knip",
+		"discord-rpc": "node --experimental-strip-types discord-rpc-bridge/server.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.14",

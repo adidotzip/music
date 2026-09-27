@@ -93,6 +93,10 @@ const config = {
 				'connect-src': [
 					'self',
 
+					// Optional local Discord Rich Presence bridge
+					'http://127.0.0.1:6463',
+					'http://localhost:6463',
+
 					env.PUBLIC_GOAT_COUNTER_URL ?? '',
 
 					// Lyrics
