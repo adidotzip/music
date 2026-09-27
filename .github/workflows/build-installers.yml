@@ -1,0 +1,139 @@
+name: Build installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "app-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  desktop:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Apple Silicon DMG
+            os: macos-latest
+            args: "--target aarch64-apple-darwin --bundles dmg --no-sign"
+          - name: macOS Intel DMG
+            os: macos-latest
+            args: "--target x86_64-apple-darwin --bundles dmg --no-sign"
+          - name: Windows EXE
+            os: windows-latest
+            args: "--bundles nsis"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ startsWith(matrix.os, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Generate Tauri icons
+        run: pnpm tauri icon ./src/lib/assets/logo.png
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build and upload desktop installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: "Adi Music v__VERSION__"
+          releaseBody: "Adi Music desktop and Android builds."
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+          releaseAssetNamePattern: "Adi-Music-[platform]-[arch][ext]"
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$(find "$ANDROID_SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)" >> "$GITHUB_ENV"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Generate Tauri icons
+        run: pnpm tauri icon ./src/lib/assets/logo.png
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Initialize Android project
+        run: pnpm tauri android init --ci
+
+      - name: Build and upload Android APK
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: "Adi Music v__VERSION__"
+          releaseBody: "Adi Music Android APK."
+          releaseDraft: true
+          prerelease: false
+          mobile: android
+          args: "--apk"
+          releaseAssetNamePattern: "Adi-Music-Android[ext]"
