@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/Button.svelte'
-	import productShowcase from '../assets/hero.avif?as=metadata'
+	import productShowcase from '../assets/hero.avif'
 
 	interface Props {
 		onOpenPlayerClick: (event: MouseEvent) => void
@@ -62,8 +62,6 @@
 			<img
 				class="product-image block h-auto w-full"
 				src={productShowcase.src}
-				width={productShowcase.width}
-				height={productShowcase.height}
 				alt="Adi Music showing the player with lyrics alongside artist and album views"
 				loading="eager"
 				fetchpriority="high"
