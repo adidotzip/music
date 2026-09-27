@@ -10,7 +10,7 @@ This optional companion connects Adi Music in the browser to the Discord desktop
 
 Create a Discord application in the Developer Portal and copy its **Application ID**.
 
-For artwork, upload an Adi Music logo under **Rich Presence → Art Assets** and note the asset key.
+The bridge uses Adi Music's public app icon as the default Rich Presence image. You can optionally override it with `DISCORD_LARGE_IMAGE_KEY` if you upload a custom asset.
 
 ## Run
 
@@ -18,7 +18,7 @@ From this directory:
 
 ```bash
 pnpm install
-DISCORD_CLIENT_ID=your_application_id DISCORD_LARGE_IMAGE_KEY=adi_music pnpm start
+DISCORD_CLIENT_ID=your_application_id pnpm discord-rpc
 ```
 
 On Windows PowerShell:
