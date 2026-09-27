@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/Button.svelte'
-	import productShowcase from '../assets/adi-music-product-showcase.webp?as=metadata'
+	import productShowcase from '../assets/hero.avif?as=metadata'
 
 	interface Props {
 		onOpenPlayerClick: (event: MouseEvent) => void
