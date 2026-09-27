@@ -18,7 +18,7 @@
 			accent: 'primary',
 		},
 		{
-			icon: 'lyrics',
+			icon: 'musicNote',
 			title: 'Lyrics that stay with the player',
 			description:
 				'Follow synced lyrics while the artwork and player controls remain right where you need them.',
