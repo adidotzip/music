@@ -47,8 +47,7 @@
 		"unplugin-auto-import": "^21.0.0",
 		"vite": "8.0.10",
 		"vite-plugin-functions-mixins": "^0.4.1",
-		"vitest": "^4.1.5",
-		"@xhayper/discord-rpc": "^1.5.1"
+		"vitest": "^4.1.5"
 	},
 	"dependencies": {
 		"@kawarp/core": "^1.2.0",
