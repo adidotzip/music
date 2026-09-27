@@ -42,17 +42,18 @@ const getCacheKey = (trackId: number, artworkUrl?: string): string =>
 const imageToColor = async (url: string): Promise<number | null> => {
 	if (typeof window === 'undefined') return null
 
-	const response = await fetch(url, {
-		cache: 'force-cache',
-		credentials: 'omit',
-		referrerPolicy: 'no-referrer',
-	})
-	if (!response.ok) return null
-
-	const blob = await response.blob()
-	const bitmap = await createImageBitmap(blob)
-
+	let bitmap: ImageBitmap | null = null
 	try {
+		const response = await fetch(url, {
+			cache: 'force-cache',
+			credentials: 'omit',
+			referrerPolicy: 'no-referrer',
+		})
+		if (!response.ok) return null
+
+		const blob = await response.blob()
+		bitmap = await createImageBitmap(blob)
+
 		const size = 64
 		const canvas = document.createElement('canvas')
 		canvas.width = size
@@ -97,7 +98,7 @@ const imageToColor = async (url: string): Promise<number | null> => {
 		const blue = Math.round((b / weight) * 255)
 		return (0xff << 24) | (red << 16) | (green << 8) | blue
 	} finally {
-		bitmap.close()
+		bitmap?.close()
 	}
 }
 
@@ -119,7 +120,7 @@ const getPrimaryColorFromTrack = async (
 	if (artwork instanceof Blob) {
 		const objectUrl = URL.createObjectURL(artwork)
 		try {
-			return imageToColor(objectUrl)
+			return await imageToColor(objectUrl)
 		} finally {
 			URL.revokeObjectURL(objectUrl)
 		}
