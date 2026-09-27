@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state'
-	import { APP_DESCRIPTION_EN, APP_NAME_EN, APP_URL } from '$lib/app-metadata.ts'
+	import { APP_NAME_EN, APP_URL } from '$lib/app-metadata.ts'
 	import Button from '$lib/components/Button.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
@@ -64,7 +64,7 @@
 	<meta name="description" content={seoDescription} />
 	<meta
 		name="keywords"
-		content="local music player, offline music player, browser music player, android music player, ios music player, chromebook music player, windows music player, macos music player, play music from device, private music player, playlists, queue, favorites, equalizer, playback speed control"
+		content="music player, browser music player, local music, playlists, queue, lyrics, artists, albums, favorites, equalizer, playback speed, dynamic colors"
 	/>
 	<meta name="robots" content="index,follow,max-image-preview:large" />
 	<meta name="application-name" content={APP_NAME_EN} />
@@ -72,12 +72,12 @@
 	<meta property="og:title" content={seoTitle} />
 	<meta property="og:description" content={seoDescription} />
 	<meta property="og:url" content={canonicalUrl} />
-	<meta property="og:image" content={`${APP_URL}${heroImg.src}`} />
+	<meta property="og:image" content={`${APP_URL}${productShowcase.src}`} />
 	<meta property="og:image:alt" content="Adi Music showing artist, album, and lyrics player views" />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={seoTitle} />
 	<meta name="twitter:description" content={seoDescription} />
-	<meta name="twitter:image" content={`${page.url.origin}${heroImg.src}`} />
+	<meta name="twitter:image" content={`${page.url.origin}${productShowcase.src}`} />
 
 	<link rel="canonical" href={canonicalUrl} />
 
