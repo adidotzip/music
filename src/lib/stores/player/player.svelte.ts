@@ -13,7 +13,6 @@ import { LyricsService } from '$lib/lyrics/LyricsService.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
 import { recordRecentTrack } from '$lib/services/library.ts'
 import { UNKNOWN_ITEM } from '$lib/library/types.ts'
-import { applyTrackDynamicTheme, resetDynamicTheme } from '$lib/helpers/live-theme-color.ts'
 import { AudioLoader } from './audio-loader.svelte.js'
 import { EqualizerStore } from './equalizer.svelte.js'
 import { type PlayTrackOptions, QueueStore } from './queue.svelte.js'
@@ -192,31 +191,6 @@ export class PlayerStore {
 				}
 			})
 		}
-
-		let themeGeneration = 0
-
-		$effect(() => {
-			const track = this.activeTrack
-			const generation = ++themeGeneration
-			const enabled = this.#main.pickColorFromArtwork
-			const isDark = this.#main.isThemeDark
-
-			if (!enabled) {
-				resetDynamicTheme()
-				return
-			}
-
-			if (!track) {
-				resetDynamicTheme()
-				return
-			}
-
-			void applyTrackDynamicTheme(track.id, track, isDark).catch((error) => {
-				if (generation === themeGeneration) {
-					console.warn('Failed to apply dynamic track theme:', error)
-				}
-			})
-		})
 
 		$effect(() => {
 			const track = this.activeTrack
