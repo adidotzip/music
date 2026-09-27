@@ -29,6 +29,15 @@
     "targets": "all",
     "category": "Music",
     "shortDescription": "A modern local music player",
-    "longDescription": "Adi Music is a modern local music player for desktop and Android."
+    "longDescription": "Adi Music is a modern local music player for desktop and Android.",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhBMjQzQTg1MDk0RjE4MgpSV1NDOFpSUXFFT2lDRUZlSDU5TEdHL05QclM3WmZpNXE5WXkvQ2hXb1hMUEdCTkVuL0pJK2o2Two=",
+      "endpoints": [
+        "https://github.com/adidotzip/music/releases/latest/download/latest.json"
+      ]
+    }
   }
 }
