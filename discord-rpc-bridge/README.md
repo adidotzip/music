@@ -14,10 +14,9 @@ The bridge uses Adi Music's public app icon as the default Rich Presence image. 
 
 ## Run
 
-From this directory:
+From the Adi Music repository root:
 
 ```bash
-pnpm install
 DISCORD_CLIENT_ID=your_application_id pnpm discord-rpc
 ```
 
@@ -25,8 +24,7 @@ On Windows PowerShell:
 
 ```powershell
 $env:DISCORD_CLIENT_ID="your_application_id"
-$env:DISCORD_LARGE_IMAGE_KEY="adi_music"
-pnpm start
+pnpm discord-rpc
 ```
 
 The bridge listens only on `127.0.0.1:6463`.
@@ -42,4 +40,4 @@ The bridge publishes:
 - album
 - playing state
 - playback timestamps
-- Adi Music artwork
+- the Adi Music application icon
