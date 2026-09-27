@@ -83,7 +83,7 @@ rpc.on('error', () => {
 const clearPresence = async () => {
 	if (!connected) return
 	try {
-		await rpc.user?.setActivity({}) 
+		await rpc.user?.clearActivity()
 	} catch {
 		connected = false
 	}
@@ -109,16 +109,17 @@ const updatePresence = async (payload: {
 		details: payload.title.slice(0, 128),
 		state: payload.artist.slice(0, 128),
 		instance: true,
+		type: 2,
+		largeImageKey: 'https://music.imreallyadi.space/icons/raster-192.png',
+		largeImageText: 'Adi Music',
+		buttons: [{ label: 'Open Adi Music', url: 'https://music.imreallyadi.space' }],
 	}
 
 	if (payload.album && payload.album !== '~\\0unknown') {
 		activity.state = `${payload.artist} • ${payload.album}`.slice(0, 128)
 	}
 
-	if (LARGE_IMAGE) {
-		activity.largeImageKey = LARGE_IMAGE
-		activity.largeImageText = 'Adi Music'
-	}
+	if (LARGE_IMAGE) activity.largeImageKey = LARGE_IMAGE
 
 	if (duration > 0 && payload.playing) {
 		const startTimestamp = Date.now() - position * 1000
