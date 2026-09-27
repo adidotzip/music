@@ -259,8 +259,6 @@ const updatePresence = async (payload: {
 		details: payload.title.slice(0, 128),
 		state: payload.artist.slice(0, 128),
 		instance: true,
-		large_image: 'https://music.imreallyadi.space/icons/raster-192.png',
-		large_text: 'Adi Music',
 		buttons: [{ label: 'Open Adi Music', url: 'https://music.imreallyadi.space' }],
 	}
 
