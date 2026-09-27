@@ -4,7 +4,7 @@
 	import Button from '$lib/components/Button.svelte'
 	import IconButton from '$lib/components/IconButton.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
-	import productShowcase from './assets/hero.avif?as=metadata'
+	import productShowcase from './assets/hero.avif'
 	import FeaturesSection from './components/FeaturesSection.svelte'
 	import GettingStartedSection from './components/GettingStartedSection.svelte'
 	import HeroSection from './components/HeroSection.svelte'
