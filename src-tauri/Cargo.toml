@@ -1,0 +1,19 @@
+[package]
+name = "adi-music"
+version = "0.0.1"
+description = "Adi Music"
+authors = ["Aditya Singh"]
+edition = "2021"
+publish = false
+
+[lib]
+name = "adi_music_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.11.5" }
+
+[dependencies]
+tauri = { version = "2.11.5" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
