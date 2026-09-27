@@ -165,11 +165,32 @@ class DiscordIpc {
 						})
 			})
 
-			this.#sendFrame(0, {
-				v: 1,
-				client_id: CLIENT_ID,
+			socket.on('connect', () => {
+				this.#socket = socket
+				this.#buffer = Buffer.alloc(0)
+				this.#ready = false
+				this.#authenticated = false
+
+				this.#attachSocketHandlers(socket, () => {
+					this.#ready = true
+					void this.#authenticate()
+						.then(() => {
+							this.#authenticated = true
+							finish(true)
+							resolve(true)
+						})
+						.catch((error) => {
+							console.error(`Discord RPC authentication failed: ${error instanceof Error ? error.message : error}`)
+							finish(false)
+						})
+				})
+
+				this.#sendFrame(0, {
+					v: 1,
+					client_id: CLIENT_ID,
+				})
+				handshakeTimer = setTimeout(() => finish(false), 5000)
 			})
-			handshakeTimer = setTimeout(() => finish(false), 5000)
 		})
 
 		socket.on('timeout', () => finish(false))
