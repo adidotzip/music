@@ -24,7 +24,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --allow-build=electron-winstaller
       - run: pnpm build
-      - run: pnpm dlx electron-builder@latest --mac dmg --publish never
+      - run: npx --yes electron-builder@latest --mac dmg --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: adi-music-macos
@@ -45,7 +45,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm dlx electron-builder@latest --win nsis --publish never
+      - run: npx --yes electron-builder@latest --win nsis --publish never
       - uses: actions/upload-artifact@v4
         with:
           name: adi-music-windows
@@ -71,8 +71,10 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm add -D @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest
+      - run: pnpm add -D @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest --allow-build
       - run: pnpm build
       - run: pnpm exec cap add android
       - run: pnpm exec cap sync android
