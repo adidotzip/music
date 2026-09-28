@@ -175,7 +175,7 @@
 {@render children()}
 
 <div
-    class="page-overlay-container pointer-events-none fixed inset-x-0 bottom-0 z-20 hidden gap-y-2 overflow-visible sm:grid"
+    class="page-overlay-container pointer-events-none fixed inset-x-0 bottom-0 z-20 grid gap-y-2 overflow-visible"
 >
     <SnackbarRenderer />
 
@@ -189,7 +189,7 @@
         {/if}
     </div>
 
-    <div bind:clientHeight={bottomBarHeight} class="col-[1/6] relative z-30">
+    <div bind:clientHeight={bottomBarHeight} class="col-[1/6] relative z-30 max-sm:hidden">
         {@render overlaySnippets.bottomBar?.()}
     </div>
 </div>
