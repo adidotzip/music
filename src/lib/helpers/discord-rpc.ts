@@ -45,7 +45,7 @@ const artworkCache = new Map<string, { url: string | undefined; expiresAt: numbe
 const artworkPending = new Map<string, Promise<string | undefined>>()
 
 const isPublicArtworkUrl = (value: string | undefined): value is string =>
-	!!value && /^https?:\\/\\//i.test(value)
+	!!value && /^https?:\/\//i.test(value)
 
 const resolveRemoteArtwork = async (
 	remoteId: number | string | undefined,
