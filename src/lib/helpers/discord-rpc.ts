@@ -23,6 +23,17 @@ export interface AdiMusicRpcState {
 declare global {
 	interface Window {
 		__ADI_MUSIC_RPC__?: AdiMusicRpcState
+		adiNative?: {
+			platform: string
+			isDesktop: boolean
+			discord: {
+				setPresence: (presence: AdiMusicRpcState) => void
+				clearPresence: () => void
+			}
+			media: {
+				setNowPlaying: (metadata: AdiMusicRpcState) => void
+			}
+		}
 	}
 }
 
@@ -47,6 +58,7 @@ const publish = (state: AdiMusicRpcState | undefined): void => {
 	if (!state) {
 		if (window.__ADI_MUSIC_RPC__ !== undefined) {
 			delete window.__ADI_MUSIC_RPC__
+			window.adiNative?.discord.clearPresence()
 			window.dispatchEvent(new CustomEvent('adi-music-rpc', { detail: null }))
 		}
 		lastState = null
@@ -60,6 +72,8 @@ const publish = (state: AdiMusicRpcState | undefined): void => {
 
 	lastState = normalized
 	window.__ADI_MUSIC_RPC__ = state
+	window.adiNative?.discord.setPresence(state)
+	window.adiNative?.media.setNowPlaying(state)
 	window.dispatchEvent(new CustomEvent('adi-music-rpc', { detail: state }))
 }
 
