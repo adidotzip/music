@@ -99,5 +99,10 @@
 	"engines": {
 		"node": ">=22"
 	},
-	"packageManager": "pnpm@11.0.3"
+	"packageManager": "pnpm@11.0.3",
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"electron-winstaller"
+		]
+	}
 }
