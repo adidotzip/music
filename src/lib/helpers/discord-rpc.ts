@@ -39,6 +39,64 @@ declare global {
 
 const SITE_ORIGIN = 'https://music.imreallyadi.space'
 
+const artworkCache = new Map<string, { url: string | undefined; expiresAt: number }>()
+const artworkPending = new Map<string, Promise<string | undefined>>()
+
+const isPublicArtworkUrl = (value: string | undefined): value is string =>
+	!!value && /^https?:\/\//i.test(value)
+
+const resolveRemoteArtwork = async (
+	remoteId: number | string | undefined,
+	title: string,
+	artist: string,
+): Promise<string | undefined> => {
+	if (remoteId === undefined || remoteId === null || String(remoteId).trim() === '') return undefined
+
+	const key = String(remoteId)
+	const cached = artworkCache.get(key)
+	if (cached && cached.expiresAt > Date.now()) return cached.url
+	if (cached) artworkCache.delete(key)
+
+	const pending = artworkPending.get(key)
+	if (pending) return pending
+
+	const request = (async () => {
+		try {
+			const { spicyamll, normalizeTracks } = await import('$lib/services/spicyamll.ts')
+			const tracks = normalizeTracks(await spicyamll.song(key))
+			const match =
+				tracks.find((track) => String(track.id) === key) ??
+				tracks.find((track) => track.name.toLowerCase() === title.toLowerCase()) ??
+				tracks.find((track) => String(track.artist ?? '').toLowerCase() === artist.toLowerCase())
+
+			const url = match?.image
+			return isPublicArtworkUrl(url) ? url : undefined
+		} catch {
+			return undefined
+		}
+	})()
+
+	artworkPending.set(key, request)
+	try {
+		const url = await request
+		artworkCache.set(key, { url, expiresAt: Date.now() + 60 * 60_000 })
+		return url
+	} finally {
+		artworkPending.delete(key)
+	}
+}
+
+export const resolveDiscordArtwork = async (
+	artwork: string | undefined,
+	remoteId: number | string | undefined,
+	title: string,
+	artist: string,
+): Promise<string | undefined> => {
+	// Blob URLs are browser-local and cannot be fetched by Discord.
+	if (isPublicArtworkUrl(artwork)) return artwork
+	return resolveRemoteArtwork(remoteId, title, artist)
+}
+
 let lastState: string | null = null
 
 const getState = (payload: DiscordPresencePayload): AdiMusicRpcState => ({
