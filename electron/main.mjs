@@ -18,261 +18,264 @@ let discordReconnectTimer
 let discordPipeIndex = 0
 
 const getDiscordPipes = () => {
-	if (process.platform === 'win32') {
-		return Array.from({ length: 10 }, (_, index) => `\\\\?\\pipe\\discord-ipc-${index}`)
-	}
+\tif (process.platform === 'win32') {
+\t\treturn Array.from({ length: 10 }, (_, index) => `\\\\?\\pipe\\discord-ipc-${index}`)
+\t}
 
-	const dirs = [
-		process.env.XDG_RUNTIME_DIR,
-		process.env.TMPDIR,
-		process.env.TMP,
-		process.env.TEMP,
-		'/tmp',
-	].filter(Boolean)
+\tconst dirs = [
+\t\tprocess.env.XDG_RUNTIME_DIR,
+\t\tprocess.env.TMPDIR,
+\t\tprocess.env.TMP,
+\t\tprocess.env.TEMP,
+\t\t'/tmp',
+\t].filter(Boolean)
 
-	return [...new Set(dirs)].flatMap((dir) =>
-		Array.from({ length: 10 }, (_, index) => path.join(dir, `discord-ipc-${index}`)),
-	)
+\treturn [...new Set(dirs)].flatMap((dir) =>
+\t\tArray.from({ length: 10 }, (_, index) => path.join(dir, `discord-ipc-${index}`)),
+\t)
 }
 
 const getNextDiscordPipe = () => {
-	const pipes = getDiscordPipes()
+\tconst pipes = getDiscordPipes()
 
-	for (let offset = 0; offset < pipes.length; offset += 1) {
-		const index = (discordPipeIndex + offset) % pipes.length
-		if (fs.existsSync(pipes[index])) {
-			discordPipeIndex = index
-			return pipes[index]
-		}
-	}
+\tfor (let offset = 0; offset < pipes.length; offset += 1) {
+\t\tconst index = (discordPipeIndex + offset) % pipes.length
+\t\tif (fs.existsSync(pipes[index])) {
+\t\t\tdiscordPipeIndex = index
+\t\t\treturn pipes[index]
+\t\t}
+\t}
 
-	return pipes[0]
+\treturn pipes[0]
 }
 
 const writeDiscordFrame = (opcode, payload) => {
-	if (!discordSocket || !discordSocket.writable) return
-	const body = Buffer.from(JSON.stringify(payload))
-	const frame = Buffer.alloc(8 + body.length)
-	frame.writeInt32LE(opcode, 0)
-	frame.writeInt32LE(body.length, 4)
-	body.copy(frame, 8)
-	discordSocket.write(frame)
+\tif (!discordSocket || !discordSocket.writable) return
+\tconst body = Buffer.from(JSON.stringify(payload))
+\tconst frame = Buffer.alloc(8 + body.length)
+\tframe.writeInt32LE(opcode, 0)
+\tframe.writeInt32LE(body.length, 4)
+\tbody.copy(frame, 8)
+\tdiscordSocket.write(frame)
 }
 
 const scheduleDiscordReconnect = () => {
-	if (discordReconnectTimer || !DISCORD_CLIENT_ID) return
+\tif (discordReconnectTimer || !DISCORD_CLIENT_ID) return
 
-	discordReconnectTimer = setTimeout(() => {
-		discordReconnectTimer = undefined
-		discordPipeIndex = (discordPipeIndex + 1) % getDiscordPipes().length
-		connectDiscord()
-	}, 1000)
+\tdiscordReconnectTimer = setTimeout(() => {
+\t\tdiscordReconnectTimer = undefined
+\t\tdiscordPipeIndex = (discordPipeIndex + 1) % getDiscordPipes().length
+\t\tconnectDiscord()
+\t}, 1000)
 }
 
 const connectDiscord = () => {
-	if (!DISCORD_CLIENT_ID || discordSocket) return
+\tif (!DISCORD_CLIENT_ID || discordSocket) return
 
-	const pipe = getNextDiscordPipe()
-	console.log('[Discord RPC] Connecting to', pipe)
+\tconst pipe = getNextDiscordPipe()
+\tconsole.log('[Discord RPC] Connecting to', pipe)
 
-	const socket = net.createConnection(pipe)
-	discordSocket = socket
+\tconst socket = net.createConnection(pipe)
+\tdiscordSocket = socket
 
-	socket.on('connect', () => {
-		console.log('[Discord RPC] IPC connected:', pipe)
-		discordReady = false
-		writeDiscordFrame(0, {
-			v: 1,
-			client_id: DISCORD_CLIENT_ID,
-		})
-	})
+\tsocket.on('connect', () => {
+\t\tconsole.log('[Discord RPC] IPC connected:', pipe)
+\t\tdiscordReady = false
+\t\twriteDiscordFrame(0, {
+\t\t\tv: 1,
+\t\t\tclient_id: DISCORD_CLIENT_ID,
+\t\t})
+\t})
 
-	socket.on('data', (chunk) => {
-		discordBuffer = Buffer.concat([discordBuffer, chunk])
+\tsocket.on('data', (chunk) => {
+\t\tdiscordBuffer = Buffer.concat([discordBuffer, chunk])
 
-		while (discordBuffer.length >= 8) {
-			const length = discordBuffer.readInt32LE(4)
-			if (discordBuffer.length < 8 + length) break
+\t\twhile (discordBuffer.length >= 8) {
+\t\t\tconst length = discordBuffer.readInt32LE(4)
+\t\t\tif (discordBuffer.length < 8 + length) break
 
-			const opcode = discordBuffer.readInt32LE(0)
-			const payload = JSON.parse(
-				discordBuffer.subarray(8, 8 + length).toString(),
-			)
-			discordBuffer = discordBuffer.subarray(8 + length)
+\t\t\tconst opcode = discordBuffer.readInt32LE(0)
+\t\t\tconst payload = JSON.parse(
+\t\t\t\tdiscordBuffer.subarray(8, 8 + length).toString(),
+\t\t\t)
+\t\t\tdiscordBuffer = discordBuffer.subarray(8 + length)
 
-			console.log(
-				'[Discord RPC] Response:',
-				JSON.stringify(
-					{
-						opcode,
-						evt: payload?.evt,
-						cmd: payload?.cmd,
-						data: payload?.data,
-					},
-					null,
-					2,
-				),
-			)
+\t\t\tconsole.log(
+\t\t\t\t'[Discord RPC] Response:',
+\t\t\t\tJSON.stringify(
+\t\t\t\t\t{
+\t\t\t\t\t\topcode,
+\t\t\t\t\t\tevt: payload?.evt,
+\t\t\t\t\t\tcmd: payload?.cmd,
+\t\t\t\t\t\tdata: payload?.data,
+\t\t\t\t\t},
+\t\t\t\t\tnull,
+\t\t\t\t\t2,
+\t\t\t\t),
+\t\t\t)
 
-			if (payload?.evt === 'ERROR') {
-				console.error(
-					'[Discord RPC] ERROR:',
-					payload.data?.code,
-					payload.data?.message || 'Unknown Discord RPC error',
-				)
-				continue
-			}
+\t\t\tif (payload?.evt === 'ERROR') {
+\t\t\t\tconsole.error(
+\t\t\t\t\t'[Discord RPC] ERROR:',
+\t\t\t\t\tpayload.data?.code,
+\t\t\t\t\tpayload.data?.message || 'Unknown Discord RPC error',
+\t\t\t\t)
+\t\t\t\tcontinue
+\t\t\t}
 
-			if (opcode === 1 && payload?.evt === 'READY') {
-				console.log('[Discord RPC] READY')
-				discordReady = true
+\t\t\tif (opcode === 1 && payload?.evt === 'READY') {
+\t\t\t\tconsole.log('[Discord RPC] READY')
+\t\t\t\tdiscordReady = true
 
-				if (pendingDiscordState !== undefined) {
-					const state = pendingDiscordState
-					pendingDiscordState = undefined
-					setDiscordPresence(state)
-				}
-			}
-		}
-	})
+\t\t\t\tif (pendingDiscordState !== undefined) {
+\t\t\t\t\tconst state = pendingDiscordState
+\t\t\t\t\tpendingDiscordState = undefined
+\t\t\t\t\tsetDiscordPresence(state)
+\t\t\t\t}
+\t\t\t}
+\t\t}
+\t})
 
-	socket.on('error', (error) => {
-		discordReady = false
-		console.warn('[Discord RPC] Connection error:', error.message)
-	})
+\tsocket.on('error', (error) => {
+\t\tdiscordReady = false
+\t\tconsole.warn('[Discord RPC] Connection error:', error.message)
+\t})
 
-	socket.on('close', () => {
-		discordReady = false
-		discordSocket = undefined
-		discordBuffer = Buffer.alloc(0)
-		console.log('[Discord RPC] IPC disconnected')
-		scheduleDiscordReconnect()
-	})
+\tsocket.on('close', () => {
+\t\tdiscordReady = false
+\t\tdiscordSocket = undefined
+\t\tdiscordBuffer = Buffer.alloc(0)
+\t\tconsole.log('[Discord RPC] IPC disconnected')
+\t\tscheduleDiscordReconnect()
+\t})
 }
 
 const setDiscordPresence = (state) => {
-	if (!DISCORD_CLIENT_ID) return
+\tif (!DISCORD_CLIENT_ID) return
 
-	pendingDiscordState = state
+\tpendingDiscordState = state
 
-	if (!discordReady) {
-		connectDiscord()
-		return
-	}
+\tif (!discordReady) {
+\t\tconnectDiscord()
+\t\treturn
+\t}
 
-	pendingDiscordState = undefined
+\tpendingDiscordState = undefined
 
-	let activity = null
+\tlet activity = null
 
-	if (state) {
-		const position = Number.isFinite(state.position) ? Math.max(0, state.position) : 0
-		const duration = Number.isFinite(state.duration) ? Math.max(0, state.duration) : 0
-		const now = Math.floor(Date.now() / 1000)
-		const artist = state.artist || 'Adi Music'
-		const title = state.title || 'Listening to music'
+\tif (state) {
+\t\tconst position = Number.isFinite(state.position) ? Math.max(0, state.position) : 0
+\t\tconst duration = Number.isFinite(state.duration) ? Math.max(0, state.duration) : 0
+\t\tconst now = Math.floor(Date.now() / 1000)
+\t\tconst artist = state.artist || 'Adi Music'
+\t\tconst title = state.title || 'Listening to music'
 
-		activity = {
-			type: 2,
-			name: artist,
-			details: title,
-			state: artist,
-		}
+\t\tactivity = {
+\t\t\ttype: 2,
+\t\t\tname: artist,
+\t\t\tdetails: title,
+\t\t\tstate: artist,
+\t\t}
 
-		if (state.playing && duration > 0 && position < duration) {
-			activity.timestamps = {
-				start: now - Math.floor(position),
-				end: now + Math.ceil(duration - position),
-			}
-		}
+\t\tif (state.playing && duration > 0 && position < duration) {
+\t\t\tactivity.timestamps = {
+\t\t\t\tstart: now - Math.floor(position),
+\t\t\t\tend: now + Math.ceil(duration - position),
+\t\t\t}
+\t\t}
 
-		const artwork = typeof state.artwork === 'string' ? state.artwork.trim() : ''
-		if (artwork) {
-			activity.assets = {
-				large_image: artwork,
-				large_text: 'music.imreallyadi.space',
-				small_text: artist,
-			}
-		}
+\t\tconst artwork = typeof state.artwork === 'string' ? state.artwork.trim() : ''
+\t\tif (artwork) {
+\t\t\t// Discord's RPC large_image accepts a URL for external artwork.
+\t\t\t// Use the exact public artwork URL supplied by the player so the
+\t\t\t// Discord card and the Adi Music player show the same image.
+\t\t\tactivity.assets = {
+\t\t\t\tlarge_image: artwork,
+\t\t\t\tlarge_text: title,
+\t\t\t\tsmall_text: artist,
+\t\t\t}
+\t\t}
 
-		const url = typeof state.url === 'string' ? state.url.trim() : ''
-		if (url && /^https:\/\//.test(url)) {
-			activity.buttons = [
-				{
-					label: 'Open in Adi Music',
-					url,
-				},
-			]
-		}
-	}
+\t\tconst url = typeof state.url === 'string' ? state.url.trim() : ''
+\t\tif (url && /^https:\/\//.test(url)) {
+\t\t\tactivity.buttons = [
+\t\t\t\t{
+\t\t\t\t\tlabel: 'Open in Adi Music',
+\t\t\t\t\turl,
+\t\t\t\t},
+\t\t\t]
+\t\t}
+\t}
 
-	console.log(
-		'[Discord RPC] SET_ACTIVITY:',
-		JSON.stringify(activity, null, 2),
-	)
+\tconsole.log(
+\t\t'[Discord RPC] SET_ACTIVITY:',
+\t\tJSON.stringify(activity, null, 2),
+\t)
 
-	writeDiscordFrame(1, {
-		cmd: 'SET_ACTIVITY',
-		args: {
-			pid: process.pid,
-			activity,
-		},
-		nonce: crypto.randomUUID(),
-	})
+\twriteDiscordFrame(1, {
+\t\tcmd: 'SET_ACTIVITY',
+\t\targs: {
+\t\t\tpid: process.pid,
+\t\t\tactivity,
+\t\t},
+\t\tnonce: crypto.randomUUID(),
+\t})
 }
 
 ipcMain.on('discord:set-presence', (_event, state) => {
-	setDiscordPresence(state)
+\tsetDiscordPresence(state)
 })
 
 ipcMain.on('discord:clear-presence', () => {
-	setDiscordPresence(undefined)
+\tsetDiscordPresence(undefined)
 })
 
 ipcMain.on('media:set-now-playing', () => {})
 
 const createWindow = async () => {
-	mainWindow = new BrowserWindow({
-		width: 1280,
-		height: 820,
-		minWidth: 900,
-		minHeight: 600,
-		show: false,
-		backgroundColor: '#ffffff',
-		webPreferences: {
-			preload: path.join(__dirname, 'preload.cjs'),
-			contextIsolation: true,
-			nodeIntegration: false,
-			sandbox: true,
-		},
-	})
+\tmainWindow = new BrowserWindow({
+\t\twidth: 1280,
+\t\theight: 820,
+\t\tminWidth: 900,
+\t\tminHeight: 600,
+\t\tshow: false,
+\t\tbackgroundColor: '#ffffff',
+\t\twebPreferences: {
+\t\t\tpreload: path.join(__dirname, 'preload.cjs'),
+\t\t\tcontextIsolation: true,
+\t\t\tnodeIntegration: false,
+\t\t\tsandbox: true,
+\t\t},
+\t})
 
-	mainWindow.once('ready-to-show', () => mainWindow.show())
+\tmainWindow.once('ready-to-show', () => mainWindow.show())
 
-	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-		if (url.startsWith('https://')) {
-			shell.openExternal(url)
-		}
-		return { action: 'deny' }
-	})
+\tmainWindow.webContents.setWindowOpenHandler(({ url }) => {
+\t\tif (url.startsWith('https://')) {
+\t\t\tshell.openExternal(url)
+\t\t}
+\t\treturn { action: 'deny' }
+\t})
 
-	await mainWindow.loadURL(APP_URL)
+\tawait mainWindow.loadURL(APP_URL)
 }
 
 app.whenReady().then(async () => {
-	Menu.setApplicationMenu(null)
-	await session.defaultSession.clearCache()
-	await createWindow()
-	connectDiscord()
+\tMenu.setApplicationMenu(null)
+\tawait session.defaultSession.clearCache()
+\tawait createWindow()
+\tconnectDiscord()
 
-	app.on('activate', () => {
-		if (BrowserWindow.getAllWindows().length === 0) {
-			createWindow()
-		}
-	})
+\tapp.on('activate', () => {
+\t\tif (BrowserWindow.getAllWindows().length === 0) {
+\t\t\tcreateWindow()
+\t\t}
+\t})
 })
 
 app.on('window-all-closed', () => {
-	if (process.platform !== 'darwin') {
-		app.quit()
-	}
+\tif (process.platform !== 'darwin') {
+\t\tapp.quit()
+\t}
 })
