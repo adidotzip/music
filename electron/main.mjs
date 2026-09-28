@@ -15,7 +15,7 @@ let discordReady = false
 let pendingDiscordState
 
 const getDiscordPipe = () => {
-	if (process.platform === 'win32') return String.raw\`\\\\?\\pipe\\discord-ipc-0\`
+	if (process.platform === 'win32') return '\\\\?\\pipe\\discord-ipc-0'
 	const tmp = process.env.XDG_RUNTIME_DIR || process.env.TMPDIR || '/tmp'
 	return path.join(tmp, 'discord-ipc-0')
 }
