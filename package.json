@@ -39,15 +39,12 @@
 			"package.json"
 		],
 		"mac": {
-			"target": [
-				"dmg"
-			],
-			"category": "public.app-category.music"
+			"target": ["dmg"],
+			"category": "public.app-category.music",
+			"identity": "-"
 		},
 		"win": {
-			"target": [
-				"nsis"
-			]
+			"target": ["nsis"]
 		},
 		"nsis": {
 			"oneClick": false,
@@ -101,8 +98,6 @@
 	},
 	"packageManager": "pnpm@11.0.3",
 	"pnpm": {
-		"onlyBuiltDependencies": [
-			"electron-winstaller"
-		]
+		"onlyBuiltDependencies": ["electron-winstaller"]
 	}
 }
