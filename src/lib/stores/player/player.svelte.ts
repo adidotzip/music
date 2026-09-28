@@ -338,10 +338,9 @@ export class PlayerStore {
 			this.#updateDiscordPresence()
 		}
 
-		audio.ontimeupdate = throttle(() => {
+		audio.ontimeupdate = () => {
 			this.currentTime = audio.currentTime
-			this.#updateDiscordPresence()
-		}, 2000)
+		}
 
 		const setPlaybackRate = () => {
 			const rate = clamp(
