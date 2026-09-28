@@ -185,7 +185,7 @@
         {/each}
 
         {#if !page.data.noPlayerOverlay}
-            <PlayerOverlay class={['col-[1/4]', bottomBarHeight < 0 && 'mb-2']} />
+            <PlayerOverlay class={['col-[1/4]', bottomBarHeight < 0 && 'mb-2', mobileNavHeight > 0 && 'max-sm:mb-[calc(var(--mobile-nav-height,0px)+0.5rem)]']} />
         {/if}
     </div>
 
@@ -196,7 +196,10 @@
 
 <MobileNavigation
     online={browser ? navigator.onLine : true}
-    bindHeight={(h) => (mobileNavHeight = h)}
+    bindHeight={(h) => {
+        mobileNavHeight = h
+        document.documentElement.style.setProperty('--mobile-nav-height', `${h}px`)
+    }}
 />
 
 <div class="pointer-events-none fixed inset-0 z-40">
