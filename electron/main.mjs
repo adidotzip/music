@@ -162,13 +162,27 @@ const setDiscordPresence = (state) => {
 
 	pendingDiscordState = undefined
 
-	const activity = state
-		? {
-				name: 'Adi Music',
-				details: state.title || 'Listening to music',
-				state: state.artist || 'Adi Music',
+	let activity = null
+
+	if (state) {
+		const position = Number.isFinite(state.position) ? Math.max(0, state.position) : 0
+		const duration = Number.isFinite(state.duration) ? Math.max(0, state.duration) : 0
+		const now = Math.floor(Date.now() / 1000)
+
+		activity = {
+			type: 2,
+			name: 'Adi Music',
+			details: state.title || 'Listening to music',
+			state: state.artist || 'Adi Music',
+		}
+
+		if (state.playing && duration > 0 && position < duration) {
+			activity.timestamps = {
+				start: now - Math.floor(position),
+				end: now + Math.ceil(duration - position),
 			}
-		: null
+		}
+	}
 
 	console.log(
 		'[Discord RPC] SET_ACTIVITY:',
