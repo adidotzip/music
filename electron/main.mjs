@@ -168,12 +168,14 @@ const setDiscordPresence = (state) => {
 		const position = Number.isFinite(state.position) ? Math.max(0, state.position) : 0
 		const duration = Number.isFinite(state.duration) ? Math.max(0, state.duration) : 0
 		const now = Math.floor(Date.now() / 1000)
+		const artist = state.artist || 'Adi Music'
+		const title = state.title || 'Listening to music'
 
 		activity = {
 			type: 2,
-			name: 'Adi Music',
-			details: state.title || 'Listening to music',
-			state: state.artist || 'Adi Music',
+			name: artist,
+			details: title,
+			state: 'music.imreallyadi.space',
 		}
 
 		if (state.playing && duration > 0 && position < duration) {
@@ -187,8 +189,8 @@ const setDiscordPresence = (state) => {
 		if (artwork) {
 			activity.assets = {
 				large_image: artwork,
-				large_text: state.title || 'Adi Music',
-				small_text: state.artist || 'Adi Music',
+				large_text: 'music.imreallyadi.space',
+				small_text: artist,
 			}
 		}
 
