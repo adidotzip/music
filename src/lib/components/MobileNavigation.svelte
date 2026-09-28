@@ -11,7 +11,6 @@
 	const { online = true, bindHeight }: Props = $props()
 	let isOnline = $state(true)
 	let navEl = $state<HTMLElement>()
-	let expanded = $state(false)
 
 	$effect(() => {
 		isOnline = online
@@ -34,8 +33,6 @@
 		observer.observe(navEl)
 		return () => observer.disconnect()
 	})
-
-	const isPlayerPage = $derived(page.url.pathname.startsWith('/player'))
 
 	type NavItem = {
 		href: string
@@ -61,34 +58,25 @@
 	class={['mobile-nav pointer-events-auto fixed inset-x-0 bottom-0 z-30 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] sm:hidden', isPlayerPage ? 'hidden!' : 'block']}
 >
 	<div class="mx-auto flex w-full max-w-md justify-center">
-		<div class="dock flex items-center gap-0.5 overflow-hidden rounded-[28px] border border-outline/10 bg-surfaceContainer/95 p-1.5 shadow-[0_10px_35px_rgb(0_0_0/14%)] backdrop-blur-2xl">
+		<div class="dock flex w-full items-center justify-around gap-1 overflow-hidden rounded-[28px] border border-outline/10 bg-surfaceContainer/95 p-1.5 shadow-[0_10px_35px_rgb(0_0_0/14%)] backdrop-blur-2xl">
 			{#each items as item}
 				<Button as="a" href={item.href} kind="blank" aria-current={isActive(item.href) ? 'page' : undefined}
-					class={['dock-item flex h-12 shrink-0 items-center justify-center rounded-[22px] transition-[width,background-color,padding] duration-250 ease-out',
-						expanded ? 'w-[88px] gap-2 px-3' : 'w-12 px-0',
+					class={['dock-item flex size-12 shrink-0 items-center justify-center rounded-[22px] transition-[background-color] duration-200',
 						isActive(item.href) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}
-					onclick={() => (expanded = false)}>
+
 					<Icon type={item.icon} class="size-5 shrink-0" />
-					<span class={['truncate text-xs font-medium', expanded ? 'block' : 'sr-only']}>{item.title}</span>
 				</Button>
 			{/each}
 
 			{#if isOnline}
 				<Button as="a" href="/discovery" kind="blank" aria-current={page.url.pathname === '/discovery' ? 'page' : undefined}
-					class={['dock-item flex h-12 shrink-0 items-center justify-center rounded-[22px] transition-[width,background-color,padding] duration-250 ease-out',
-						expanded ? 'w-[88px] gap-2 px-3' : 'w-12 px-0',
+					class={['dock-item flex size-12 shrink-0 items-center justify-center rounded-[22px] transition-[background-color] duration-200',
 						page.url.pathname === '/discovery' ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}
-					onclick={() => (expanded = false)}>
+
 					<Icon type="compass" class="size-5 shrink-0" />
-					<span class={['truncate text-xs font-medium', expanded ? 'block' : 'sr-only']}>Discover</span>
 				</Button>
 			{/if}
 
-			<Button kind="blank" aria-label={expanded ? 'Collapse navigation' : 'Expand navigation'} aria-expanded={expanded}
-				class="flex size-12 shrink-0 items-center justify-center rounded-[22px] hover:bg-surfaceContainerHigh"
-				onclick={() => (expanded = !expanded)}>
-				<Icon type={expanded ? 'chevronDown' : 'menu'} class="size-5" />
-			</Button>
 		</div>
 	</div>
 </nav>
