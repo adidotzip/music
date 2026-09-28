@@ -100,9 +100,24 @@ const connectDiscord = () => {
 			)
 			discordBuffer = discordBuffer.subarray(8 + length)
 
+			console.log(
+				'[Discord RPC] Response:',
+				JSON.stringify(
+					{
+						opcode,
+						evt: payload?.evt,
+						cmd: payload?.cmd,
+						data: payload?.data,
+					},
+					null,
+					2,
+				),
+			)
+
 			if (payload?.evt === 'ERROR') {
 				console.error(
-					'[Discord RPC] Error:',
+					'[Discord RPC] ERROR:',
+					payload.data?.code,
 					payload.data?.message || 'Unknown Discord RPC error',
 				)
 				continue
@@ -149,26 +164,16 @@ const setDiscordPresence = (state) => {
 
 	const activity = state
 		? {
-				details: state.title,
-				state: state.artist,
-				assets: {
-					large_image: state.artwork,
-					large_text: state.album || state.title + ' • ' + state.artist,
-				},
-				timestamps:
-					state.playing && state.duration > 0
-						? {
-								start: Date.now() - state.position * 1000,
-								end: Date.now() + Math.max(0, state.duration - state.position) * 1000,
-							}
-						: undefined,
-				buttons: state.url
-					? [{ label: 'Open Adi Music', url: state.url }]
-					: undefined,
+				name: 'Adi Music',
+				details: state.title || 'Listening to music',
+				state: state.artist || 'Adi Music',
 			}
 		: null
 
-	console.log('[Discord RPC] SET_ACTIVITY', state ? state.title : 'clear')
+	console.log(
+		'[Discord RPC] SET_ACTIVITY:',
+		JSON.stringify(activity, null, 2),
+	)
 
 	writeDiscordFrame(1, {
 		cmd: 'SET_ACTIVITY',
