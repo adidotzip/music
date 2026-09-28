@@ -54,6 +54,7 @@
 
     let overlayContentHeight = $state(0)
     let bottomBarHeight = $state(0)
+    let mobileNavHeight = $state(0)
 
     let isDraggingFiles = $state(false)
     let dragCounter = 0
@@ -90,9 +91,10 @@
     }
 
     $effect(() => {
+        const effectiveBottomBar = bottomBarHeight > 0 ? bottomBarHeight : mobileNavHeight
         document.documentElement.style.setProperty(
             '--bottom-overlay-height',
-            `${overlayContentHeight + bottomBarHeight}px`,
+            `${overlayContentHeight + effectiveBottomBar}px`,
         )
     })
 
@@ -192,7 +194,10 @@
     </div>
 </div>
 
-<MobileNavigation online={browser ? navigator.onLine : true} />
+<MobileNavigation
+    online={browser ? navigator.onLine : true}
+    bindHeight={(h) => (mobileNavHeight = h)}
+/>
 
 <div class="pointer-events-none fixed inset-0 z-40">
     <MenuRenderer />
