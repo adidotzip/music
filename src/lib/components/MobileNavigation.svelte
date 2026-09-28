@@ -62,8 +62,7 @@
 			{#each items as item}
 				<Button as="a" href={item.href} kind="blank" aria-current={isActive(item.href) ? 'page' : undefined}
 					class={['dock-item flex size-12 shrink-0 items-center justify-center rounded-[22px] transition-[background-color] duration-200',
-						isActive(item.href) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}
-
+						isActive(item.href) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}>
 					<Icon type={item.icon} class="size-5 shrink-0" />
 				</Button>
 			{/each}
@@ -71,8 +70,7 @@
 			{#if isOnline}
 				<Button as="a" href="/discovery" kind="blank" aria-current={page.url.pathname === '/discovery' ? 'page' : undefined}
 					class={['dock-item flex size-12 shrink-0 items-center justify-center rounded-[22px] transition-[background-color] duration-200',
-						page.url.pathname === '/discovery' ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}
-
+						page.url.pathname === '/discovery' ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}>
 					<Icon type="compass" class="size-5 shrink-0" />
 				</Button>
 			{/if}
