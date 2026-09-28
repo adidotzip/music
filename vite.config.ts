@@ -40,6 +40,10 @@ export default defineConfig({
 	resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
 	build: {
 		target: ['chrome130', 'safari18'],
+		// hls.js is intentionally lazy-loaded for animated Apple Music artwork.
+		// Its isolated browser chunk can legitimately exceed Vite's default 500 kB
+		// warning threshold without increasing the initial app bundle.
+		chunkSizeWarningLimit: 750,
 		rolldownOptions: {
 			output: {
 				comments: false,
