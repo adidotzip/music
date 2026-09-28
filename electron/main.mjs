@@ -12,6 +12,7 @@ let mainWindow
 let discordSocket
 let discordBuffer = Buffer.alloc(0)
 let discordReady = false
+let pendingDiscordState
 
 const getDiscordPipe = () => {
 	if (process.platform === 'win32') return String.raw\`\\\\?\\pipe\\discord-ipc-0\`
@@ -51,7 +52,14 @@ const connectDiscord = () => {
 			const payload = JSON.parse(discordBuffer.subarray(8, 8 + length).toString())
 			discordBuffer = discordBuffer.subarray(8 + length)
 
-			if (opcode === 1 && payload?.evt === null) discordReady = true
+			if (opcode === 1 && payload?.evt === null) {
+				discordReady = true
+				if (pendingDiscordState !== undefined) {
+					const state = pendingDiscordState
+					pendingDiscordState = undefined
+					setDiscordPresence(state)
+				}
+			}
 		}
 	})
 
@@ -69,10 +77,13 @@ const connectDiscord = () => {
 const setDiscordPresence = (state) => {
 	if (!DISCORD_CLIENT_ID) return
 
+	pendingDiscordState = state
 	if (!discordReady) {
 		connectDiscord()
 		return
 	}
+
+	pendingDiscordState = undefined
 
 	const activity = state
 		? {
