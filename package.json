@@ -19,7 +19,9 @@
 		"test": "vitest run",
 		"gen-color-theme": "node scripts/gen-color-theme.ts",
 		"knip": "knip",
-		"discord-rpc": "node --experimental-strip-types discord-rpc-bridge/server.ts"
+		"discord-rpc": "node --experimental-strip-types discord-rpc-bridge/server.ts",
+		"electron:dev": "pnpm dlx electron@latest electron/main.mjs",
+		"electron:dev:local": "ADI_MUSIC_URL=http://localhost:5173 pnpm dlx electron@latest electron/main.mjs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.14",
