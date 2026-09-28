@@ -7,6 +7,10 @@
 	const { online = true }: { online?: boolean } = $props()
 	let isOnline = $state(online)
 
+	$effect(() => {
+		isOnline = online
+	})
+
 	type NavItem = {
 		href: string
 		title: string
