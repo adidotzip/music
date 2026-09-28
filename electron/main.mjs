@@ -175,7 +175,7 @@ const setDiscordPresence = (state) => {
 			type: 2,
 			name: artist,
 			details: title,
-			state: 'music.imreallyadi.space',
+			state: artist,
 		}
 
 		if (state.playing && duration > 0 && position < duration) {
