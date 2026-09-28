@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, shell, session, ipcMain } from 'electron'
 import path from 'node:path'
+import fs from 'node:fs'
 import net from 'node:net'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
@@ -14,11 +15,38 @@ let discordBuffer = Buffer.alloc(0)
 let discordReady = false
 let pendingDiscordState
 let discordReconnectTimer
+let discordPipeIndex = 0
 
-const getDiscordPipe = () => {
-	if (process.platform === 'win32') return '\\\\?\\pipe\\discord-ipc-0'
-	const tmp = process.env.TMPDIR || process.env.XDG_RUNTIME_DIR || '/tmp'
-	return path.join(tmp, 'discord-ipc-0')
+const getDiscordPipes = () => {
+	if (process.platform === 'win32') {
+		return Array.from({ length: 10 }, (_, index) => `\\\\?\\pipe\\discord-ipc-${index}`)
+	}
+
+	const dirs = [
+		process.env.XDG_RUNTIME_DIR,
+		process.env.TMPDIR,
+		process.env.TMP,
+		process.env.TEMP,
+		'/tmp',
+	].filter(Boolean)
+
+	return [...new Set(dirs)].flatMap((dir) =>
+		Array.from({ length: 10 }, (_, index) => path.join(dir, `discord-ipc-${index}`)),
+	)
+}
+
+const getNextDiscordPipe = () => {
+	const pipes = getDiscordPipes()
+
+	for (let offset = 0; offset < pipes.length; offset += 1) {
+		const index = (discordPipeIndex + offset) % pipes.length
+		if (fs.existsSync(pipes[index])) {
+			discordPipeIndex = index
+			return pipes[index]
+		}
+	}
+
+	return pipes[0]
 }
 
 const writeDiscordFrame = (opcode, payload) => {
@@ -36,20 +64,22 @@ const scheduleDiscordReconnect = () => {
 
 	discordReconnectTimer = setTimeout(() => {
 		discordReconnectTimer = undefined
+		discordPipeIndex = (discordPipeIndex + 1) % getDiscordPipes().length
 		connectDiscord()
-	}, 2000)
+	}, 1000)
 }
 
 const connectDiscord = () => {
 	if (!DISCORD_CLIENT_ID || discordSocket) return
 
-	console.log('[Discord RPC] Connecting...')
+	const pipe = getNextDiscordPipe()
+	console.log('[Discord RPC] Connecting to', pipe)
 
-	const socket = net.createConnection(getDiscordPipe())
+	const socket = net.createConnection(pipe)
 	discordSocket = socket
 
 	socket.on('connect', () => {
-		console.log('[Discord RPC] IPC connected')
+		console.log('[Discord RPC] IPC connected:', pipe)
 		discordReady = false
 		writeDiscordFrame(0, {
 			v: 1,
@@ -138,10 +168,7 @@ const setDiscordPresence = (state) => {
 			}
 		: null
 
-	console.log(
-		'[Discord RPC] SET_ACTIVITY',
-		state ? state.title : 'clear',
-	)
+	console.log('[Discord RPC] SET_ACTIVITY', state ? state.title : 'clear')
 
 	writeDiscordFrame(1, {
 		cmd: 'SET_ACTIVITY',
