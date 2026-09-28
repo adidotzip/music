@@ -13,6 +13,7 @@ let discordSocket
 let discordBuffer = Buffer.alloc(0)
 let discordReady = false
 let pendingDiscordState
+let discordReconnectTimer
 
 const getDiscordPipe = () => {
 	if (process.platform === 'win32') return '\\\\?\\pipe\\discord-ipc-0'
@@ -28,6 +29,15 @@ const writeDiscordFrame = (opcode, payload) => {
 	frame.writeInt32LE(body.length, 4)
 	body.copy(frame, 8)
 	discordSocket.write(frame)
+}
+
+const scheduleDiscordReconnect = () => {
+	if (discordReconnectTimer || !DISCORD_CLIENT_ID) return
+
+	discordReconnectTimer = setTimeout(() => {
+		discordReconnectTimer = undefined
+		connectDiscord()
+	}, 2000)
 }
 
 const connectDiscord = () => {
@@ -52,8 +62,14 @@ const connectDiscord = () => {
 			const payload = JSON.parse(discordBuffer.subarray(8, 8 + length).toString())
 			discordBuffer = discordBuffer.subarray(8 + length)
 
+			if (opcode === 1 && payload?.evt === 'ERROR') {
+				console.error('[Discord RPC]', payload.data?.message || 'Discord RPC error')
+				continue
+			}
+
 			if (opcode === 1 && payload?.evt === null) {
 				discordReady = true
+
 				if (pendingDiscordState !== undefined) {
 					const state = pendingDiscordState
 					pendingDiscordState = undefined
@@ -63,14 +79,16 @@ const connectDiscord = () => {
 		}
 	})
 
-	socket.on('error', () => {
+	socket.on('error', (error) => {
 		discordReady = false
+		console.warn('[Discord RPC] Unable to connect:', error.message)
 	})
 
 	socket.on('close', () => {
 		discordReady = false
 		discordSocket = undefined
-	discordBuffer = Buffer.alloc(0)
+		discordBuffer = Buffer.alloc(0)
+		scheduleDiscordReconnect()
 	})
 }
 
@@ -78,6 +96,7 @@ const setDiscordPresence = (state) => {
 	if (!DISCORD_CLIENT_ID) return
 
 	pendingDiscordState = state
+
 	if (!discordReady) {
 		connectDiscord()
 		return
@@ -95,11 +114,11 @@ const setDiscordPresence = (state) => {
 				},
 				timestamps:
 					state.playing && state.duration > 0
-					? {
-						start: Date.now() - state.position * 1000,
-						end: Date.now() + Math.max(0, state.duration - state.position) * 1000,
-					}
-					: undefined,
+						? {
+								start: Date.now() - state.position * 1000,
+								end: Date.now() + Math.max(0, state.duration - state.position) * 1000,
+							}
+						: undefined,
 				buttons: [{ label: 'Open Adi Music', url: state.url }],
 			}
 		: null
