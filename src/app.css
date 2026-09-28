@@ -89,6 +89,7 @@ html {
 	color: var(--color-onSurface);
 	font-family: var(--font-sans);
 	font-optical-sizing: auto;
+	font-variation-settings: 'ROND' 100;
 	color-scheme: light;
 	width: 100%;
 	overflow-y: scroll;
