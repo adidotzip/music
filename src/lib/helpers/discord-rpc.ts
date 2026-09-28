@@ -1,3 +1,5 @@
+import { normalizeTracks, spicyamll } from '$lib/services/spicyamll.ts'
+
 export interface DiscordPresencePayload {
 	title: string
 	artist: string
@@ -61,7 +63,6 @@ const resolveRemoteArtwork = async (
 
 	const request = (async () => {
 		try {
-			const { spicyamll, normalizeTracks } = await import('$lib/services/spicyamll.ts')
 			const tracks = hasRemoteId
 				? normalizeTracks(await spicyamll.song(String(remoteId)))
 				: normalizeTracks(await spicyamll.search({ term: `${title} ${artist}`, types: 'songs', limit: 10 }))
