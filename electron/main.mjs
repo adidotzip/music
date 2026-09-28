@@ -182,6 +182,23 @@ const setDiscordPresence = (state) => {
 				end: now + Math.ceil(duration - position),
 			}
 		}
+
+		const artwork = typeof state.artwork === 'string' ? state.artwork.trim() : ''
+		if (artwork) {
+			activity.assets = {
+				large_image: artwork,
+				large_text: state.title || 'Adi Music',
+				small_text: state.artist || 'Adi Music',
+			}
+		}
+
+		const url = typeof state.url === 'string' ? state.url.trim() : ''
+		if (url && /^https:\/\//.test(url)) {
+			activity.buttons = ['Open in Adi Music']
+			activity.metadata = {
+				original_url: url,
+			}
+		}
 	}
 
 	console.log(
