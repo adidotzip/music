@@ -55,49 +55,6 @@
 }
 
 @font-face {
-	font-family: 'Google Sans Rounded';
-	font-style: normal;
-	font-weight: 100;
-	font-display: swap;
-	src: url('/fonts/GoogleSansRounded-Thin.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Google Sans Rounded';
-	font-style: normal;
-	font-weight: 200;
-	font-display: swap;
-	src: url('/fonts/GoogleSansRounded-ExtraLight.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Google Sans Rounded';
-	font-style: normal;
-	font-weight: 300;
-	font-display: swap;
-	src: url('/fonts/GoogleSansRounded-Light.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Google Sans Rounded';
-	font-style: normal;
-	font-weight: 400;
-	font-display: swap;
-	src: url('/fonts/GoogleSansRounded-Regular.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Google Sans Rounded';
-	font-style: normal;
-	font-weight: 500;
-	font-display: swap;
-	src: url('/fonts/GoogleSansRounded-Medium.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Google Sans Rounded';
-	font-style: normal;
-	font-weight: 700;
-	font-display: swap;
-	src: url('/fonts/GoogleSansRounded-Bold.ttf') format('truetype');
-}
-
-@font-face {
 	font-family: 'App CJK Fallback';
 	src:
 		local('Noto Sans SC'), local('Noto Sans CJK SC'), local('Noto Sans TC'),
