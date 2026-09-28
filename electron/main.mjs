@@ -194,10 +194,12 @@ const setDiscordPresence = (state) => {
 
 		const url = typeof state.url === 'string' ? state.url.trim() : ''
 		if (url && /^https:\/\//.test(url)) {
-			activity.buttons = ['Open in Adi Music']
-			activity.metadata = {
-				original_url: url,
-			}
+			activity.buttons = [
+				{
+					label: 'Open in Adi Music',
+					url,
+				},
+			]
 		}
 	}
 
