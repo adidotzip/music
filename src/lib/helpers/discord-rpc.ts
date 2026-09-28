@@ -50,9 +50,8 @@ const resolveRemoteArtwork = async (
 	title: string,
 	artist: string,
 ): Promise<string | undefined> => {
-	if (remoteId === undefined || remoteId === null || String(remoteId).trim() === '') return undefined
-
-	const key = String(remoteId)
+	const hasRemoteId = remoteId !== undefined && remoteId !== null && String(remoteId).trim() !== ''
+	const key = hasRemoteId ? `id:${String(remoteId)}` : `search:${title.trim().toLowerCase()}|${artist.trim().toLowerCase()}`
 	const cached = artworkCache.get(key)
 	if (cached && cached.expiresAt > Date.now()) return cached.url
 	if (cached) artworkCache.delete(key)
@@ -63,11 +62,19 @@ const resolveRemoteArtwork = async (
 	const request = (async () => {
 		try {
 			const { spicyamll, normalizeTracks } = await import('$lib/services/spicyamll.ts')
-			const tracks = normalizeTracks(await spicyamll.song(key))
-			const match =
-				tracks.find((track) => String(track.id) === key) ??
-				tracks.find((track) => track.name.toLowerCase() === title.toLowerCase()) ??
-				tracks.find((track) => String(track.artist ?? '').toLowerCase() === artist.toLowerCase())
+			const tracks = hasRemoteId
+				? normalizeTracks(await spicyamll.song(String(remoteId)))
+				: normalizeTracks(await spicyamll.search({ term: `${title} ${artist}`, types: 'songs', limit: 10 }))
+			const normalizedTitle = title.trim().toLowerCase()
+			const normalizedArtist = artist.trim().toLowerCase()
+			const match = hasRemoteId
+				? tracks.find((track) => String(track.id) === String(remoteId)) ?? tracks[0]
+				: tracks.find(
+						(track) =>
+							track.name.trim().toLowerCase() === normalizedTitle &&
+							String(track.artist ?? '').trim().toLowerCase() === normalizedArtist,
+					) ??
+					tracks.find((track) => track.name.trim().toLowerCase() === normalizedTitle)
 
 			const url = match?.image
 			return isPublicArtworkUrl(url) ? url : undefined
