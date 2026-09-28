@@ -175,7 +175,7 @@
 {@render children()}
 
 <div
-    class="page-overlay-container pointer-events-none fixed inset-x-0 bottom-0 z-20 grid gap-y-2 overflow-visible"
+    class="page-overlay-container pointer-events-none fixed inset-x-0 bottom-0 z-20 hidden gap-y-2 overflow-visible sm:grid"
 >
     <SnackbarRenderer />
 
