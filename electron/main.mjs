@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const APP_URL = process.env.ADI_MUSIC_URL || 'https://music.imreallyadi.space'
-const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || ''
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1219911045926223914'
 
 let mainWindow
 let discordSocket
@@ -70,7 +70,7 @@ const connectDiscord = () => {
 	socket.on('close', () => {
 		discordReady = false
 		discordSocket = undefined
-		discordBuffer = Buffer.alloc(0)
+	discordBuffer = Buffer.alloc(0)
 	})
 }
 
@@ -95,11 +95,11 @@ const setDiscordPresence = (state) => {
 				},
 				timestamps:
 					state.playing && state.duration > 0
-						? {
-								start: Date.now() - state.position * 1000,
-								end: Date.now() + Math.max(0, state.duration - state.position) * 1000,
-							}
-						: undefined,
+					? {
+						start: Date.now() - state.position * 1000,
+						end: Date.now() + Math.max(0, state.duration - state.position) * 1000,
+					}
+					: undefined,
 				buttons: [{ label: 'Open Adi Music', url: state.url }],
 			}
 		: null
