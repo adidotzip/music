@@ -62,7 +62,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 		class={[
 			layoutMode === 'both' && 'w-100 2xl:w-[28dvw]',
 			layoutMode === 'list' && 'mx-auto w-full max-w-125',
-			'player-content z-0 grow items-center gap-x-6 overflow-clip px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]',
+			'player-content z-0 min-w-0 grow items-center gap-x-6 overflow-clip px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]',
 			(player.animatedArtworkSrc && player.animatedArtworkLoaded) || player.artworkSrc
 				? 'bg-transparent'
 				: 'bg-secondaryContainerVariant',
@@ -83,7 +83,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 		</div>
 
 		<!-- Wrap Artwork in a relative container to handle absolute transition children -->
-		<div class="relative flex h-full w-full items-center justify-center min-h-0 [grid-area:artwork]">
+		<div class="relative flex min-h-0 min-w-0 h-full w-full items-center justify-center overflow-hidden [grid-area:artwork]">
 			{#if !(isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded)}
 				{#key activeTrack?.id}
 					<div
@@ -92,25 +92,25 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 						out:fade={{ duration: 150 }}
 					>
 						<PlayerArtwork
-							class="m-auto my-auto aspect-square h-full max-h-[38vh] max-w-[80vw] rounded-2xl bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
+							class="m-auto aspect-square h-full max-h-[42vh] max-w-[min(88vw,38rem)] rounded-2xl bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
 						/>
 					</div>
 				{/key}
 			{/if}
 		</div>
 
-		<div class="mt-2 flex w-full flex-col gap-2 [grid-area:controls]">
+		<div class="mt-2 flex w-full min-w-0 flex-col gap-2 [grid-area:controls]">
 			<div class="w-full rounded-2xl bg-surfaceContainerHighest px-4 py-2">
 				<Timeline class="w-full" />
 			</div>
 
 			<div
 				class={[
-					'flex w-full flex-col gap-6 rounded-2xl bg-secondaryContainer px-4 [grid-area:header]',
+					'flex w-full min-w-0 flex-col gap-6 rounded-2xl bg-secondaryContainer px-4 [grid-area:header]',
 					mainStore.volumeSliderEnabled ? 'pt-8 pb-4' : 'py-8',
 				]}
 			>
-				<div class="my-auto flex items-center justify-between gap-2">
+				<div class="my-auto flex min-w-0 flex-wrap items-center justify-center gap-2">
 					<ShuffleButton />
 
 					<PlayPrevButton />
@@ -123,14 +123,14 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 				</div>
 
 				{#if mainStore.volumeSliderEnabled}
-					<div class="flex items-center gap-2">
+					<div class="flex min-w-0 items-center gap-2">
 						<IconButton
 							icon="volumeMid"
 							tooltip={m.playerDecreaseVolume()}
 							onclick={() => (player.volume -= 10)}
 						/>
 
-						<Slider bind:value={player.volume} />
+						<div class="min-w-0 flex-1"><Slider bind:value={player.volume} /></div>
 
 						<IconButton
 							icon="volumeHigh"
@@ -141,7 +141,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 				{/if}
 			</div>
 
-			<div class="flex h-18 w-full shrink-0 items-center rounded-2xl bg-secondaryContainer px-4">
+			<div class="flex min-h-18 w-full min-w-0 shrink-0 items-center rounded-2xl bg-secondaryContainer px-4">
 				<!-- Relative container to prevent layout shifting during track text transition -->
 				<div class="relative flex h-full grow items-center overflow-hidden">
 					{#if activeTrack}
@@ -164,7 +164,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 					{/if}
 				</div>
 
-				<div class="relative z-10 ml-auto flex gap-1 bg-secondaryContainer pl-2">
+				<div class="relative z-10 ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-1 bg-secondaryContainer pl-2">
 					<PlayerFavoriteButton />
 
 					<IconButton
@@ -383,14 +383,14 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 	.player-content {
 		display: grid;
 		grid-template-columns: 1fr;
-		grid-template-rows: max-content minmax(--spacing(35), 1fr) auto;
+		grid-template-rows: max-content minmax(0, 1fr) auto;
 		grid-template-areas: 'header' 'artwork' 'controls';
 	}
 
 	.player-content-horizontal {
 		grid-template-columns:
-			1fr minmax(0, --spacing(75)) minmax(0, --spacing(125))
-			1fr;
+			minmax(0, 1fr) minmax(0, --spacing(75)) minmax(0, --spacing(125))
+			minmax(0, 1fr);
 		grid-template-rows: max-content 1fr;
 		grid-template-areas:
 			'header header header header'
