@@ -4,12 +4,43 @@
 	import Button from '$lib/components/Button.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
 
-	const { online = true }: { online?: boolean } = $props()
-	let isOnline = $state(online)
+	interface Props {
+		online?: boolean
+		bindHeight?: (height: number) => void
+	}
+
+	const { online = true, bindHeight }: Props = $props()
+	let isOnline = $state(true)
+	let navEl = $state<HTMLElement>()
 
 	$effect(() => {
 		isOnline = online
+		const updateOnline = () => {
+			if (typeof navigator !== 'undefined') {
+				isOnline = navigator.onLine
+			}
+		}
+		window.addEventListener('online', updateOnline)
+		window.addEventListener('offline', updateOnline)
+		return () => {
+			window.removeEventListener('online', updateOnline)
+			window.removeEventListener('offline', updateOnline)
+		}
 	})
+
+	$effect(() => {
+		if (navEl) {
+			const observer = new ResizeObserver(([entry]) => {
+				if (entry) {
+					bindHeight?.(entry.borderBoxSize[0]?.blockSize ?? navEl?.offsetHeight ?? 0)
+				}
+			})
+			observer.observe(navEl)
+			return () => observer.disconnect()
+		}
+	})
+
+	const isPlayerPage = $derived(page.url.pathname.startsWith('/player'))
 
 	type NavItem = {
 		href: string
@@ -29,19 +60,15 @@
 		return page.url.pathname === href || page.url.pathname.startsWith(href + '/')
 	}
 
-	const syncOnline = () => {
-		isOnline = navigator.onLine
-	}
-
-	if (browser) {
-		window.addEventListener('online', syncOnline)
-		window.addEventListener('offline', syncOnline)
-	}
 </script>
 
 <nav
+	bind:this={navEl}
 	aria-label="Primary navigation"
-	class="mobile-nav pointer-events-auto fixed inset-x-0 bottom-0 z-30 hidden border-t border-outline/10 bg-surfaceContainer/95 px-1 pt-1 pb-[max(4px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgb(0_0_0/8%)] backdrop-blur-xl sm:hidden"
+	class={[
+		'mobile-nav pointer-events-auto fixed inset-x-0 bottom-0 z-30 border-t border-outline/10 bg-surfaceContainer/95 px-1 pt-1 pb-[max(4px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgb(0_0_0/8%)] backdrop-blur-xl sm:hidden',
+		isPlayerPage ? 'hidden!' : 'flex',
+	]}
 >
 	<div class="mx-auto grid h-14 w-full max-w-lg items-stretch {isOnline ? 'grid-cols-5' : 'grid-cols-4'}">
 		{#each items as item}
@@ -60,7 +87,7 @@
 				>
 					<Icon type={item.icon} class="size-5" />
 				</div>
-				<span class="max-w-full truncate text-[11px] leading-4">{item.title}</span>
+				<span class="max-w-full truncate text-[10px] leading-3.5 tracking-tight font-medium">{item.title}</span>
 			</Button>
 		{/each}
 
@@ -70,7 +97,7 @@
 				href="/discovery"
 				kind="blank"
 				aria-current={page.url.pathname === '/discovery' ? 'page' : undefined}
-				class="h-full min-w-0 flex-col justify-center gap-0.5 rounded-xl px-1"
+				class="h-full min-w-0 flex-col justify-center gap-0.5 rounded-xl px-0.5"
 			>
 				<div
 					class={[
@@ -80,7 +107,7 @@
 				>
 					<Icon type="compass" class="size-5" />
 				</div>
-				<span class="max-w-full truncate text-[11px] leading-4">Discovery</span>
+				<span class="max-w-full truncate text-[10px] leading-3.5 tracking-tight font-medium">Discover</span>
 			</Button>
 		{/if}
 	</div>
