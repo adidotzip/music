@@ -131,7 +131,7 @@ const publish = (state: AdiMusicRpcState | undefined): void => {
 		return
 	}
 
-	const positionBucket = Math.floor(state.position / 2)
+	const positionBucket = Math.floor(state.position)
 	const normalized = JSON.stringify({ ...state, position: positionBucket })
 
 	if (normalized === lastState) return
