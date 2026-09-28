@@ -17,7 +17,7 @@ let discordReconnectTimer
 
 const getDiscordPipe = () => {
 	if (process.platform === 'win32') return '\\\\?\\pipe\\discord-ipc-0'
-	const tmp = process.env.XDG_RUNTIME_DIR || process.env.TMPDIR || '/tmp'
+	const tmp = process.env.TMPDIR || process.env.XDG_RUNTIME_DIR || '/tmp'
 	return path.join(tmp, 'discord-ipc-0')
 }
 
@@ -43,12 +43,18 @@ const scheduleDiscordReconnect = () => {
 const connectDiscord = () => {
 	if (!DISCORD_CLIENT_ID || discordSocket) return
 
+	console.log('[Discord RPC] Connecting...')
+
 	const socket = net.createConnection(getDiscordPipe())
 	discordSocket = socket
 
 	socket.on('connect', () => {
+		console.log('[Discord RPC] IPC connected')
 		discordReady = false
-		writeDiscordFrame(0, { v: 1, client_id: DISCORD_CLIENT_ID })
+		writeDiscordFrame(0, {
+			v: 1,
+			client_id: DISCORD_CLIENT_ID,
+		})
 	})
 
 	socket.on('data', (chunk) => {
@@ -59,15 +65,21 @@ const connectDiscord = () => {
 			if (discordBuffer.length < 8 + length) break
 
 			const opcode = discordBuffer.readInt32LE(0)
-			const payload = JSON.parse(discordBuffer.subarray(8, 8 + length).toString())
+			const payload = JSON.parse(
+				discordBuffer.subarray(8, 8 + length).toString(),
+			)
 			discordBuffer = discordBuffer.subarray(8 + length)
 
-			if (opcode === 1 && payload?.evt === 'ERROR') {
-				console.error('[Discord RPC]', payload.data?.message || 'Discord RPC error')
+			if (payload?.evt === 'ERROR') {
+				console.error(
+					'[Discord RPC] Error:',
+					payload.data?.message || 'Unknown Discord RPC error',
+				)
 				continue
 			}
 
-			if (opcode === 1 && payload?.evt === null) {
+			if (opcode === 1 && payload?.evt === 'READY') {
+				console.log('[Discord RPC] READY')
 				discordReady = true
 
 				if (pendingDiscordState !== undefined) {
@@ -81,13 +93,14 @@ const connectDiscord = () => {
 
 	socket.on('error', (error) => {
 		discordReady = false
-		console.warn('[Discord RPC] Unable to connect:', error.message)
+		console.warn('[Discord RPC] Connection error:', error.message)
 	})
 
 	socket.on('close', () => {
 		discordReady = false
 		discordSocket = undefined
 		discordBuffer = Buffer.alloc(0)
+		console.log('[Discord RPC] IPC disconnected')
 		scheduleDiscordReconnect()
 	})
 }
@@ -119,19 +132,35 @@ const setDiscordPresence = (state) => {
 								end: Date.now() + Math.max(0, state.duration - state.position) * 1000,
 							}
 						: undefined,
-				buttons: [{ label: 'Open Adi Music', url: state.url }],
+				buttons: state.url
+					? [{ label: 'Open Adi Music', url: state.url }]
+					: undefined,
 			}
 		: null
 
+	console.log(
+		'[Discord RPC] SET_ACTIVITY',
+		state ? state.title : 'clear',
+	)
+
 	writeDiscordFrame(1, {
 		cmd: 'SET_ACTIVITY',
-		args: { pid: process.pid, activity },
+		args: {
+			pid: process.pid,
+			activity,
+		},
 		nonce: crypto.randomUUID(),
 	})
 }
 
-ipcMain.on('discord:set-presence', (_event, state) => setDiscordPresence(state))
-ipcMain.on('discord:clear-presence', () => setDiscordPresence(undefined))
+ipcMain.on('discord:set-presence', (_event, state) => {
+	setDiscordPresence(state)
+})
+
+ipcMain.on('discord:clear-presence', () => {
+	setDiscordPresence(undefined)
+})
+
 ipcMain.on('media:set-now-playing', () => {})
 
 const createWindow = async () => {
@@ -153,7 +182,9 @@ const createWindow = async () => {
 	mainWindow.once('ready-to-show', () => mainWindow.show())
 
 	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-		if (url.startsWith('https://')) shell.openExternal(url)
+		if (url.startsWith('https://')) {
+			shell.openExternal(url)
+		}
 		return { action: 'deny' }
 	})
 
@@ -167,10 +198,14 @@ app.whenReady().then(async () => {
 	connectDiscord()
 
 	app.on('activate', () => {
-		if (BrowserWindow.getAllWindows().length === 0) createWindow()
+		if (BrowserWindow.getAllWindows().length === 0) {
+			createWindow()
+		}
 	})
 })
 
 app.on('window-all-closed', () => {
-	if (process.platform !== 'darwin') app.quit()
+	if (process.platform !== 'darwin') {
+		app.quit()
+	}
 })
