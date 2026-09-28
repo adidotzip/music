@@ -74,6 +74,7 @@ const config = {
 
 				'connect-src': [
 					'self',
+					'blob:',
 					'http://127.0.0.1:6463',
 					'http://localhost:6463',
 					env.PUBLIC_GOAT_COUNTER_URL ?? '',
