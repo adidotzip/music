@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,GRAD,ROND,slnt,wdth,wght@28,100,100,0,100,400');
 @import 'tailwindcss';
 @import './theme-colors.css';
 
@@ -90,7 +90,6 @@ html {
 	font-family: var(--font-sans);
 	font-optical-sizing: auto;
 	font-variation-settings: 'opsz' 28, 'slnt' 0, 'wdth' 100, 'wght' 400, 'GRAD' 100, 'ROND' 100;
-	font-size: 28px;
 	color-scheme: light;
 	width: 100%;
 	overflow-y: scroll;
