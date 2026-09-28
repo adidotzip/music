@@ -6,18 +6,15 @@
 
 	const player = usePlayer()
 
-	const max = 1000
+	const max = $derived(Number.isFinite(player.duration) && player.duration > 0 ? player.duration : 0)
+	const step = 0.01
 
 	let seeking = $state(false)
 	let seekingValue = $state(0)
 
-	const value = $derived.by(() => {
-		const v = (player.currentTime / player.duration) * max
+	const value = $derived(Number.isFinite(player.currentTime) ? player.currentTime : 0)
 
-		return Number.isFinite(v) ? v : 0
-	})
-
-	const getTime = (percentage: number) => (percentage / max) * player.duration
+	const getTime = (time: number) => time
 
 	const playerSeek = (val: number) => {
 		player.seek(getTime(val))
@@ -48,6 +45,7 @@
 	<Slider
 		disabled={!player.activeTrack}
 		{max}
+		step={step}
 		bind:value={getSliderValue, setSliderValue}
 		onSeekStart={() => {
 			if (!seeking) {
