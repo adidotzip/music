@@ -55,7 +55,7 @@
 <nav
 	bind:this={navEl}
 	aria-label="Primary navigation"
-	class={['mobile-nav pointer-events-auto fixed inset-x-0 bottom-0 z-30 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] sm:hidden', isPlayerPage ? 'hidden!' : 'block']}
+	class="mobile-nav pointer-events-auto fixed inset-x-0 bottom-0 z-30 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] sm:hidden"
 >
 	<div class="mx-auto flex w-full max-w-md justify-center">
 		<div class="dock flex w-full items-center justify-around gap-1 overflow-hidden rounded-[28px] border border-outline/10 bg-surfaceContainer/95 p-1.5 shadow-[0_10px_35px_rgb(0_0_0/14%)] backdrop-blur-2xl">
