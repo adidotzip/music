@@ -92,7 +92,6 @@ const config = {
 					'https://lrclib.net',
 					'https://unison.boidu.dev',
 					'https://api.lrcmux.dev',
-					'https://lyrics-api.binimum.org',
 					'https://lrc.red',
 					'https://lyricsplus.binimum.org',
 					'https://lyricsplus-seven.vercel.app',
