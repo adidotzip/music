@@ -4,7 +4,7 @@ import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
 export interface ProviderResponse {
     rawLyrics: string
-    source: 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | 'binimum' | 'lrc-red' | string
+    source: 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | 'lrc-red' | string
     isPlainOnly?: boolean
 }
 
@@ -20,7 +20,6 @@ export class LyricsProvider {
         if (providerId === 'lyrics-plus') return LyricsProvider.fetchFromLyricsPlus(track, signal)
         if (providerId === 'lrclib') return LyricsProvider.fetchFromLrclib(track, signal)
         if (providerId === 'unison') return LyricsProvider.fetchFromUnison(track, signal)
-        if (providerId === 'binimum') return LyricsProvider.fetchFromBinimum(track, signal)
         if (providerId === 'lrc-red') return LyricsProvider.fetchFromLrcRed(track, signal)
 
         if (typeof window !== 'undefined') {
@@ -53,7 +52,7 @@ export class LyricsProvider {
             if (preferredRes) return preferredRes
         }
 
-        const standardOrder = ['adi-lrcmux', 'lyrics-plus', 'unison', 'lrclib', 'binimum', 'lrc-red']
+        const standardOrder = ['adi-lrcmux', 'lrc-red', 'lyrics-plus', 'unison', 'lrclib']
         for (const pid of standardOrder) {
             if (preferredProvider && pid === preferredProvider) continue
             const res = await LyricsProvider.fetchByProviderId(pid, track, signal)
@@ -340,41 +339,6 @@ export class LyricsProvider {
             }
 
             return null
-        } catch (error) {
-            if (error instanceof Error && error.name === 'AbortError') throw error
-            return null
-        }
-    }
-
-    static async fetchFromBinimum(
-        track: TrackData,
-        signal?: AbortSignal,
-    ): Promise<ProviderResponse | null> {
-        try {
-            const url = new URL('https://lyrics-api.binimum.org/')
-            url.searchParams.set('track', track.name)
-            url.searchParams.set('artist', formatArtists(track.artists))
-            if (track.duration) url.searchParams.set('duration', String(Math.round(track.duration)))
-            if (track.album && track.album !== UNKNOWN_ITEM) url.searchParams.set('album', track.album)
-
-            const response = await fetch(url, { signal })
-            if (!response.ok) return null
-
-            const contentType = response.headers.get('content-type') || ''
-            let rawLyrics: string | null = null
-            if (contentType.includes('application/json')) {
-                const data = await response.json()
-                rawLyrics = data?.lyrics ?? data?.syncedLyrics ?? data?.plainLyrics ?? data?.rawLyrics ?? data?.rawContent ?? null
-            } else {
-                rawLyrics = await response.text()
-            }
-
-            if (typeof rawLyrics !== 'string' || !rawLyrics.trim()) return null
-            return {
-                rawLyrics,
-                source: 'binimum',
-                isPlainOnly: !(rawLyrics.includes('[') || rawLyrics.includes('<tt')),
-            }
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') throw error
             return null
