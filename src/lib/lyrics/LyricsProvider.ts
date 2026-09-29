@@ -243,7 +243,7 @@ export class LyricsProvider {
                 }
             }
 
-            const rawLyrics = formattedLines.join('\\n')
+            const rawLyrics = formattedLines.join('\n')
             if (rawLyrics.trim().length === 0) return null
 
             return {
