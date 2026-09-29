@@ -169,6 +169,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
+	padding-bottom: var(--bottom-overlay-height);
 }
 
 source {
