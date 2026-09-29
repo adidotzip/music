@@ -167,6 +167,24 @@ describe('AM Lyrics System', () => {
 		}
 	})
 
+	it('supports Binimum as a fallback provider', async () => {
+		const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('[00:01.00]Binimum line', { status: 200, headers: { 'content-type': 'text/plain' } }))
+		vi.stubGlobal('fetch', fetchMock)
+		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal, 'binimum')
+		expect(result.status).toBe('found')
+		expect(result.source).toBe('binimum')
+	})
+
+	it('matches LRC Red results before fetching TTML', async () => {
+		const fetchMock = vi.fn<typeof fetch>()
+			.mockResolvedValueOnce(jsonResponse({ results: [{ track_name: 'Drowning (Avicii Remix)', artist_name: 'Armin van Buuren, Laura V', duration: 473, lyricsUrl: 'https://lrc.red/s/test.ttml' }] }))
+			.mockResolvedValueOnce(new Response('<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:01.000">LRC Red line</p></div></body></tt>', { status: 200 }))
+		vi.stubGlobal('fetch', fetchMock)
+		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal, 'lrc-red')
+		expect(result.status).toBe('found')
+		expect(result.source).toBe('lrc-red')
+		expect(result.ttml).toContain('LRC Red line')
+	})
 	it('only includes Adi Chinese translations for Chinese locales', () => {
 		const rawTtml =
 			'<tt><body><p><span>Original</span><span ttm:role="x-translation" xml:lang="zh-CN">中文</span></p></body></tt>'
