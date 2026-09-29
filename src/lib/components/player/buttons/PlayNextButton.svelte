@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 
+	import Icon from '../../icon/Icon.svelte'
+
 	const { class: className }: { class?: ClassValue } = $props()
 	const player = usePlayer()
 	let button: HTMLButtonElement
