@@ -75,7 +75,7 @@
 		snackbar('Custom source deleted')
 	}
 
-	async function selectSource(sourceId: 'adi-lrcmux' | 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | 'binimum' | 'lrc-red' | string) {
+	async function selectSource(sourceId: 'adi-lrcmux' | 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | 'lrc-red' | string) {
 		if (!track) return
 		fetching = true
 		activeFetchingSource = sourceId
@@ -299,15 +299,9 @@
 								{/if}
 							</button>
 
-							<!-- Binimum -->
-							<button type="button" disabled={fetching} class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer" onclick={() => selectSource('binimum')}>
-								<div class="flex flex-col"><span class="text-body-large font-bold">Binimum</span><span class="text-body-small text-onSurfaceVariant">Fallback Provider</span></div>
-								{#if fetching && activeFetchingSource === 'binimum'}<Spinner class="size-5" />{:else}<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />{/if}
-							</button>
-
 							<!-- LRC Red -->
 							<button type="button" disabled={fetching} class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer" onclick={() => selectSource('lrc-red')}>
-								<div class="flex flex-col"><span class="text-body-large font-bold">LRC Red</span><span class="text-body-small text-onSurfaceVariant">Last Fallback Provider</span></div>
+								<div class="flex flex-col"><span class="text-body-large font-bold">LRC Red</span><span class="text-body-small text-onSurfaceVariant">Primary Fallback Provider</span></div>
 								{#if fetching && activeFetchingSource === 'lrc-red'}<Spinner class="size-5" />{:else}<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />{/if}
 							</button>
 
