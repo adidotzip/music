@@ -7,15 +7,12 @@
 	import LibraryHome from '$lib/components/LibraryHome.svelte'
 	import ArtistListContainer from '$lib/components/ArtistListContainer.svelte'
 	import Button from '$lib/components/Button.svelte'
-	import IconButton from '$lib/components/IconButton.svelte'
 	import type { IconType } from '$lib/components/icon/Icon.svelte'
 	import Icon from '$lib/components/icon/Icon.svelte'
 	import ListDetailsLayout from '$lib/components/ListDetailsLayout.svelte'
 	import PlaylistListContainer from '$lib/components/playlists/PlaylistListContainer.svelte'
 	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.js'
-	import { isMobile } from '$lib/helpers/utils/ua.ts'
-	import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte.ts'
 	import { FAVORITE_PLAYLIST_ID } from '$lib/library/playlists-actions.ts'
 	import { getPlaylistMenuItems } from '$lib/menu-actions/playlists.ts'
 	import Search from './Search.svelte'
@@ -30,7 +27,6 @@
 	const itemsIds = $derived(data.itemsIdsQuery.value)
 	const slug = $derived(page.params.slug as typeof data.slug | undefined)
 	const isLibraryHome = $derived(!slug)
-	const isHandHeldDevice = isMobile()
 	const isDetailPage = $derived(Boolean(page.params.uuid))
 	const isAlbumOrArtistDetails = $derived(isDetailPage && (slug === 'albums' || slug === 'artists'))
 
@@ -75,8 +71,6 @@
 		data.layoutMode(main.librarySplitLayoutEnabled, isWideLayout, page.params.uuid),
 	)
 
-	useSetOverlaySnippet('bottom-bar', () => layoutBottom)
-
 	export const snapshot: Snapshot<string> = {
 		capture: () => data.store.searchTerm,
 		restore: (value) => {
@@ -96,8 +90,10 @@
 		>
 			<div
 				class={[
-					'flex items-center justify-center rounded-full p-2',
-					((item.slug === 'home' && !slug) || item.slug === slug) && 'bg-secondaryContainer text-onSecondaryContainer',
+					'flex items-center justify-center rounded-full p-2.5 transition-colors duration-200',
+					((item.slug === 'home' && !slug) || item.slug === slug)
+						? 'bg-secondaryContainer text-onSecondaryContainer font-bold'
+						: 'text-onSurfaceVariant hover:bg-surfaceContainerHigh',
 				]}
 			>
 				<Icon type={item.icon} />
@@ -111,20 +107,17 @@
 		tooltip="Discovery"
 		class={['flex shrink-0 items-center justify-center', className]}
 	>
-		<div class="flex items-center justify-center rounded-full p-2">
+		<div
+			class={[
+				'flex items-center justify-center rounded-full p-2.5 transition-colors duration-200',
+				page.url.pathname === '/discovery'
+					? 'bg-secondaryContainer text-onSecondaryContainer font-bold'
+					: 'text-onSurfaceVariant hover:bg-surfaceContainerHigh',
+			]}
+		>
 			<Icon type="compass" />
 		</div>
 	</Button>
-{/snippet}
-
-{#snippet layoutBottom()}
-	{#if isHandHeldDevice && !isDetailPage}
-		<div
-			class="pointer-events-auto grid h-16 w-full grid-cols-6 items-center border-t border-outline/10 bg-surfaceContainer px-1 pb-[env(safe-area-inset-bottom)] sm:hidden active-view-regular:view-name-[bottom-bar]"
-		>
-			{@render navItemsSnippet('h-full min-w-0')}
-		</div>
-	{/if}
 {/snippet}
 
 <div

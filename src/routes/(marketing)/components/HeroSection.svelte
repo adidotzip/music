@@ -61,7 +61,7 @@
 		<div class="product-frame">
 			<img
 				class="product-image block h-auto w-full"
-				src={productShowcase.src}
+				src={productShowcase}
 				alt="Adi Music showing the player with lyrics alongside artist and album views"
 				loading="eager"
 				fetchpriority="high"

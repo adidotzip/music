@@ -5,7 +5,6 @@ import { persist } from '$lib/helpers/persist.svelte.ts'
 import { clamp } from '$lib/helpers/utils/clamp.ts'
 import { debounce } from '$lib/helpers/utils/debounce.ts'
 import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
-import { throttle } from '$lib/helpers/utils/throttle.ts'
 import { getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
 import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
 import { createTrackQuery } from '$lib/library/get/value-queries.ts'
@@ -474,7 +473,7 @@ export class PlayerStore {
 			}
 		}
 
-		for (const { id, track: candidate } of candidates) {
+		for (const { track: candidate } of candidates) {
 			if (!candidate) continue
 
 			if (!this.#preloadedLyrics.has(candidate.id)) {

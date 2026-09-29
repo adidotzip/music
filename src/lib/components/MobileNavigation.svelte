@@ -28,10 +28,11 @@
 
 	$effect(() => {
 		if (!navEl) return
+		const element = navEl
 		const observer = new ResizeObserver(([entry]) => {
-			if (entry) bindHeight?.(entry.borderBoxSize[0]?.blockSize ?? navEl.offsetHeight ?? 0)
+			if (entry) bindHeight?.(entry.borderBoxSize[0]?.blockSize ?? element.offsetHeight ?? 0)
 		})
-		observer.observe(navEl)
+		observer.observe(element)
 		return () => observer.disconnect()
 	})
 
@@ -43,9 +44,10 @@
 
 	const items: NavItem[] = [
 		{ href: '/library', title: 'Library', icon: 'home' },
-		{ href: '/library/tracks', title: 'Tracks', icon: 'musicNote' },
-		{ href: '/library/albums', title: 'Albums', icon: 'album' },
-		{ href: '/library/artists', title: 'Artists', icon: 'person' },
+		{ href: '/library/tracks', title: m.tracks(), icon: 'musicNote' },
+		{ href: '/library/albums', title: m.albums(), icon: 'album' },
+		{ href: '/library/artists', title: m.artists(), icon: 'person' },
+		{ href: '/library/playlists', title: m.playlists(), icon: 'playlist' },
 	]
 	const isActive = (href: string) =>
 		href === '/library'
@@ -61,17 +63,17 @@
 	<div class="mx-auto flex w-full max-w-md justify-center">
 		<div class="dock flex w-full items-center justify-around gap-1 overflow-hidden rounded-[28px] border border-outline/10 bg-surfaceContainer/95 p-1.5 shadow-[0_10px_35px_rgb(0_0_0/14%)] backdrop-blur-2xl">
 			{#each items as item}
-				<Button as="a" href={item.href} kind="blank" aria-current={isActive(item.href) ? 'page' : undefined}
-					class={['dock-item flex size-12 shrink-0 items-center justify-center rounded-[22px] transition-[background-color] duration-200',
-						isActive(item.href) ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}>
+				<Button as="a" href={item.href} kind="blank" tooltip={item.title} aria-current={isActive(item.href) ? 'page' : undefined}
+					class={['dock-item flex size-11 shrink-0 items-center justify-center rounded-[20px] transition-[background-color] duration-200',
+						isActive(item.href) ? 'bg-secondaryContainer text-onSecondaryContainer font-bold' : 'text-onSurfaceVariant hover:bg-surfaceContainerHigh']}>
 					<Icon type={item.icon} class="size-5 shrink-0" />
 				</Button>
 			{/each}
 
 			{#if isOnline}
-				<Button as="a" href="/discovery" kind="blank" aria-current={page.url.pathname === '/discovery' ? 'page' : undefined}
-					class={['dock-item flex size-12 shrink-0 items-center justify-center rounded-[22px] transition-[background-color] duration-200',
-						page.url.pathname === '/discovery' ? 'bg-secondaryContainer text-onSecondaryContainer' : 'hover:bg-surfaceContainerHigh']}>
+				<Button as="a" href="/discovery" kind="blank" tooltip="Discovery" aria-current={page.url.pathname === '/discovery' ? 'page' : undefined}
+					class={['dock-item flex size-11 shrink-0 items-center justify-center rounded-[20px] transition-[background-color] duration-200',
+						page.url.pathname === '/discovery' ? 'bg-secondaryContainer text-onSecondaryContainer font-bold' : 'text-onSurfaceVariant hover:bg-surfaceContainerHigh']}>
 					<Icon type="compass" class="size-5 shrink-0" />
 				</Button>
 			{/if}

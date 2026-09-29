@@ -24,15 +24,16 @@ const getArtworkArgb = async (src: string): Promise<number | null> => {
 				let weight = 0
 
 				for (let i = 0; i < data.length; i += 4) {
-					const alpha = data[i + 3] / 255
+					const r = data[i] ?? 0
+					const g = data[i + 1] ?? 0
+					const b = data[i + 2] ?? 0
+					const alpha = (data[i + 3] ?? 255) / 255
 					if (alpha < 0.2) continue
-					const saturation =
-						Math.max(data[i], data[i + 1], data[i + 2]) -
-						Math.min(data[i], data[i + 1], data[i + 2])
+					const saturation = Math.max(r, g, b) - Math.min(r, g, b)
 					const pixelWeight = alpha * (0.35 + saturation / 255)
-					red += data[i] * pixelWeight
-					green += data[i + 1] * pixelWeight
-					blue += data[i + 2] * pixelWeight
+					red += r * pixelWeight
+					green += g * pixelWeight
+					blue += b * pixelWeight
 					weight += pixelWeight
 				}
 

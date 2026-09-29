@@ -57,7 +57,7 @@
 	]}
 >
 	<div
-		class="mx-auto flex w-full max-w-(--app-max-content-width) items-center justify-end gap-2 pr-2 pl-6"
+		class="mx-auto flex w-full max-w-(--app-max-content-width) items-center justify-end gap-2 pr-2 pl-6 sm:pl-20"
 	>
 		{#if !noBackButton}
 			<BackButton onback={onback} class={[!title && 'mr-auto']} />

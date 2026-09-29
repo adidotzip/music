@@ -13,7 +13,7 @@
 		initPlayerButton(button)
 		initSkipLabel(skip)
 		button.addEventListener('pressend', () => {
-			playSkip(skip, { bouncing: true })
+			playSkip(skip)
 			player.playNext()
 		})
 	})

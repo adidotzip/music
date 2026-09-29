@@ -14,7 +14,7 @@ import { onMount } from 'svelte'
 	import { getArtistProfile, getAlbumsForArtist } from '$lib/services/spicyamll.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
-	import { type AlbumData, getLibraryValue, registerRemoteTrack, type TrackData } from '$lib/library/get/value.ts'
+	import { type AlbumData, getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
 import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/ids.ts'
 	import { getLibraryArtists } from '$lib/services/library.ts'
 	import {
@@ -88,15 +88,6 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		status: 'searching' | 'downloading' | 'added' | 'duplicate' | 'not-found' | 'failed'
 		rowIndex: number
 	} | null>(null)
-
-	const remoteIdToNumber = (id: string | number) => {
-		const value = String(id)
-		let hash = 0
-		for (let index = 0; index < value.length; index += 1) {
-			hash = (hash * 31 + value.charCodeAt(index)) | 0
-		}
-		return -(Math.abs(hash || 1))
-	}
 
 	$effect(() => {
 		let cancelled = false
@@ -229,7 +220,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			const { importPlaylistCsv } = await import('$lib/library/import-playlist-csv.ts')
 			const csvText = await file.text()
 			localStorage.setItem(storageKey, JSON.stringify({ csvText, resumeFrom }))
-			const result = await importPlaylistCsv(csvText, (progress) => {
+			const result = await importPlaylistCsv(item.id, csvText, (progress) => {
 				csvProgress = progress
 				if (['added', 'duplicate', 'not-found', 'failed'].includes(progress.status)) {
 					localStorage.setItem(storageKey, JSON.stringify({ csvText, resumeFrom: progress.rowIndex + 1 }))
@@ -527,7 +518,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			showDownloadButton={false}
 			predefinedMenuItems={{
 			disableViewAlbum: slug === 'albums',
-			disableViewArtist: slug === 'artists',
+			disableViewArtist: (slug as string) === 'artists',
 			disableAddToFavorites: isFavoritesView,
 			enableMultiRemoveFromFavorites: isFavoritesView,
 		}}

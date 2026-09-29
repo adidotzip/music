@@ -220,7 +220,7 @@ const parseDiscoveryGroup = (
 		)
 		if (!id) return null
 
-		return {
+		const resource: DiscoveryResource = {
 			type,
 			id,
 			name: String(attrs.name ?? item.name ?? item.title ?? item.trackName ?? 'Unknown'),
@@ -231,7 +231,8 @@ const parseDiscoveryGroup = (
 			genre: Array.isArray(attrs.genreNames) ? String(attrs.genreNames[0] ?? '') : String(attrs.genre ?? ''),
 			bio: String(editorial.short ?? editorial.standard ?? ''),
 		}
-	}).filter((item): item is DiscoveryResource => Boolean(item))
+		return resource
+	}).filter((item): item is DiscoveryResource => item !== null)
 }
 
 const parseCatalogResources = (input: unknown): DiscoveryResource[] => {
@@ -247,7 +248,7 @@ const parseCatalogResources = (input: unknown): DiscoveryResource[] => {
 		const artwork = attrs.artwork && typeof attrs.artwork === 'object' ? attrs.artwork as Record<string, unknown> : {}
 		const name = String(attrs.name ?? item.name ?? '')
 		if (!name) return null
-		return {
+		const resource: DiscoveryResource = {
 			type,
 			id: String(item.id),
 			name,
@@ -258,7 +259,8 @@ const parseCatalogResources = (input: unknown): DiscoveryResource[] => {
 			genre: Array.isArray(attrs.genreNames) ? String(attrs.genreNames[0] ?? '') : '',
 			bio: '',
 		}
-	}).filter((item): item is DiscoveryResource => Boolean(item))
+		return resource
+	}).filter((item): item is DiscoveryResource => item !== null)
 }
 
 export const parseDiscoveryResults = (input: unknown): DiscoveryResource[] => {

@@ -187,7 +187,7 @@
 	}
 
 	onMount(() => {
-		artistId = decodeURIComponent(page.params.name)
+		artistId = decodeURIComponent(page.params.name || '')
 		void load()
 	})
 
