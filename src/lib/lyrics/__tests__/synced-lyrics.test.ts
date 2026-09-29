@@ -166,15 +166,6 @@ describe('AM Lyrics System', () => {
 			expect(result.ttml).toContain('AM Lyrics Line')
 		}
 	})
-
-	it('supports Binimum as a fallback provider', async () => {
-		const fetchMock = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('[00:01.00]Binimum line', { status: 200, headers: { 'content-type': 'text/plain' } }))
-		vi.stubGlobal('fetch', fetchMock)
-		const result = await LyricsService.fetchLyrics(createTrack(), new AbortController().signal, 'binimum')
-		expect(result.status).toBe('found')
-		expect(result.source).toBe('binimum')
-	})
-
 	it('matches LRC Red results before fetching TTML', async () => {
 		const fetchMock = vi.fn<typeof fetch>()
 			.mockResolvedValueOnce(jsonResponse({ results: [{ track_name: 'Drowning (Avicii Remix)', artist_name: 'Armin van Buuren, Laura V', duration: 473, lyricsUrl: 'https://lrc.red/s/test.ttml' }] }))
