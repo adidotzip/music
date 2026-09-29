@@ -88,12 +88,12 @@
                 <PlayNextButton class="max-xss:hidden" />
             </div>
 
-            <div class="flex items-center justify-center max-sm:hidden">
+            <div class="mini-player-controls max-sm:hidden">
                 <MainControls />
             </div>
 
             <!-- Right Controls: Desktop Volume -->
-            <div class="flex min-w-0 items-center justify-end gap-1 max-sm:hidden">
+            <div class="mini-player-right max-sm:hidden">
                 {#if mainStore.volumeSliderEnabled}
                     <VolumeSlider />
                 {/if}
@@ -105,6 +105,145 @@
 
 <style lang="postcss">
   @reference '../../app.css';
+
+  /* The row is intentionally split into fixed left / center / right zones.
+     Metadata is the only flexible area, so long titles can never move controls. */
+  #mini-player .mini-player-row {
+    position: relative;
+  }
+
+  #mini-player .mini-player-main {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  #mini-player .mini-player-track {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  #mini-player .mini-player-meta {
+    min-width: 0;
+    flex: 1 1 auto;
+    width: 0;
+    overflow: hidden;
+  }
+
+  #mini-player .mini-player-title,
+  #mini-player .mini-player-artist {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #mini-player .mini-player-favorite,
+  #mini-player .mini-player-controls,
+  #mini-player .mini-player-right {
+    flex: 0 0 auto;
+  }
+
+  @media (min-width: 640px) {
+    #mini-player .mini-player-row {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) auto minmax(280px, 1fr);
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+      column-gap: 16px;
+    }
+
+    #mini-player .mini-player-main {
+      grid-column: 1;
+      display: flex;
+      min-width: 0;
+      width: 100%;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    /* This is the clickable full-player target. It stays at the far left. */
+    #mini-player .mini-player-track {
+      min-width: 0;
+      max-width: 100%;
+      flex: 1 1 auto;
+      justify-content: flex-start;
+    }
+
+    #mini-player .mini-player-meta {
+      min-width: 0;
+      flex: 1 1 auto;
+      width: 0;
+    }
+
+    #mini-player .mini-player-controls {
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: center;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    #mini-player .mini-player-right {
+      grid-column: 3;
+      grid-row: 1;
+      justify-self: end;
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  @media (max-width: 639px) {
+    #mini-player {
+      border-radius: 24px;
+    }
+
+    #mini-player > div {
+      gap: 0;
+    }
+
+    #mini-player .mini-player-row {
+      display: flex;
+      width: 100%;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #mini-player .mini-player-main {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    #mini-player .mini-player-track {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    #mini-player .mini-player-meta {
+      min-width: 0;
+      flex: 1 1 auto;
+      width: 0;
+    }
+
+    #mini-player .mini-player-favorite,
+    #mini-player .mini-player-controls {
+      flex: 0 0 auto;
+    }
+
+    #mini-player .aero-player {
+      --player-size: 44px;
+      --player-icon: 26px;
+    }
+
+    #mini-player .timeline-container {
+      display: none;
+    }
+  }
 
   ::view-transition-old(pl-chevron-up) {
     display: none;
