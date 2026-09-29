@@ -146,7 +146,8 @@ export const importPlaylistCsv = async (
 	const rows = parseCsv(text)
 	if (rows.length < 2) throw new Error('The CSV needs a header row and at least one song.')
 
-	const headers = rows[0].map((value) => value.replace(/^\uFEFF/, '').trim())
+	const firstRow = rows[0] ?? []
+	const headers = firstRow.map((value) => value.replace(/^\uFEFF/, '').trim())
 	const titleIndex = getColumn(headers, ['title', 'track name', 'trackname', 'name'])
 	const artistIndex = getColumn(headers, ['artist', 'artist name', 'artistname', 'artist name(s)', 'artists', 'artists name'])
 	const albumIndex = getColumn(headers, ['album', 'album name', 'albumname'])
@@ -175,6 +176,7 @@ export const importPlaylistCsv = async (
 	for (let rowIndex = 0; rowIndex < songRows.length; rowIndex += 1) {
 		if (rowIndex < resumeFrom) continue
 		const row = songRows[rowIndex]
+		if (!row) continue
 		const title = row[titleIndex]?.trim() ?? ''
 		const artist = row[artistIndex]?.trim() ?? ''
 		const album = albumIndex >= 0 ? row[albumIndex]?.trim() ?? '' : ''

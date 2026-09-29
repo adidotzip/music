@@ -14,7 +14,7 @@
 	type DownloadState = 'idle' | 'loading' | 'done' | 'error'
 	let localState = $state<DownloadState | null>(null)
 	let persistedDownloaded = $state(false)
-	let state = $derived<DownloadState>(localState ?? (persistedDownloaded ? 'done' : 'idle'))
+	let status = $derived<DownloadState>(localState ?? (persistedDownloaded ? 'done' : 'idle'))
 	let progress = $state(0)
 
 	// A discovery track uses a stable negative id while the actual file lives on
@@ -47,13 +47,13 @@
 			return
 		}
 
-		if (state === 'loading') {
+		if (status === 'loading') {
 			cancelTrackDownload(idToDownload)
 			localState = 'idle'
 			progress = 0
 			return
 		}
-		if (state === 'done') return
+		if (status === 'done') return
 
 		localState = 'loading'
 		try {
@@ -81,15 +81,15 @@
 
 <button
 	type="button"
-	title={state === 'done' ? 'Available offline' : state === 'loading' ? 'Stop downloading' : state === 'error' ? 'Download failed. Try again' : 'Download for offline playback'}
-	class={['download-button interactable', large && 'download-button-large', state === 'done' && 'is-complete', state === 'error' && 'is-error', className]}
-	aria-label={state === 'done' ? 'Downloaded for offline playback' : state === 'loading' ? 'Stop downloading song' : state === 'error' ? 'Download failed, try again' : 'Download song for offline playback'}
-	aria-busy={state === 'loading'}
-	disabled={state === 'done'}
+	title={status === 'done' ? 'Available offline' : status === 'loading' ? 'Stop downloading' : status === 'error' ? 'Download failed. Try again' : 'Download for offline playback'}
+	class={['download-button interactable', large && 'download-button-large', status === 'done' && 'is-complete', status === 'error' && 'is-error', className]}
+	aria-label={status === 'done' ? 'Downloaded for offline playback' : status === 'loading' ? 'Stop downloading song' : status === 'error' ? 'Download failed, try again' : 'Download song for offline playback'}
+	aria-busy={status === 'loading'}
+	disabled={status === 'done'}
 	onclick={download}
 >
-	<span class={['download-icon', state === 'loading' && 'is-loading', state === 'done' && 'is-done', state === 'error' && 'is-error']}>
-		{#if state === 'loading'}
+	<span class={['download-icon', status === 'loading' && 'is-loading', status === 'done' && 'is-done', status === 'error' && 'is-error']}>
+		{#if status === 'loading'}
 			<svg class="download-progress" viewBox="0 0 36 36" aria-hidden="true">
 				<circle class="download-progress-track" cx="18" cy="18" r="15" />
 				<circle
@@ -102,11 +102,11 @@
 				/>
 				<text x="18" y="18" text-anchor="middle" dominant-baseline="central">{progress}%</text>
 			</svg>
-		{:else if state === 'done'}
+		{:else if status === 'done'}
 			<svg viewBox="0 0 24 24" aria-hidden="true">
 				<path d="M5 12.5 9.2 16.7 19 7" />
 			</svg>
-		{:else if state === 'error'}
+		{:else if status === 'error'}
 			<svg viewBox="0 0 24 24" aria-hidden="true">
 				<path d="M12 7v6M12 17.5v.5" />
 			</svg>

@@ -56,7 +56,7 @@ const mapResource = (item: AppleMusicResource, type: 'song' | 'album', artistNam
 		name,
 		artist: attributes?.artistName || artistName,
 		album: type === 'album' ? name : attributes?.albumName || '',
-		artUrl: artworkUrl(attributes?.artwork?.url),
+		artUrl: artworkUrl(attributes?.artwork?.url) ?? '',
 	}
 }
 
@@ -147,7 +147,7 @@ const mapSpicyResource = (
 				record.cover ??
 				'',
 			),
-		),
+		) ?? '',
 	}
 }
 

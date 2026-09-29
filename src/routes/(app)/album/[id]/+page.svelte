@@ -219,7 +219,7 @@
     }
 
     onMount(() => {
-        albumId = decodeURIComponent(page.params.id)
+        albumId = decodeURIComponent(page.params.id || '')
         void load()
     })
 </script>

@@ -21,6 +21,7 @@
 		tooltip?: string
 		children?: import('svelte').Snippet
 		onclick?: (event: MouseEvent) => void
+		[key: string]: any
 	}
 </script>
 

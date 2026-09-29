@@ -11,14 +11,20 @@
 		setPlayerIcon(button, player.playing ? 'pause' : 'play')
 	}
 
-	onMount(async () => {
-		const aero = await import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js')
-		setPlayerIcon = aero.setPlayerIcon
-		aero.initPlayerButton(button)
-		syncIcon()
-		const handlePress = () => { void player.togglePlay() }
-		button.addEventListener('pressend', handlePress)
-		return () => button.removeEventListener('pressend', handlePress)
+	onMount(() => {
+		let handlePress: (() => void) | undefined
+		void (async () => {
+			const aero = await import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js')
+			setPlayerIcon = aero.setPlayerIcon
+			aero.initPlayerButton(button)
+			syncIcon()
+			handlePress = () => { void player.togglePlay() }
+			button.addEventListener('pressend', handlePress)
+		})()
+
+		return () => {
+			if (handlePress) button.removeEventListener('pressend', handlePress)
+		}
 	})
 
 	$effect(() => {

@@ -211,7 +211,7 @@ const downloadAndImport = async (
 			}
 		}
 		onProgress?.(100)
-		blob = new Blob(chunks, { type: response.headers.get('content-type') || 'audio/mp4' })
+		blob = new Blob(chunks as BlobPart[], { type: response.headers.get('content-type') || 'audio/mp4' })
 	} else {
 		blob = await response.blob()
 		onProgress?.(100)

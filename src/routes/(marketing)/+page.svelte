@@ -36,7 +36,7 @@
 					browserRequirements: 'Requires a modern web browser',
 					description: seoDescription,
 					url: canonicalUrl,
-					image: `${APP_URL}${productShowcase.src}`,
+					image: `${APP_URL}${productShowcase}`,
 					offers: {
 						'@type': 'Offer',
 						price: '0',
@@ -72,12 +72,12 @@
 	<meta property="og:title" content={seoTitle} />
 	<meta property="og:description" content={seoDescription} />
 	<meta property="og:url" content={canonicalUrl} />
-	<meta property="og:image" content={`${APP_URL}${productShowcase.src}`} />
+	<meta property="og:image" content={`${APP_URL}${productShowcase}`} />
 	<meta property="og:image:alt" content="Adi Music showing artist, album, and lyrics player views" />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={seoTitle} />
 	<meta name="twitter:description" content={seoDescription} />
-	<meta name="twitter:image" content={`${page.url.origin}${productShowcase.src}`} />
+	<meta name="twitter:image" content={`${page.url.origin}${productShowcase}`} />
 
 	<link rel="canonical" href={canonicalUrl} />
 

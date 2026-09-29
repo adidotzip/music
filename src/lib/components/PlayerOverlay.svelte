@@ -41,6 +41,8 @@
 					>
 						{#if track}
 							<PlayerArtwork class="size-full" />
+						{:else}
+							<Icon type="musicNote" class="absolute inset-0 m-auto size-5 text-onSecondaryContainer/40" />
 						{/if}
 
 						<Icon
@@ -54,22 +56,26 @@
 					</div>
 
 					{#if track}
-						<div class="ml-3 mr-1 grid min-w-0 sm:ml-3" lang={getItemLanguage(track.language)}>
-							<div class="truncate text-body-md">
+						<div class="ml-2.5 mr-1 grid min-w-0 flex-1 text-left sm:ml-3" lang={getItemLanguage(track.language)}>
+							<div class="truncate text-body-md font-medium">
 								{track.name}
 							</div>
-							<div class="truncate text-body-sm">{formatArtists(track.artists)}</div>
+							<div class="truncate text-body-sm text-onSecondaryContainer/70">{formatArtists(track.artists)}</div>
+						</div>
+					{:else}
+						<div class="ml-2.5 text-body-sm text-onSecondaryContainer/60 sm:ml-3">
+							{m.playerQueueEmpty()}
 						</div>
 					{/if}
 				</Button>
 
-				<PlayerFavoriteButton class="max-sm:size-10 max-sm:shrink-0" />
+				<PlayerFavoriteButton class="size-10 shrink-0" />
 			</div>
 
 			<div class="ml-auto flex shrink-0 items-center gap-1 sm:hidden">
 				<PlayToggleButton />
 
-				<PlayNextButton class="max-xss:hidden" />
+				<PlayNextButton />
 			</div>
 
 			<MainControls class="max-sm:hidden" />
@@ -84,50 +90,16 @@
 </div>
 
 <style lang="postcss">
-  @media (max-width: 639px) {
-    #mini-player {
-      border-radius: 24px;
-    }
-
-    #mini-player > div {
-      gap: 0;
-    }
-
-    #mini-player > div > div {
-      min-width: 0;
-    }
-
-    #mini-player .aero-player {
-      --player-size: 44px;
-      --player-icon: 26px;
-    }
-
-    #mini-player .timeline-container {
-      display: none;
-    }
-  }
 	@reference '../../app.css';
 
-	.controls {
-		grid-template-columns: 1fr max-content 1fr;
-	}
-
-	@media (min-width: 640px) {
-		#mini-player .flex.h-min.w-full.grow {
-			min-height: 52px;
+	@media (max-width: 639px) {
+		#mini-player {
+			border-radius: 24px;
 		}
 
-		#mini-player .flex.h-min.w-full.grow > :first-child {
-			width: 100%;
-			max-width: 24rem;
-		}
-
-		#mini-player .flex.h-min.w-full.grow > :nth-child(2) {
-			justify-self: center;
-		}
-
-		#mini-player .flex.h-min.w-full.grow > :last-child {
-			min-width: 0;
+		:global(#mini-player .aero-player) {
+			--player-size: 44px;
+			--player-icon: 26px;
 		}
 	}
 

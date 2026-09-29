@@ -11,7 +11,6 @@ import { browser } from '$app/environment'
     import Separator from '$lib/components/Separator.svelte'
     import Spinner from '$lib/components/Spinner.svelte'
     import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
-    import { useSetOverlaySnippet } from '$lib/layout-bottom-bar.svelte'
     import { registerRemoteTrack } from '$lib/library/get/value.ts'
     import { UNKNOWN_ITEM } from '$lib/library/types.ts'
     import {
@@ -22,7 +21,6 @@ import { browser } from '$app/environment'
     import { getRecentlyPlayed } from '$lib/services/library.ts'
     import {
         type DiscoveryResource,
-        type DiscoveryTrack,
         getSongsForArtist,
         normalizeTracks,
         parseDiscoveryResults,
@@ -47,17 +45,16 @@ import { browser } from '$app/environment'
     let recentlyPlayed = $state<DiscoveryItem[]>([])
 
 
-    const getOrRegisterRemoteTrack = (input: DiscoveryTrack | DiscoveryResource): number => {
+    const getOrRegisterRemoteTrack = (input: DiscoveryResource): number => {
         const key = `spicyamll:${input.id}`
         const id = generateStableId(key)
 
-        const isResource = 'artUrl' in input
         const name = input.name || 'Unknown'
-        const artistName = isResource ? input.artist : input.artist
-        const albumName = isResource ? input.album : input.album
-        const imageUrl = isResource ? input.artUrl : input.image
-        const rawDuration = isResource ? input.duration ?? 0 : input.duration ?? 0
-        const yearStr = !isResource && input.year ? String(input.year) : UNKNOWN_ITEM
+        const artistName = input.artist
+        const albumName = input.album
+        const imageUrl = input.artUrl
+        const rawDuration = input.duration ?? 0
+        const yearStr = UNKNOWN_ITEM
 
         registerRemoteTrack({
             id,
@@ -120,11 +117,13 @@ import { browser } from '$app/environment'
         return /^https?:\/\//i.test(value) ? value : ''
     }
 
-    const shuffle = <T,>(items: T[]) => {
+    const shuffle = <T,>(items: T[]): T[] => {
         const out = [...items]
         for (let i = out.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1))
-            ;[out[i], out[j]] = [out[j], out[i]]
+            const temp = out[i]!
+            out[i] = out[j]!
+            out[j] = temp
         }
         return out
     }
@@ -193,7 +192,7 @@ import { browser } from '$app/environment'
                 return
             }
             if (history.length) {
-                const latest = history[0]
+                const latest = history[0]!
                 const latestItem: DiscoveryItem = {
                     type: 'song',
                     id: String(latest.trackId || latest.id),
@@ -298,12 +297,24 @@ import { browser } from '$app/environment'
 {#snippet navItemsSnippet(className: string)}
     <Button
         as="a"
+        href="/library"
+        kind="blank"
+        tooltip="Library"
+        class={['flex shrink-0 items-center justify-center', className]}
+    >
+        <div class="flex items-center justify-center rounded-full p-2.5 text-onSurfaceVariant transition-colors duration-200 hover:bg-surfaceContainerHigh">
+            <Icon type="home" />
+        </div>
+    </Button>
+
+    <Button
+        as="a"
         href="/library/tracks"
         kind="blank"
         tooltip={m.tracks()}
         class={['flex shrink-0 items-center justify-center', className]}
     >
-        <div class="flex items-center justify-center rounded-full p-2">
+        <div class="flex items-center justify-center rounded-full p-2.5 text-onSurfaceVariant transition-colors duration-200 hover:bg-surfaceContainerHigh">
             <Icon type="musicNote" />
         </div>
     </Button>
@@ -315,7 +326,7 @@ import { browser } from '$app/environment'
         tooltip={m.albums()}
         class={['flex shrink-0 items-center justify-center', className]}
     >
-        <div class="flex items-center justify-center rounded-full p-2">
+        <div class="flex items-center justify-center rounded-full p-2.5 text-onSurfaceVariant transition-colors duration-200 hover:bg-surfaceContainerHigh">
             <Icon type="album" />
         </div>
     </Button>
@@ -327,7 +338,7 @@ import { browser } from '$app/environment'
         tooltip={m.artists()}
         class={['flex shrink-0 items-center justify-center', className]}
     >
-        <div class="flex items-center justify-center rounded-full p-2">
+        <div class="flex items-center justify-center rounded-full p-2.5 text-onSurfaceVariant transition-colors duration-200 hover:bg-surfaceContainerHigh">
             <Icon type="person" />
         </div>
     </Button>
@@ -339,7 +350,7 @@ import { browser } from '$app/environment'
         tooltip={m.playlists()}
         class={['flex shrink-0 items-center justify-center', className]}
     >
-        <div class="flex items-center justify-center rounded-full p-2">
+        <div class="flex items-center justify-center rounded-full p-2.5 text-onSurfaceVariant transition-colors duration-200 hover:bg-surfaceContainerHigh">
             <Icon type="playlist" />
         </div>
     </Button>
@@ -352,22 +363,12 @@ import { browser } from '$app/environment'
             tooltip="Discovery"
             class={['flex shrink-0 items-center justify-center', className]}
         >
-            <div class="flex items-center justify-center rounded-full bg-surfaceContainerHighest p-2 text-onSurface">
+            <div class="flex items-center justify-center rounded-full bg-secondaryContainer p-2.5 font-bold text-onSecondaryContainer transition-colors duration-200">
                 <Icon type="compass" />
             </div>
         </Button>
     {/if}
 {/snippet}
-
-{#snippet layoutBottom()}
-    <div
-        class="pointer-events-auto grid h-16 w-full grid-cols-[repeat(auto-fit,minmax(0,1fr))] bg-surfaceContainer sm:hidden active-view-regular:view-name-[bottom-bar]"
-    >
-        {@render navItemsSnippet('h-full')}
-    </div>
-{/snippet}
-
-{useSetOverlaySnippet('bottom-bar', () => layoutBottom)}
 
 <Header
     title="Discovery"
