@@ -85,7 +85,10 @@
 			const res = await LyricsService.fetchLyrics(track, undefined, sourceId)
 			window.dispatchEvent(new CustomEvent('lyrics-reload'))
 
-			if (res.status === 'found') {
+			const hasLoadedLyrics =
+				res.status === 'found' && typeof res.ttml === 'string' && /<p\\b[^>]*>\\s*[^<\\s]/i.test(res.ttml)
+
+			if (hasLoadedLyrics) {
 				snackbar('Lyrics loaded successfully')
 				open.close()
 			} else if (res.status === 'instrumental') {
