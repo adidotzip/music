@@ -44,7 +44,15 @@ export class LyricsParser {
             return LyricsParser.filterTranslations(trimmed, language)
         }
 
-        const lines = trimmed.split(/\r?\n/)
+        // Some lyrics providers can return escaped line breaks (\\n) instead of
+        // real newline characters. Normalize those before parsing so each
+        // timestamped lyric line is parsed independently.
+        const normalizedLyrics = trimmed
+            .replace(/\\r\\n/g, '\n')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\n')
+
+        const lines = normalizedLyrics.split(/\r?\n/)
         const parsedLines: Array<{
             startMs: number
             endMs?: number
