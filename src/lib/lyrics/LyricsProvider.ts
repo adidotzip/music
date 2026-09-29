@@ -4,7 +4,7 @@ import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
 export interface ProviderResponse {
     rawLyrics: string
-    source: 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string
+    source: 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | string
     isPlainOnly?: boolean
 }
 
