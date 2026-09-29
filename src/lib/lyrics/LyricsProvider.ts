@@ -130,7 +130,7 @@ export class LyricsProvider {
         signal?: AbortSignal,
     ): Promise<ProviderResponse | null> {
         try {
-            const url = new URL('https://api.lrcmux.dev/compat/kpoe/v2/lyrics/get')
+            const url = new URL('https://lyricsplus.binimum.org/v2/lyrics/get')
             url.searchParams.set('artist', formatArtists(track.artists))
             url.searchParams.set('title', track.name)
 
