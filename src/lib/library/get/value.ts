@@ -122,6 +122,7 @@ export const registerRemoteId = (id: number, uuid: string) => {
 export const registerRemoteTrack = (track: Omit<TrackData, 'id'> & { id: number }) => {
     const value = track as TrackData
     remoteTrackMap.set(track.id, value)
+    setLibraryValueInCache('tracks', track.id, value)
 
     // Remote tracks are not stored in IndexedDB, so keep their metadata locally.
     // This lets playlist entries containing negative remote IDs survive a reload.
