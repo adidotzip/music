@@ -27,17 +27,17 @@
 >
 	<div class="flex size-full flex-col items-center justify-between gap-4 sm:px-4 sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
-		<div class="flex h-min w-full grow grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center sm:grid">
-			<div class="flex min-w-0 grow items-center">
+		<div class="flex min-h-16 w-full min-w-0 items-center gap-2 px-2 py-1 sm:grid sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-0 sm:py-0">
+			<div class="flex min-w-0 flex-1 items-center">
 				<Button
 					as="a"
 					href="/player"
 					kind="blank"
 					tooltip={m.playerOpenFullPlayer()}
-					class="max-sm:rounded-r-4 group flex min-w-0 grow items-center rounded-lg pr-2 max-sm:p-2 sm:h-12 sm:max-w-70"
+					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
 				>
 					<div
-						class="relative -z-1 size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]"
+						class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]"
 					>
 						{#if track}
 							<PlayerArtwork class="size-full" />
@@ -63,10 +63,10 @@
 					{/if}
 				</Button>
 
-				<PlayerFavoriteButton />
+				<PlayerFavoriteButton class="max-sm:size-10 max-sm:shrink-0" />
 			</div>
 
-			<div class="mx-auto flex items-center gap-2 sm:hidden">
+			<div class="ml-auto flex shrink-0 items-center gap-1 sm:hidden">
 				<PlayToggleButton />
 
 				<PlayNextButton class="max-xss:hidden" />
@@ -84,6 +84,28 @@
 </div>
 
 <style lang="postcss">
+  @media (max-width: 639px) {
+    #mini-player {
+      border-radius: 24px;
+    }
+
+    #mini-player > div {
+      gap: 0;
+    }
+
+    #mini-player > div > div {
+      min-width: 0;
+    }
+
+    #mini-player .aero-player {
+      --player-size: 44px;
+      --player-icon: 26px;
+    }
+
+    #mini-player .timeline-container {
+      display: none;
+    }
+  }
 	@reference '../../app.css';
 
 	.controls {
