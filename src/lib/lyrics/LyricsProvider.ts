@@ -4,7 +4,7 @@ import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 
 export interface ProviderResponse {
     rawLyrics: string
-    source: 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | string
+    source: 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | 'binimum' | 'lrc-red' | string
     isPlainOnly?: boolean
 }
 
@@ -20,6 +20,8 @@ export class LyricsProvider {
         if (providerId === 'lyrics-plus') return LyricsProvider.fetchFromLyricsPlus(track, signal)
         if (providerId === 'lrclib') return LyricsProvider.fetchFromLrclib(track, signal)
         if (providerId === 'unison') return LyricsProvider.fetchFromUnison(track, signal)
+        if (providerId === 'binimum') return LyricsProvider.fetchFromBinimum(track, signal)
+        if (providerId === 'lrc-red') return LyricsProvider.fetchFromLrcRed(track, signal)
 
         if (typeof window !== 'undefined') {
             try {
@@ -51,7 +53,7 @@ export class LyricsProvider {
             if (preferredRes) return preferredRes
         }
 
-        const standardOrder = ['adi-lrcmux', 'lyrics-plus', 'unison', 'lrclib']
+        const standardOrder = ['adi-lrcmux', 'lyrics-plus', 'unison', 'lrclib', 'binimum', 'lrc-red']
         for (const pid of standardOrder) {
             if (preferredProvider && pid === preferredProvider) continue
             const res = await LyricsProvider.fetchByProviderId(pid, track, signal)
@@ -344,6 +346,78 @@ export class LyricsProvider {
         }
     }
 
+    static async fetchFromBinimum(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            const url = new URL('https://lyrics-api.binimum.org/')
+            url.searchParams.set('track', track.name)
+            url.searchParams.set('artist', formatArtists(track.artists))
+            if (track.duration) url.searchParams.set('duration', String(Math.round(track.duration)))
+            if (track.album && track.album !== UNKNOWN_ITEM) url.searchParams.set('album', track.album)
+
+            const response = await fetch(url, { signal })
+            if (!response.ok) return null
+
+            const contentType = response.headers.get('content-type') || ''
+            let rawLyrics: string | null = null
+            if (contentType.includes('application/json')) {
+                const data = await response.json()
+                rawLyrics = data?.lyrics ?? data?.syncedLyrics ?? data?.plainLyrics ?? data?.rawLyrics ?? data?.rawContent ?? null
+            } else {
+                rawLyrics = await response.text()
+            }
+
+            if (typeof rawLyrics !== 'string' || !rawLyrics.trim()) return null
+            return {
+                rawLyrics,
+                source: 'binimum',
+                isPlainOnly: !(rawLyrics.includes('[') || rawLyrics.includes('<tt')),
+            }
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
+    static async fetchFromLrcRed(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            const url = new URL('https://lrc.red/api/v1')
+            url.searchParams.set('q', `${track.name} ${formatArtists(track.artists)}`)
+
+            const response = await fetch(url, { signal })
+            if (!response.ok) return null
+
+            const data = await response.json()
+            const results = Array.isArray(data?.results) ? data.results : []
+            if (!results.length) return null
+
+            const title = track.name.trim().toLowerCase()
+            const artist = formatArtists(track.artists).trim().toLowerCase()
+            const duration = Math.round(track.duration)
+            const matching = results.find((item: any) => {
+                const itemTitle = String(item?.track_name ?? '').trim().toLowerCase()
+                const itemArtist = String(item?.artist_name ?? '').trim().toLowerCase()
+                const itemDuration = Number(item?.duration)
+                return itemTitle === title && itemArtist === artist && Number.isFinite(itemDuration) && Math.abs(itemDuration - duration) <= 5 && typeof item?.lyricsUrl === 'string'
+            })
+            if (!matching?.lyricsUrl) return null
+
+            const lyricResponse = await fetch(String(matching.lyricsUrl), { signal })
+            if (!lyricResponse.ok) return null
+            const rawLyrics = await lyricResponse.text()
+            if (!rawLyrics.trim()) return null
+
+            return { rawLyrics, source: 'lrc-red', isPlainOnly: false }
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
     static async fetchFromUnison(
         track: TrackData,
         signal?: AbortSignal,
