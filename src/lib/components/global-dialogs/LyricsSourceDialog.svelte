@@ -75,7 +75,7 @@
 		snackbar('Custom source deleted')
 	}
 
-	async function selectSource(sourceId: 'adi-lrcmux' | 'adi' | 'lrcmux' | 'unison' | 'lrclib' | string) {
+	async function selectSource(sourceId: 'adi-lrcmux' | 'adi' | 'lrcmux' | 'lyrics-plus' | 'unison' | 'lrclib' | string) {
 		if (!track) return
 		fetching = true
 		activeFetchingSource = sourceId
@@ -242,6 +242,24 @@
 								{/if}
 							</button>
 
+							<!-- Lyrics+ -->
+							<button
+								type="button"
+								disabled={fetching}
+								class="interactable flex items-center justify-between rounded-xl bg-surfaceContainerLow p-4 text-left transition-colors hover:bg-surfaceContainer"
+								onclick={() => selectSource('lyrics-plus')}
+							>
+								<div class="flex flex-col">
+									<span class="text-body-large font-bold">Lyrics+</span>
+									<span class="text-body-small text-onSurfaceVariant">Tertiary Provider</span>
+								</div>
+								{#if fetching && activeFetchingSource === 'lyrics-plus'}
+									<Spinner class="size-5" />
+								{:else}
+									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
+								{/if}
+							</button>
+
 							<!-- Unison -->
 							<button
 								type="button"
@@ -251,7 +269,7 @@
 							>
 								<div class="flex flex-col">
 									<span class="text-body-large font-bold">Unison</span>
-									<span class="text-body-small text-onSurfaceVariant">Tertiary Provider</span>
+									<span class="text-body-small text-onSurfaceVariant">Quaternary Provider</span>
 								</div>
 								{#if fetching && activeFetchingSource === 'unison'}
 									<Spinner class="size-5" />
