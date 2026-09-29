@@ -4,26 +4,14 @@
 	const { class: className }: { class?: ClassValue } = $props()
 	const player = usePlayer()
 	let button: HTMLButtonElement
-	let skip: HTMLSpanElement
-
 	onMount(async () => {
-		const [{ initPlayerButton }, { initSkipLabel, playSkip }] = await Promise.all([
-			import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'),
-			import('https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js'),
-		])
-
+		const { initPlayerButton } = await import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js')
 		initPlayerButton(button)
-		initSkipLabel(skip)
-
-		button.addEventListener('pressend', () => {
-			playSkip(skip, { bouncing: true })
-			player.playPrev()
-		})
+		button.addEventListener('pressend', () => player.playPrev())
 	})
 </script>
 
 <button bind:this={button} type="button" class={['aero-player', className]} aria-label={m.playerPlayPreviousTrack()} disabled={player.isQueueEmpty}>
-	<span bind:this={skip} class="aero-skip" data-direction="backward" data-size="24" aria-hidden="true"></span>
 </button>
 
 <style lang="postcss">
