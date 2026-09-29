@@ -18,6 +18,8 @@ export function getSourceDisplayName(source?: string): string {
 	if (s === 'musixmatch') return 'Musixmatch'
 	if (s === 'apple' || s === 'apple-music') return 'Apple Music'
 	if (s === 'unison') return 'Unison'
+	if (s === 'binimum') return 'Binimum'
+	if (s === 'lrc-red') return 'LRC Red'
 	return source.charAt(0).toUpperCase() + source.slice(1)
 }
 
