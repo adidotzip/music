@@ -129,7 +129,6 @@
 			padding-right: 0;
 		}
 	}
-	}
 
 	::view-transition-old(pl-chevron-up) {
 		display: none;
