@@ -153,10 +153,52 @@
   }
 
   @media (min-width: 640px) {
+    #mini-player .mini-player-row {
+      position: relative;
+      display: flex;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #mini-player .mini-player-main {
+      min-width: 0;
+      width: 40%;
+      max-width: 40%;
+      flex: 0 1 40%;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+
+    #mini-player .mini-player-track {
+      min-width: 0;
+      max-width: 280px;
+      flex: 0 1 280px;
+      justify-content: flex-start;
+    }
+
     #mini-player .mini-player-meta {
       min-width: 0;
       flex: 1 1 auto;
       overflow: hidden;
+    }
+
+    #mini-player .mini-player-controls {
+      position: absolute;
+      left: 50%;
+      display: flex;
+      width: max-content;
+      flex: 0 0 auto;
+      align-items: center;
+      transform: translateX(-50%);
+    }
+
+    #mini-player .mini-player-row > :last-child {
+      position: relative;
+      z-index: 1;
+      margin-left: auto;
+      min-width: 0;
+      flex: 0 0 auto;
     }
   }
 
