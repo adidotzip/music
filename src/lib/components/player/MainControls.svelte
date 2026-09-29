@@ -8,7 +8,7 @@
 	const { class: className }: { class?: ClassValue } = $props()
 </script>
 
-<div class={['flex items-center gap-2', className]}>
+<div class={['main-player-controls flex items-center gap-2', className]}>
 	<ShuffleButton />
 
 	<PlayPrevButton />
@@ -19,3 +19,20 @@
 
 	<RepeatButton />
 </div>
+
+<style lang="postcss">
+	@reference '../../../app.css';
+
+	.main-player-controls {
+		flex: 0 0 auto;
+		width: max-content;
+		min-width: max-content;
+	}
+
+	.main-player-controls > :global(button),
+	.main-player-controls :global(.aero-player) {
+		flex: 0 0 44px;
+		width: 44px;
+		height: 44px;
+	}
+</style>
