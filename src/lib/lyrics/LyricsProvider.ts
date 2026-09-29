@@ -17,6 +17,7 @@ export class LyricsProvider {
         if (providerId === 'adi-lrcmux') return LyricsProvider.fetchFromAdiLrcmux(track, signal)
         if (providerId === 'adi') return LyricsProvider.fetchFromAdi(track, signal)
         if (providerId === 'lrcmux') return LyricsProvider.fetchFromLrcmux(track, signal)
+        if (providerId === 'lyrics-plus') return LyricsProvider.fetchFromLyricsPlus(track, signal)
         if (providerId === 'lrclib') return LyricsProvider.fetchFromLrclib(track, signal)
         if (providerId === 'unison') return LyricsProvider.fetchFromUnison(track, signal)
 
@@ -50,7 +51,7 @@ export class LyricsProvider {
             if (preferredRes) return preferredRes
         }
 
-        const standardOrder = ['adi-lrcmux', 'unison', 'lrclib']
+        const standardOrder = ['adi-lrcmux', 'lyrics-plus', 'unison', 'lrclib']
         for (const pid of standardOrder) {
             if (preferredProvider && pid === preferredProvider) continue
             const res = await LyricsProvider.fetchByProviderId(pid, track, signal)
@@ -130,7 +131,7 @@ export class LyricsProvider {
         signal?: AbortSignal,
     ): Promise<ProviderResponse | null> {
         try {
-            const url = new URL('https://lyricsplus.binimum.org/v2/lyrics/get')
+            const url = new URL('https://api.lrcmux.dev/compat/kpoe/v2/lyrics/get')
             url.searchParams.set('artist', formatArtists(track.artists))
             url.searchParams.set('title', track.name)
 
@@ -180,6 +181,74 @@ export class LyricsProvider {
             return {
                 rawLyrics,
                 source: 'lrcmux',
+                isPlainOnly: false,
+            }
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') throw error
+            return null
+        }
+    }
+
+    static async fetchFromLyricsPlus(
+        track: TrackData,
+        signal?: AbortSignal,
+    ): Promise<ProviderResponse | null> {
+        try {
+            const url = new URL('https://lyricsplus.binimum.org/v2/lyrics/get')
+            url.searchParams.set('artist', formatArtists(track.artists))
+            url.searchParams.set('title', track.name)
+            if (track.album && track.album !== UNKNOWN_ITEM) {
+                url.searchParams.set('album', track.album)
+            }
+            if (track.duration) {
+                url.searchParams.set('duration', String(Math.round(track.duration)))
+            }
+
+            const response = await fetch(url, { signal })
+            if (!response.ok) return null
+
+            const data = await response.json()
+            if (!(data && Array.isArray(data.lyrics)) || data.lyrics.length === 0) {
+                return null
+            }
+
+            const formattedLines: string[] = []
+
+            for (const line of data.lyrics) {
+                if (typeof line.time !== 'number') continue
+
+                const text = line.text || ''
+
+                if (Array.isArray(line.syllabus) && line.syllabus.length > 0) {
+                    const duration = typeof line.duration === 'number' ? line.duration : 0
+                    const syllabusParts = line.syllabus
+                        .map((word: any) => {
+                            const wordText = word.text || ''
+                            const wordTime = typeof word.time === 'number' ? word.time : line.time
+                            const wordDur = typeof word.duration === 'number' ? word.duration : 0
+
+                            return `${wordText}(${wordTime},${wordDur})`
+                        })
+                        .join('')
+
+                    formattedLines.push(`[${line.time},${duration}]${syllabusParts}`)
+                } else {
+                    const timeMs = line.time
+                    const min = String(Math.floor(timeMs / 60_000)).padStart(2, '0')
+                    const sec = String(Math.floor((timeMs % 60_000) / 1000)).padStart(2, '0')
+                    const ms = String(Math.floor((timeMs % 1000) / 10)).padStart(2, '0')
+                    const timestamp = `[${min}:${sec}.${ms}]`
+
+                    formattedLines.push(`${timestamp}${text}`)
+                }
+            }
+
+            const rawLyrics = formattedLines.join('\\n')
+            if (rawLyrics.trim().length === 0) return null
+
+            return {
+                rawLyrics,
+                source: 'lyrics-plus',
                 isPlainOnly: false,
             }
         } catch (error) {
