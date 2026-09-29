@@ -20,6 +20,13 @@
 </script>
 
 <button bind:this={button} type="button" class={['aero-player', className]} aria-label={m.playerPlayPreviousTrack()} disabled={player.isQueueEmpty}>
+	<span
+		bind:this={skip}
+		class="aero-skip"
+		data-direction="backward"
+		data-size="24"
+		aria-hidden="true"
+	></span>
 </button>
 
 <style lang="postcss">
