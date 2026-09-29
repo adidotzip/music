@@ -28,13 +28,13 @@
 	<div class="flex size-full flex-col items-center justify-between gap-4 sm:px-4 sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
 		<div class="flex min-h-16 w-full min-w-0 items-center gap-2 px-2 py-1 sm:grid sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-0 sm:py-0">
-			<div class="flex min-w-0 flex-1 items-center overflow-hidden">
+			<div class="flex min-w-0 flex-1 items-center">
 				<Button
 					as="a"
 					href="/player"
 					kind="blank"
 					tooltip={m.playerOpenFullPlayer()}
-					class="group flex min-w-0 flex-1 items-center justify-start overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
+					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
 				>
 					<div
 						class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]"
@@ -66,7 +66,7 @@
 				<PlayerFavoriteButton class="max-sm:size-10 max-sm:shrink-0" />
 			</div>
 
-			<div class="flex shrink-0 items-center gap-1 pl-1 sm:hidden">
+			<div class="ml-auto flex shrink-0 items-center gap-1 sm:hidden">
 				<PlayToggleButton />
 
 				<PlayNextButton class="max-xss:hidden" />
@@ -107,32 +107,6 @@
     }
   }
 	@reference '../../app.css';
-
-	@media (max-width: 639px) {
-		#mini-player > div > div {
-			width: 100%;
-			align-items: center;
-		}
-
-		#mini-player > div > div > :first-child {
-			min-width: 0;
-			flex: 1 1 auto;
-			overflow: hidden;
-		}
-
-		#mini-player .aero-player {
-			flex: 0 0 auto;
-		}
-
-		#mini-player .aero-player + * {
-			flex: 0 0 auto;
-		}
-
-		#mini-player [class*="text-body-md"],
-		#mini-player [class*="text-body-sm"] {
-			min-width: 0;
-		}
-	}
 
 	.controls {
 		grid-template-columns: 1fr max-content 1fr;
