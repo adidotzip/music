@@ -1,6 +1,6 @@
 import { getDatabase } from '$lib/db/database.ts'
 
-export const CACHE_VERSION = 16
+export const CACHE_VERSION = 17
 export const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7 // 7 days
 
 export interface CachedLyricsResult {
