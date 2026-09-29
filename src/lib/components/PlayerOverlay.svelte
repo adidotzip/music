@@ -27,14 +27,14 @@
 >
 	<div class="flex size-full flex-col items-center justify-between gap-4 sm:px-4 sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
-		<div class="flex min-h-16 w-full min-w-0 items-center gap-2 px-2 py-1 sm:grid sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-0 sm:py-0">
-			<div class="flex min-w-0 flex-1 items-center overflow-hidden">
+		<div class="mini-player-row flex min-h-16 w-full min-w-0 items-center gap-2 px-2 py-1 sm:grid sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-0 sm:py-0">
+			<div class="mini-player-main flex min-w-0 flex-1 items-center overflow-hidden">
 				<Button
 					as="a"
 					href="/player"
 					kind="blank"
 					tooltip={m.playerOpenFullPlayer()}
-					class="group flex min-w-0 flex-1 items-center justify-start overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
+					class="group mini-player-track flex min-w-0 flex-1 items-center justify-start overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
 				>
 					<div
 						class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]"
@@ -54,19 +54,21 @@
 					</div>
 
 					{#if track}
-						<div class="ml-3 mr-1 grid min-w-0 sm:ml-3" lang={getItemLanguage(track.language)}>
-							<div class="truncate text-body-md">
+						<div class="mini-player-meta ml-3 mr-1 grid min-w-0 flex-1 overflow-hidden sm:ml-3" lang={getItemLanguage(track.language)}>
+							<div class="mini-player-title truncate text-body-md">
 								{track.name}
 							</div>
-							<div class="truncate text-body-sm">{formatArtists(track.artists)}</div>
+							<div class="mini-player-artist truncate text-body-sm">{formatArtists(track.artists)}</div>
 						</div>
 					{/if}
 				</Button>
 
-				<PlayerFavoriteButton class="max-sm:size-10 max-sm:shrink-0" />
+				<div class="mini-player-favorite shrink-0">
+					<PlayerFavoriteButton class="max-sm:size-10" />
+				</div>
 			</div>
 
-			<div class="flex shrink-0 items-center gap-1 pl-1 sm:hidden">
+			<div class="mini-player-controls flex shrink-0 items-center gap-1 pl-1 sm:hidden">
 				<PlayToggleButton />
 
 				<PlayNextButton class="max-xss:hidden" />
@@ -84,6 +86,8 @@
 </div>
 
 <style lang="postcss">
+  @reference '../../app.css';
+
   @media (max-width: 639px) {
     #mini-player {
       border-radius: 24px;
@@ -93,8 +97,49 @@
       gap: 0;
     }
 
-    #mini-player > div > div {
+    #mini-player .mini-player-row {
       min-width: 0;
+      width: 100%;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #mini-player .mini-player-main {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+
+    #mini-player .mini-player-track {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+
+    #mini-player .mini-player-meta {
+      min-width: 0;
+      flex: 1 1 auto;
+      width: 0;
+      overflow: hidden;
+    }
+
+    #mini-player .mini-player-title,
+    #mini-player .mini-player-artist {
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #mini-player .mini-player-favorite,
+    #mini-player .mini-player-controls {
+      flex: 0 0 auto;
+    }
+
+    #mini-player .mini-player-favorite .aero-icon-button,
+    #mini-player .mini-player-controls .aero-player {
+      flex: 0 0 auto;
     }
 
     #mini-player .aero-player {
@@ -106,33 +151,14 @@
       display: none;
     }
   }
-	@reference '../../app.css';
 
-	@media (max-width: 639px) {
-		#mini-player > div > div {
-			width: 100%;
-			align-items: center;
-		}
-
-		#mini-player > div > div > :first-child {
-			min-width: 0;
-			flex: 1 1 auto;
-			overflow: hidden;
-		}
-
-		#mini-player .aero-player {
-			flex: 0 0 auto;
-		}
-
-		#mini-player .aero-player + * {
-			flex: 0 0 auto;
-		}
-
-		#mini-player [class*="text-body-md"],
-		#mini-player [class*="text-body-sm"] {
-			min-width: 0;
-		}
-	}
+  @media (min-width: 640px) {
+    #mini-player .mini-player-meta {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
+  }
 
 	.controls {
 		grid-template-columns: 1fr max-content 1fr;
