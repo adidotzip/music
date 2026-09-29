@@ -1,8 +1,8 @@
 <script lang="ts">
     import type { ClassValue } from 'clsx'
     import { formatArtists, getItemLanguage } from '$lib/helpers/utils/text'
-    import { useMainStore } from '$lib/stores/main'
-    import { usePlayer } from '$lib/stores/player'
+    import { useMainStore } from '$lib/stores/main/use-store'
+    import { usePlayer } from '$lib/stores/player/use-store'
 
     import Button from './Button.svelte'
     import Icon from './icon/Icon.svelte'
@@ -34,17 +34,17 @@
         <Timeline class="w-full max-sm:hidden" />
 
         <!-- Player Main Row -->
-        <div class="flex h-16 w-full min-w-0 items-center justify-between gap-2 px-2 py-1 sm:grid sm:h-12 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-0 sm:py-0">
+        <div class="mini-player-row flex h-16 w-full min-w-0 items-center justify-between gap-2 px-2 py-1 sm:grid sm:h-12 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:px-0 sm:py-0">
             
             <!-- Left: Track Info & Link -->
-            <div class="flex min-w-0 items-center gap-2 overflow-hidden">
+            <div class="mini-player-main flex min-w-0 items-center gap-2 overflow-hidden">
                 <Button
                     as="a"
                     href="/player"
                     kind="blank"
                     aria-label={track ? `Open full player for ${track.name}` : 'Open full player'}
                     tooltip={m.playerOpenFullPlayer()}
-                    class="group flex min-w-0 flex-1 items-center justify-start overflow-hidden rounded-xl focus-visible:outline-2 focus-visible:outline-primary sm:rounded-lg"
+                    class="mini-player-track group flex min-w-0 flex-1 items-center justify-start overflow-hidden rounded-xl focus-visible:outline-2 focus-visible:outline-primary sm:rounded-lg"
                 >
                     <div class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]">
                         {#if track}
@@ -63,13 +63,13 @@
 
                     {#if track}
                         <div 
-                            class="ml-3 min-w-0 flex-1 overflow-hidden text-left" 
+                            class="mini-player-meta ml-3 min-w-0 flex-1 overflow-hidden text-left" 
                             lang={getItemLanguage(track.language)}
                         >
-                            <div class="truncate text-body-md font-medium leading-tight">
+                            <div class="mini-player-title truncate text-body-md font-medium leading-tight">
                                 {track.name}
                             </div>
-                            <div class="truncate text-body-sm opacity-80 leading-tight">
+                            <div class="mini-player-artist truncate text-body-sm opacity-80 leading-tight">
                                 {formatArtists(track.artists)}
                             </div>
                         </div>
@@ -77,7 +77,7 @@
                 </Button>
 
                 <!-- Favorite Button outside Link target -->
-                <div class="flex size-11 shrink-0 items-center justify-center">
+                <div class="mini-player-favorite flex size-11 shrink-0 items-center justify-center">
                     <PlayerFavoriteButton class="size-10" />
                 </div>
             </div>
