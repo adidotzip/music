@@ -31,6 +31,7 @@ import { browser } from '$app/environment'
     type DiscoveryItem = DiscoveryResource
 
     const player = usePlayer()
+    const mainStore = useMainStore()
 
     let query = $state('')
     let loading = $state(false)
@@ -271,6 +272,11 @@ import { browser } from '$app/environment'
     }
 
     onMount(() => {
+        if (mainStore.localOnlyMode) {
+            void goto('/library', { replaceState: true })
+            return
+        }
+
         const handleOnline = () => {
             isOnline = true
             void loadRecommendations()
