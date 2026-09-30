@@ -75,12 +75,7 @@
 		{m.noItemsToDisplay()}
 	</div>
 {:else}
-	<div
-		class={[
-			'library-entity-grid grid w-full content-start items-start justify-start',
-			type === 'artists' && 'artist-grid',
-		]}
-	>
+	<div class="library-entity-grid grid w-full content-start items-start">
 		{#each visibleItems as itemId (itemId)}
 			<LibraryGridItem {itemId} {type} class="library-entity-card" style="">
 				{#snippet children(itemValue)}
@@ -92,38 +87,30 @@
 {/if}
 
 <style>
+	/* Let the grid own the available width. The previous fixed 180-220px
+	 * tracks left a large dead strip on many viewport/aspect ratios. */
 	.library-entity-grid {
-		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-		gap: 16px;
+		grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+		gap: clamp(12px, 1.5vw, 18px);
 	}
 
 	.library-entity-grid :global(.library-entity-card) {
 		width: 100%;
-		max-width: 220px;
 		min-width: 0;
-		justify-self: start;
+		max-width: none;
+		justify-self: stretch;
 	}
 
 	@media (max-width: 640px) {
 		.library-entity-grid {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
-			gap: 12px;
-		}
-
-		.library-entity-grid :global(.library-entity-card) {
-			max-width: none;
+			gap: clamp(8px, 3vw, 12px);
 		}
 	}
 
-	@media (min-width: 641px) and (max-width: 900px) {
+	@media (max-width: 360px) {
 		.library-entity-grid {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-	}
-
-	@media (min-width: 901px) {
-		.library-entity-grid {
-			grid-template-columns: repeat(auto-fill, minmax(180px, 220px));
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 </style>
