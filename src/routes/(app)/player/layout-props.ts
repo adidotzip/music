@@ -6,40 +6,40 @@ const MIN_HEIGHT_FOR_HORIZONTAL = 600
 const MIN_WIDTH_FOR_SPLIT = 1200
 
 const isRouteQueueOrHistory = (routeId: RouteId): boolean =>
-\trouteId === '/(app)/player/queue' ||
-\trouteId === '/(app)/player/history' ||
-\trouteId === '/(app)/player/lyrics'
+	routeId === '/(app)/player/queue' ||
+	routeId === '/(app)/player/history' ||
+	routeId === '/(app)/player/lyrics'
 
 const getLayoutMode = (isCompact: boolean, routeId: RouteId | null): LayoutMode => {
-\tif (!isCompact) {
-\t\treturn 'both'
-\t}
+	if (!isCompact) {
+		return 'both'
+	}
 
-\tif (routeId && isRouteQueueOrHistory(routeId)) {
-\t\treturn 'details'
-\t}
+	if (routeId && isRouteQueueOrHistory(routeId)) {
+		return 'details'
+	}
 
-\treturn 'list'
+	return 'list'
 }
 
 export interface LayoutProps {
-\tisCompactVertical: boolean
-\tisCompactHorizontal: boolean
-\tisCompact: boolean
-\tlayoutMode: LayoutMode
+	isCompactVertical: boolean
+	isCompactHorizontal: boolean
+	isCompact: boolean
+	layoutMode: LayoutMode
 }
 
 export const getLayoutProps = (routeId: RouteId | null): LayoutProps => {
-\tconst width = innerWidth.current ?? 0
-\tconst height = innerHeight.current ?? 0
-\tconst isCompactVertical = height < MIN_HEIGHT_FOR_HORIZONTAL
-\tconst isCompactHorizontal = width < MIN_WIDTH_FOR_SPLIT
-\tconst isCompact = isCompactVertical || isCompactHorizontal
+	const width = innerWidth.current ?? 0
+	const height = innerHeight.current ?? 0
+	const isCompactVertical = height < MIN_HEIGHT_FOR_HORIZONTAL
+	const isCompactHorizontal = width < MIN_WIDTH_FOR_SPLIT
+	const isCompact = isCompactVertical || isCompactHorizontal
 
-\treturn {
-\t\tisCompactVertical,
-\t\tisCompactHorizontal,
-\t\tisCompact,
-\t\tlayoutMode: getLayoutMode(isCompact, routeId),
-\t}
+	return {
+		isCompactVertical,
+		isCompactHorizontal,
+		isCompact,
+		layoutMode: getLayoutMode(isCompact, routeId),
+	}
 }
