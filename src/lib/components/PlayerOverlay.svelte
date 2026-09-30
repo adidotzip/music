@@ -22,67 +22,58 @@
 <div
 	id="mini-player"
 	class={[
-		'pointer-events-auto mx-auto w-[min(100%,56.25rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-primary/10 bg-secondaryContainer text-onSecondaryContainer contain-content view-name-[pl-card] sm:rounded-3xl active-view-player:border-transparent',
+		'mini-player-shell pointer-events-auto mx-auto block w-full max-w-[56.25rem] justify-self-center overflow-hidden rounded-2xl border border-primary/10 bg-secondaryContainer text-onSecondaryContainer contain-content view-name-[pl-card] sm:rounded-3xl active-view-player:border-transparent',
 		className,
 	]}
 >
-	<div
-		class="flex size-full min-w-0 flex-col items-center justify-between gap-[clamp(0.5rem,1.25vw,1rem)] px-[clamp(0.375rem,1vw,1rem)] py-[clamp(0.375rem,1vh,0.75rem)] sm:px-4 sm:pt-2 sm:pb-4"
-	>
+	<div class="flex size-full min-w-0 flex-col items-center justify-between gap-4 px-2 py-2 sm:px-4 sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
 
-		<div
-			class="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[clamp(0.25rem,1vw,0.75rem)] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2"
-		>
+		<div class="grid h-min w-full min-w-0 grid-cols-[minmax(0,1fr)_max-content_1fr] items-center gap-2">
 			<div class="flex min-w-0 items-center">
 				<Button
 					as="a"
 					href="/player"
 					kind="blank"
 					tooltip={m.playerOpenFullPlayer()}
-					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-xl pr-1 sm:h-12 sm:rounded-lg sm:pr-2"
+					class="group flex min-w-0 grow items-center overflow-hidden rounded-lg pr-2 max-sm:p-2 sm:h-11 sm:max-w-45"
 				>
-					<div
-						class="relative size-[clamp(2.5rem,4vw,2.75rem)] shrink-0 overflow-hidden rounded-xl bg-onSecondary sm:rounded-lg active-view-player:view-name-[pl-artwork]"
-					>
+					<div class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]">
 						{#if track}
 							<PlayerArtwork class="size-full" />
 					{:else}
 							<Icon type="musicNote" class="absolute inset-0 m-auto size-5 text-onSecondaryContainer/40" />
-					{/if}
-
+						{/if}
 						<Icon
 							type="chevronUp"
 							class={[
 								'absolute inset-0 m-auto shrink-0 active-view-player:view-name-[pl-chevron-up]',
-								track &&
-									'scale-0 rounded-full bg-tertiary text-onTertiary transition-[transform,opacity] duration-200 [.group:hover_&]:scale-100',
+								track && 'scale-0 rounded-full bg-tertiary text-onTertiary transition-[transform,opacity] duration-200 [.group:hover_&]:scale-100',
 							]}
-					/>
+						/>
 					</div>
 
 					{#if track}
-						<div class="ml-3 mr-1 grid min-w-0 flex-1 text-left sm:ml-3" lang={getItemLanguage(track.language)}>
-							<div class="min-w-0 truncate text-body-md font-medium">{track.name}</div>
-							<div class="min-w-0 truncate text-body-sm text-onSecondaryContainer/70">{formatArtists(track.artists)}</div>
+						<div class="mr-1 ml-4 grid min-w-0 flex-1 text-left" lang={getItemLanguage(track.language)}>
+							<div class="truncate text-body-md">{track.name}</div>
+							<div class="truncate text-body-sm">{formatArtists(track.artists)}</div>
 						</div>
 					{:else}
-						<div class="ml-3 truncate text-body-sm text-onSecondaryContainer/60">{m.playerQueueEmpty()}</div>
+						<div class="ml-4 truncate text-body-sm text-onSecondaryContainer/60">{m.playerQueueEmpty()}</div>
 					{/if}
 				</Button>
 
-				<PlayerFavoriteButton class="size-[clamp(2.25rem,4vw,2.5rem)] shrink-0" />
+				<PlayerFavoriteButton class="shrink-0" />
 			</div>
 
-			<div class="ml-auto flex shrink-0 items-center justify-end gap-0.5 sm:hidden">
-				<PlayPrevButton class="mobile-player-control" />
-				<PlayToggleButton class="mobile-player-control" />
-				<PlayNextButton class="mobile-player-control" />
+			<div class="ml-auto flex shrink-0 gap-2 pr-2 sm:hidden">
+				<PlayToggleButton />
+				<PlayNextButton class="max-xss:hidden" />
 			</div>
 
 			<MainControls class="max-sm:hidden" />
 
-			<div class="ml-auto flex shrink-0 items-center justify-end gap-1 pr-1 max-sm:hidden">
+			<div class="ml-auto flex min-w-0 items-center justify-end gap-2 pr-2 max-sm:hidden">
 				{#if mainStore.volumeSliderEnabled}
 					<VolumeSlider />
 				{/if}
@@ -94,13 +85,21 @@
 <style lang="postcss">
 	@reference '../../app.css';
 
+	.mini-player-shell {
+		width: calc(100% - 1rem) !important;
+		max-width: 56.25rem !important;
+		margin-inline: auto !important;
+		justify-self: center !important;
+	}
+
 	@media (max-width: 639px) {
-		#mini-player {
+		.mini-player-shell {
+			width: calc(100% - 0.5rem) !important;
 			border-radius: 24px;
 		}
 
 		:global(#mini-player .aero-player) {
-			--player-size: clamp(36px, 10vw, 42px);
+			--player-size: clamp(36px, 10vw, 40px);
 			--player-icon: clamp(22px, 6vw, 24px);
 		}
 
@@ -115,36 +114,9 @@
 		}
 	}
 
-	@media (max-width: 360px) {
-		#mini-player > div {
-			gap: 0.375rem;
-			padding-inline: 0.375rem;
-		}
-
-		:global(#mini-player .group > div:first-child) {
-			width: 36px;
-			height: 36px;
-			flex-basis: 36px;
-		}
-
-		:global(#mini-player .group > div:nth-child(2)) {
-			margin-left: 8px;
-		}
-	}
-
 	@media (max-width: 320px) {
-		#mini-player > div {
-			padding-inline: 0.25rem;
-		}
-
-		:global(#mini-player .mobile-player-control) {
-			width: 32px;
-			height: 32px;
-			flex-basis: 32px;
-		}
-
-		:global(#mini-player .mobile-player-control .aero-skip) {
-			--skip-size: 19px;
+		.mini-player-shell {
+			width: calc(100% - 0.5rem) !important;
 		}
 
 		:global(#mini-player .group > div:first-child) {
