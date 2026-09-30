@@ -180,6 +180,16 @@
 {/snippet}
 
 <section class="card settings-max-width mx-auto w-full overflow-clip">
+	<div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+		<div class="min-w-0">
+			<div class="text-title-sm text-onSurface">Local-only mode</div>
+			<div class="mt-1 text-body-sm text-onSurfaceVariant">Hide Discovery and keep Adi Music focused on your local library.</div>
+		</div>
+		<Switch bind:checked={mainStore.localOnlyMode} />
+	</div>
+</section>
+
+<section class="card settings-max-width mx-auto w-full overflow-clip">
 	<div class="flex flex-col p-4">
 		<div class="flex items-center gap-2 text-title-sm">
 			{m.settingsDirectories()}
