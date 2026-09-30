@@ -60,9 +60,9 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 {#snippet playerSnippet()}
 	<div
 		class={[
-			layoutMode === 'both' && 'w-100 2xl:w-[28dvw]',
-			layoutMode === 'list' && 'mx-auto w-full max-w-125',
-			'player-content z-0 grow items-center gap-x-6 overflow-clip px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]',
+			layoutMode === 'both' && 'w-[clamp(18rem,24dvw,28rem)]',
+			layoutMode === 'list' && 'mx-auto w-full max-w-[min(100%,31.25rem)]',
+			'player-content z-0 grow items-center gap-x-[clamp(1rem,2vw,1.5rem)] overflow-clip px-[clamp(0.75rem,2vw,1rem)] pt-[max(8px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]',
 			(player.animatedArtworkSrc && player.animatedArtworkLoaded) || player.artworkSrc
 				? 'bg-transparent'
 				: 'bg-secondaryContainerVariant',
@@ -83,34 +83,34 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 		</div>
 
 		<!-- Wrap Artwork in a relative container to handle absolute transition children -->
-		<div class="relative flex h-full w-full items-center justify-center min-h-0 [grid-area:artwork]">
+		<div class="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center [grid-area:artwork]">
 			{#if !(isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded)}
 				{#key activeTrack?.id}
 					<div
-						class="absolute inset-0 m-auto flex items-center justify-center p-2"
+						class="absolute inset-0 m-auto flex min-h-0 min-w-0 items-center justify-center p-[clamp(0.25rem,1.5vmin,0.75rem)]"
 						in:fade={{ duration: 300, delay: 150 }}
 						out:fade={{ duration: 150 }}
 					>
 						<PlayerArtwork
-							class="m-auto my-auto aspect-square h-full max-h-[38vh] max-w-[80vw] rounded-2xl bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
+							class="m-auto aspect-square size-[min(100%,clamp(12rem,38vmin,38rem))] max-h-[min(100%,38dvh)] max-w-full rounded-[clamp(1rem,2vw,1.5rem)] bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
 						/>
 					</div>
 				{/key}
 			{/if}
 		</div>
 
-		<div class="mt-2 flex w-full flex-col gap-2 [grid-area:controls]">
-			<div class="w-full rounded-2xl bg-surfaceContainerHighest px-4 py-2">
+		<div class="mt-2 flex min-w-0 w-full flex-col gap-[clamp(0.5rem,1.5vh,1rem)] [grid-area:controls]">
+			<div class="w-full min-w-0 rounded-2xl bg-surfaceContainerHighest px-[clamp(0.75rem,2vw,1rem)] py-2">
 				<Timeline class="w-full" />
 			</div>
 
 			<div
 				class={[
-					'flex w-full flex-col gap-6 rounded-2xl bg-secondaryContainer px-4 [grid-area:header]',
+					'flex w-full min-w-0 flex-col gap-[clamp(1rem,2.5vh,1.5rem)] rounded-2xl bg-secondaryContainer px-[clamp(0.75rem,2vw,1rem)] [grid-area:header]',
 					mainStore.volumeSliderEnabled ? 'pt-8 pb-4' : 'py-8',
 				]}
 			>
-				<div class="my-auto flex items-center justify-between gap-2">
+				<div class="my-auto flex min-w-0 items-center justify-between gap-[clamp(0.25rem,2vw,0.5rem)]">
 					<ShuffleButton />
 
 					<PlayPrevButton />
@@ -141,7 +141,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 				{/if}
 			</div>
 
-			<div class="flex h-18 w-full shrink-0 items-center rounded-2xl bg-secondaryContainer px-4">
+			<div class="flex min-h-[clamp(4rem,9vh,4.5rem)] w-full shrink-0 items-center rounded-2xl bg-secondaryContainer px-[clamp(0.75rem,2vw,1rem)]">
 				<!-- Relative container to prevent layout shifting during track text transition -->
 				<div class="relative flex h-full grow items-center overflow-hidden">
 					{#if activeTrack}
@@ -212,7 +212,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 	-->
 	<ScrollContainer
 		class={[
-			'flex h-dvh scroll-pt-(--app-header-height) flex-col overflow-auto contain-strict scrollbar-gutter-stable',
+			'flex min-h-dvh h-full scroll-pt-(--app-header-height) flex-col overflow-auto contain-strict scrollbar-gutter-stable',
 			isCompact &&
 				((player.animatedArtworkSrc && player.animatedArtworkLoaded) || player.artworkSrc) &&
 				'dark bg-black/60 [color-scheme:dark] backdrop-blur-3xl',
@@ -383,14 +383,14 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 	.player-content {
 		display: grid;
 		grid-template-columns: 1fr;
-		grid-template-rows: max-content minmax(--spacing(35), 1fr) auto;
+		grid-template-rows: max-content minmax(0, 1fr) auto;
 		grid-template-areas: 'header' 'artwork' 'controls';
 	}
 
 	.player-content-horizontal {
 		grid-template-columns:
-			1fr minmax(0, --spacing(75)) minmax(0, --spacing(125))
-			1fr;
+			minmax(0, 1fr) minmax(0, clamp(18rem, 30vw, 46rem)) minmax(20rem, clamp(28rem, 38vw, 52rem))
+			minmax(0, 1fr);
 		grid-template-rows: max-content 1fr;
 		grid-template-areas:
 			'header header header header'
