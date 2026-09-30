@@ -22,14 +22,19 @@
 <div
 	id="mini-player"
 	class={[
-		'pointer-events-auto mx-auto w-[min(100%,56.25rem)] max-w-[calc(100vw-1rem)] justify-between overflow-hidden rounded-2xl border border-primary/10 bg-secondaryContainer text-onSecondaryContainer contain-content view-name-[pl-card] sm:h-auto sm:rounded-3xl active-view-player:border-transparent',
+		'pointer-events-auto mx-auto w-[min(100%,56.25rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-primary/10 bg-secondaryContainer text-onSecondaryContainer contain-content view-name-[pl-card] sm:rounded-3xl active-view-player:border-transparent',
 		className,
 	]}
 >
-	<div class="flex size-full min-w-0 flex-col items-center justify-between gap-[clamp(0.5rem,1.25vw,1rem)] px-[clamp(0.25rem,1.25vw,1rem)] py-[clamp(0.25rem,1vh,0.75rem)] sm:pt-2 sm:pb-4">
+	<div
+		class="flex size-full min-w-0 flex-col items-center justify-between gap-[clamp(0.5rem,1.25vw,1rem)] px-[clamp(0.375rem,1vw,1rem)] py-[clamp(0.375rem,1vh,0.75rem)] sm:px-4 sm:pt-2 sm:pb-4"
+	>
 		<Timeline class="max-sm:hidden" />
-		<div class="grid min-h-[clamp(3.5rem,7vw,4rem)] w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[clamp(0.125rem,0.75vw,0.5rem)] px-0 py-0 sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
-			<div class="flex min-w-0 flex-1 items-center">
+
+		<div
+			class="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[clamp(0.25rem,1vw,0.75rem)] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2"
+		>
+			<div class="flex min-w-0 items-center">
 				<Button
 					as="a"
 					href="/player"
@@ -38,13 +43,13 @@
 					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
 				>
 					<div
-						class="relative size-[clamp(2.25rem,4vw,2.75rem)] shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]"
+						class="relative size-[clamp(2.5rem,4vw,2.75rem)] shrink-0 overflow-hidden rounded-xl bg-onSecondary sm:rounded-lg active-view-player:view-name-[pl-artwork]"
 					>
 						{#if track}
 							<PlayerArtwork class="size-full" />
-						{:else}
+					{:else}
 							<Icon type="musicNote" class="absolute inset-0 m-auto size-5 text-onSecondaryContainer/40" />
-						{/if}
+					{/if}
 
 						<Icon
 							type="chevronUp"
@@ -53,27 +58,23 @@
 								track &&
 									'scale-0 rounded-full bg-tertiary text-onTertiary transition-[transform,opacity] duration-200 [.group:hover_&]:scale-100',
 							]}
-						/>
+					/>
 					</div>
 
 					{#if track}
-						<div class="ml-2.5 mr-1 grid min-w-0 flex-1 text-left sm:ml-3" lang={getItemLanguage(track.language)}>
-							<div class="truncate text-body-md font-medium">
-								{track.name}
-							</div>
+						<div class="ml-3 mr-1 grid min-w-0 flex-1 text-left sm:ml-3" lang={getItemLanguage(track.language)}>
+							<div class="truncate text-body-md font-medium">{track.name}</div>
 							<div class="truncate text-body-sm text-onSecondaryContainer/70">{formatArtists(track.artists)}</div>
 						</div>
 					{:else}
-						<div class="ml-2.5 text-body-sm text-onSecondaryContainer/60 sm:ml-3">
-							{m.playerQueueEmpty()}
-						</div>
+						<div class="ml-3 truncate text-body-sm text-onSecondaryContainer/60">{m.playerQueueEmpty()}</div>
 					{/if}
 				</Button>
 
 				<PlayerFavoriteButton class="size-[clamp(2.25rem,4vw,2.5rem)] shrink-0" />
 			</div>
 
-			<div class="ml-auto flex shrink-0 items-center gap-0 sm:hidden">
+			<div class="ml-auto flex shrink-0 items-center justify-end gap-0.5 sm:hidden">
 				<PlayPrevButton class="mobile-player-control" />
 				<PlayToggleButton class="mobile-player-control" />
 				<PlayNextButton class="mobile-player-control" />
@@ -81,7 +82,7 @@
 
 			<MainControls class="max-sm:hidden" />
 
-			<div class="ml-auto flex shrink-0 items-center gap-1 pr-1 max-sm:hidden">
+			<div class="ml-auto flex shrink-0 items-center justify-end gap-1 pr-1 max-sm:hidden">
 				{#if mainStore.volumeSliderEnabled}
 					<VolumeSlider />
 				{/if}
@@ -99,22 +100,53 @@
 		}
 
 		:global(#mini-player .aero-player) {
-			--player-size: 40px;
-			--player-icon: 24px;
+			--player-size: clamp(36px, 10vw, 42px);
+			--player-icon: clamp(22px, 6vw, 24px);
 		}
 
 		:global(#mini-player .mobile-player-control) {
-			width: clamp(32px, 9vw, 36px);
-			height: clamp(32px, 9vw, 36px);
-			flex: 0 0 clamp(32px, 9vw, 36px);
+			width: clamp(32px, 9vw, 38px);
+			height: clamp(32px, 9vw, 38px);
+			flex: 0 0 clamp(32px, 9vw, 38px);
 		}
 
 		:global(#mini-player .mobile-player-control .aero-skip) {
-			--skip-size: 22px;
+			--skip-size: clamp(20px, 6vw, 22px);
+		}
+	}
+
+	@media (max-width: 360px) {
+		#mini-player > div {
+			gap: 0.375rem;
+			padding-inline: 0.375rem;
+		}
+
+		:global(#mini-player .group > div:first-child) {
+			width: 36px;
+			height: 36px;
+			flex-basis: 36px;
+		}
+
+		:global(#mini-player .group > div:nth-child(2)) {
+			margin-left: 8px;
 		}
 	}
 
 	@media (max-width: 320px) {
+		#mini-player > div {
+			padding-inline: 0.25rem;
+		}
+
+		:global(#mini-player .mobile-player-control) {
+			width: 32px;
+			height: 32px;
+			flex-basis: 32px;
+		}
+
+		:global(#mini-player .mobile-player-control .aero-skip) {
+			--skip-size: 19px;
+		}
+
 		:global(#mini-player .group > div:first-child) {
 			width: 32px;
 			height: 32px;
@@ -123,10 +155,6 @@
 
 		:global(#mini-player .group > div:nth-child(2)) {
 			margin-left: 8px;
-		}
-
-		:global(#mini-player .group) {
-			padding-right: 0;
 		}
 	}
 
