@@ -30,13 +30,13 @@
 		<Timeline class="max-sm:hidden" />
 
 		<div class="grid h-min w-full min-w-0 grid-cols-[minmax(0,1fr)_max-content_1fr] items-center gap-2">
-			<div class="flex min-w-0 items-center">
+			<div class="flex w-full min-w-0 items-center justify-self-start">
 				<Button
 					as="a"
 					href="/player"
 					kind="blank"
 					tooltip={m.playerOpenFullPlayer()}
-					class="group flex min-w-0 grow items-center overflow-hidden rounded-lg pr-2 max-sm:p-2 sm:h-11 sm:max-w-45"
+					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-lg pr-2 max-sm:p-2 sm:h-11"
 				>
 					<div class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]">
 						{#if track}
@@ -54,12 +54,12 @@
 					</div>
 
 					{#if track}
-						<div class="mr-1 ml-4 grid min-w-0 flex-1 text-left" lang={getItemLanguage(track.language)}>
-							<div class="truncate text-body-md">{track.name}</div>
-							<div class="truncate text-body-sm">{formatArtists(track.artists)}</div>
+						<div class="mr-1 ml-4 grid min-w-0 flex-1 overflow-hidden text-left" lang={getItemLanguage(track.language)}>
+							<div class="min-w-0 truncate text-body-md">{track.name}</div>
+							<div class="min-w-0 truncate text-body-sm">{formatArtists(track.artists)}</div>
 						</div>
 					{:else}
-						<div class="ml-4 truncate text-body-sm text-onSecondaryContainer/60">{m.playerQueueEmpty()}</div>
+						<div class="ml-4 min-w-0 truncate text-body-sm text-onSecondaryContainer/60">{m.playerQueueEmpty()}</div>
 					{/if}
 				</Button>
 
