@@ -83,7 +83,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 		</div>
 
 		<!-- Wrap Artwork in a relative container to handle absolute transition children -->
-		<div class="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center [grid-area:artwork]">
+		<div class="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center overflow-hidden [grid-area:artwork]">
 			{#if !(isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded)}
 				{#key activeTrack?.id}
 					<div
@@ -92,7 +92,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 						out:fade={{ duration: 150 }}
 					>
 						<PlayerArtwork
-							class="m-auto aspect-square size-[min(100%,clamp(12rem,38vmin,38rem))] max-h-[min(100%,38dvh)] max-w-full rounded-[clamp(1rem,2vw,1.5rem)] bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
+							class="player-artwork m-auto aspect-square w-[min(100%,38dvh)] max-w-full shrink-0 rounded-[clamp(1rem,2vw,1.5rem)] bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
 						/>
 					</div>
 				{/key}
@@ -379,6 +379,12 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 
 <style lang="postcss">
 	@reference '../../../app.css';
+
+
+	.player-artwork {
+		height: min(100%, 38dvh);
+		max-height: 100%;
+	}
 
 	.player-content {
 		display: grid;
