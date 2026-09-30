@@ -91,6 +91,8 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
+		flex-shrink: 0;
+		white-space: nowrap;
 		border-radius: 9999px;
 		border: none;
 		cursor: pointer;
@@ -118,6 +120,9 @@
 		justify-content: center;
 		gap: inherit;
 		z-index: 1;
+		flex-shrink: 0;
+		min-width: 0;
+		white-space: nowrap;
 	}
 
 	.filled-button {
