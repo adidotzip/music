@@ -142,12 +142,12 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 			</div>
 
 			<div class="flex min-h-[clamp(4rem,9vh,4.5rem)] w-full shrink-0 items-center rounded-2xl bg-secondaryContainer px-[clamp(0.75rem,2vw,1rem)]">
-				<!-- Keep the track info in normal flow so the action buttons never cover it. -->
+				<!-- Reserve the track-info space while swapping songs so the player never reflows. -->
 				<div class="relative min-w-0 flex-1 overflow-hidden">
 					{#if activeTrack}
 						{#key activeTrack.id}
 							<div
-								class="flex min-w-0 w-full items-center"
+								class="absolute inset-y-0 left-0 flex w-full min-w-0 items-center"
 								in:fly={{ y: 20, duration: 300, delay: 150 }}
 								out:fly={{ y: -20, duration: 150 }}
 							>
