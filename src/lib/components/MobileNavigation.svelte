@@ -60,11 +60,11 @@
 	aria-label="Primary navigation"
 	class={['mobile-nav pointer-events-auto fixed inset-x-0 bottom-0 z-30 px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] sm:hidden', isPlayerPage && 'hidden!']}
 >
-	<div class="mx-auto flex w-full max-w-md justify-center">
-		<div class="dock flex w-full items-center justify-around gap-1 overflow-hidden rounded-[28px] border border-outline/10 bg-surfaceContainer/95 p-1.5 shadow-[0_10px_35px_rgb(0_0_0/14%)] backdrop-blur-2xl">
+	<div class="mx-auto flex w-full max-w-md justify-center px-[clamp(0rem,2vw,0.5rem)]">
+		<div class="dock grid w-full grid-flow-col auto-cols-fr items-center gap-1 overflow-hidden rounded-[28px] border border-outline/10 bg-surfaceContainer/95 p-[clamp(0.25rem,1vw,0.375rem)] shadow-[0_10px_35px_rgb(0_0_0/14%)] backdrop-blur-2xl">
 			{#each items as item}
 				<Button as="a" href={item.href} kind="blank" tooltip={item.title} aria-current={isActive(item.href) ? 'page' : undefined}
-					class={['dock-item flex size-11 shrink-0 items-center justify-center rounded-[20px] transition-[background-color] duration-200',
+					class={['dock-item flex size-[clamp(2.5rem,12vw,2.75rem)] min-w-0 items-center justify-center rounded-[20px] transition-[background-color] duration-200',
 						isActive(item.href) ? 'bg-secondaryContainer text-onSecondaryContainer font-bold' : 'text-onSurfaceVariant hover:bg-surfaceContainerHigh']}>
 					<Icon type={item.icon} class="size-5 shrink-0" />
 				</Button>
