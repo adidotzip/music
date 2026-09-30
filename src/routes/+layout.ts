@@ -2,6 +2,7 @@ import '../app.css'
 import { browser } from '$app/environment'
 import { registerServiceWorker } from '$lib/helpers/register-sw'
 import { baseLocale, isLocale, overwriteGetLocale, overwriteSetLocale } from '$paraglide/runtime'
+import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit'
 
 export const ssr = false
 export const prerender = false
@@ -30,4 +31,6 @@ if (browser) {
 			update()
 		},
 	})
+
+	injectSpeedInsights()
 }
