@@ -72,7 +72,7 @@
 
 			{#if isOnline}
 				<Button as="a" href="/discovery" kind="blank" tooltip="Discovery" aria-current={page.url.pathname === '/discovery' ? 'page' : undefined}
-					class={['dock-item flex size-11 shrink-0 items-center justify-center rounded-[20px] transition-[background-color] duration-200',
+					class={['dock-item flex size-[clamp(2.5rem,12vw,2.75rem)] min-w-0 items-center justify-center rounded-[20px] transition-[background-color] duration-200',
 						page.url.pathname === '/discovery' ? 'bg-secondaryContainer text-onSecondaryContainer font-bold' : 'text-onSurfaceVariant hover:bg-surfaceContainerHigh']}>
 					<Icon type="compass" class="size-5 shrink-0" />
 				</Button>
