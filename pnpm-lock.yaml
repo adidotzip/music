@@ -24,6 +24,9 @@ importers:
       '@uimaxbai/am-lyrics':
         specifier: 1.6.3
         version: 1.6.3(patch_hash=61e33940b091c4e7df730ba3a53816bbbbdce51b672555a47813ec26fba06637)
+      '@vercel/speed-insights':
+        specifier: ^2.0.0
+        version: 2.0.0(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.55.5)(vite@8.0.10(@types/node@24.13.6)(jiti@2.7.0)(yaml@2.9.1)))(svelte@5.55.5)(typescript@6.0.3)(vite@8.0.10(@types/node@24.13.6)(jiti@2.7.0)(yaml@2.9.1)))(svelte@5.55.5)
       hls.js:
         specifier: ^1.6.17
         version: 1.7.3
@@ -875,6 +878,32 @@ packages:
       '@lit/react':
         optional: true
       react:
+        optional: true
+
+  '@vercel/speed-insights@2.0.0':
+    resolution: {integrity: sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w==}
+    peerDependencies:
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
         optional: true
 
   '@vitest/expect@4.1.11':
@@ -2373,6 +2402,11 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.7
       lit: 3.3.3
+
+  '@vercel/speed-insights@2.0.0(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.55.5)(vite@8.0.10(@types/node@24.13.6)(jiti@2.7.0)(yaml@2.9.1)))(svelte@5.55.5)(typescript@6.0.3)(vite@8.0.10(@types/node@24.13.6)(jiti@2.7.0)(yaml@2.9.1)))(svelte@5.55.5)':
+    optionalDependencies:
+      '@sveltejs/kit': 2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.55.5)(vite@8.0.10(@types/node@24.13.6)(jiti@2.7.0)(yaml@2.9.1)))(svelte@5.55.5)(typescript@6.0.3)(vite@8.0.10(@types/node@24.13.6)(jiti@2.7.0)(yaml@2.9.1))
+      svelte: 5.55.5
 
   '@vitest/expect@4.1.11':
     dependencies:
