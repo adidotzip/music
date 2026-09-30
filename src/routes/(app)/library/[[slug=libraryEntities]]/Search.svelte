@@ -64,7 +64,7 @@
 </script>
 
 <div
-	class="@container sticky top-2 z-1 mt-2 mb-4 ml-auto flex min-h-14 w-full max-w-150 items-center gap-1 rounded-2xl border border-primary/10 bg-surfaceContainerHighest px-2.5 @sm:gap-1.5"
+	class="@container relative sticky top-2 z-20 mt-2 mb-4 ml-auto flex min-h-14 w-full max-w-150 items-center gap-1 rounded-2xl border border-primary/10 bg-surfaceContainerHighest px-2.5 @sm:gap-1.5"
 >
 	<input
 		value={store.searchTerm}
