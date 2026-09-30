@@ -28,7 +28,7 @@
 >
 	<div class="flex size-full flex-col items-center justify-between gap-4 sm:px-4 sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
-		<div class="flex min-h-16 w-full min-w-0 items-center gap-1.5 px-2 py-1 sm:grid sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2 sm:px-0 sm:py-0">
+		<div class="grid min-h-16 w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1 px-1.5 py-1 sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2 sm:px-0 sm:py-0">
 			<div class="flex min-w-0 flex-1 items-center">
 				<Button
 					as="a"
@@ -70,7 +70,7 @@
 					{/if}
 				</Button>
 
-				<PlayerFavoriteButton class="size-10 shrink-0" />
+				<PlayerFavoriteButton class="size-9 shrink-0 sm:size-10" />
 			</div>
 
 			<div class="ml-auto flex shrink-0 items-center gap-0 sm:hidden">
@@ -104,9 +104,9 @@
 		}
 
 		:global(#mini-player .mobile-player-control) {
-			width: 40px;
-			height: 40px;
-			flex: 0 0 40px;
+			width: 36px;
+			height: 36px;
+			flex: 0 0 36px;
 		}
 
 		:global(#mini-player .mobile-player-control .aero-skip) {
@@ -116,9 +116,9 @@
 
 	@media (max-width: 359px) {
 		:global(#mini-player .group > div:first-child) {
-			width: 40px;
-			height: 40px;
-			flex-basis: 40px;
+			width: 36px;
+			height: 36px;
+			flex-basis: 36px;
 		}
 
 		:global(#mini-player .group > div:nth-child(2)) {
