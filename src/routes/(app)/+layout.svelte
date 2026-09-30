@@ -227,8 +227,8 @@
     }
 
     .page-overlay-container {
-        --p-overlay-side: --spacing(4);
-        grid-template-columns: var(--p-overlay-side) 1fr minmax(0, --spacing(125)) 1fr var(--p-overlay-side);
+        --p-overlay-side: clamp(0.5rem, 2vw, 1rem);
+        grid-template-columns: var(--p-overlay-side) 1fr minmax(0, clamp(18rem, 90vw, 56.25rem)) 1fr var(--p-overlay-side);
     }
 
     @keyframes page-loading-indicator {
