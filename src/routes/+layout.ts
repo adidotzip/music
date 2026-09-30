@@ -25,15 +25,9 @@ if (browser) {
 
 	registerServiceWorker({
 		onNeedRefresh(update) {
-			snackbar({
-				id: 'app-update',
-				message: m.appUpdateAvailable(),
-				duration: false,
-				controls: {
-					label: m.reload(),
-					action: update,
-				},
-			})
+			// Apply new deployments automatically. The service worker waits until
+			// the new assets are installed, then controllerchange reloads the app.
+			update()
 		},
 	})
 }
