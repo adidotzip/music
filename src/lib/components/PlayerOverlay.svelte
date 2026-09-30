@@ -22,13 +22,13 @@
 <div
 	id="mini-player"
 	class={[
-		'pointer-events-auto mx-auto w-full max-w-225 justify-between overflow-hidden rounded-2xl border border-primary/10 bg-secondaryContainer text-onSecondaryContainer contain-content view-name-[pl-card] sm:h-auto sm:rounded-3xl active-view-player:border-transparent',
+		'pointer-events-auto mx-auto w-[min(100%,56.25rem)] max-w-[calc(100vw-1rem)] justify-between overflow-hidden rounded-2xl border border-primary/10 bg-secondaryContainer text-onSecondaryContainer contain-content view-name-[pl-card] sm:h-auto sm:rounded-3xl active-view-player:border-transparent',
 		className,
 	]}
 >
-	<div class="flex size-full flex-col items-center justify-between gap-4 sm:px-4 sm:pt-2 sm:pb-4">
+	<div class="flex size-full min-w-0 flex-col items-center justify-between gap-[clamp(0.5rem,1.25vw,1rem)] px-[clamp(0.25rem,1.25vw,1rem)] py-[clamp(0.25rem,1vh,0.75rem)] sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
-		<div class="grid min-h-16 w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1 px-1.5 py-1 sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2 sm:px-0 sm:py-0">
+		<div class="grid min-h-[clamp(3.5rem,7vw,4rem)] w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-[clamp(0.125rem,0.75vw,0.5rem)] px-0 py-0 sm:h-auto sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
 			<div class="flex min-w-0 flex-1 items-center">
 				<Button
 					as="a"
@@ -38,7 +38,7 @@
 					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
 				>
 					<div
-						class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]"
+						class="relative size-[clamp(2.25rem,4vw,2.75rem)] shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]"
 					>
 						{#if track}
 							<PlayerArtwork class="size-full" />
@@ -70,7 +70,7 @@
 					{/if}
 				</Button>
 
-				<PlayerFavoriteButton class="size-9 shrink-0 sm:size-10" />
+				<PlayerFavoriteButton class="size-[clamp(2.25rem,4vw,2.5rem)] shrink-0" />
 			</div>
 
 			<div class="ml-auto flex shrink-0 items-center gap-0 sm:hidden">
@@ -104,9 +104,9 @@
 		}
 
 		:global(#mini-player .mobile-player-control) {
-			width: 36px;
-			height: 36px;
-			flex: 0 0 36px;
+			width: clamp(32px, 9vw, 36px);
+			height: clamp(32px, 9vw, 36px);
+			flex: 0 0 clamp(32px, 9vw, 36px);
 		}
 
 		:global(#mini-player .mobile-player-control .aero-skip) {
@@ -114,11 +114,11 @@
 		}
 	}
 
-	@media (max-width: 359px) {
+	@media (max-width: 320px) {
 		:global(#mini-player .group > div:first-child) {
-			width: 36px;
-			height: 36px;
-			flex-basis: 36px;
+			width: 32px;
+			height: 32px;
+			flex-basis: 32px;
 		}
 
 		:global(#mini-player .group > div:nth-child(2)) {
