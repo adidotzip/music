@@ -28,6 +28,12 @@ export class PlayerStore {
 	readonly #main = useMainStore()
 
 	readonly #audio = new Audio()
+	// Remote streams are cross-origin. Set CORS mode before any source is
+	// assigned so Web Audio can safely route online playback through the EQ.
+	readonly #audioCrossOrigin = (() => {
+		this.#audio.crossOrigin = 'anonymous'
+		return this.#audio
+	})()
 	#audioSource: string | null = null
 	readonly #audioLoader = new AudioLoader((src) => {
 		this.#audioSource = src
