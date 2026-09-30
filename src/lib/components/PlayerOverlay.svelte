@@ -40,7 +40,7 @@
 					href="/player"
 					kind="blank"
 					tooltip={m.playerOpenFullPlayer()}
-					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-xl pr-1 sm:h-12 sm:max-w-70 sm:rounded-lg sm:pr-2"
+					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-xl pr-1 sm:h-12 sm:rounded-lg sm:pr-2"
 				>
 					<div
 						class="relative size-[clamp(2.5rem,4vw,2.75rem)] shrink-0 overflow-hidden rounded-xl bg-onSecondary sm:rounded-lg active-view-player:view-name-[pl-artwork]"
@@ -63,8 +63,8 @@
 
 					{#if track}
 						<div class="ml-3 mr-1 grid min-w-0 flex-1 text-left sm:ml-3" lang={getItemLanguage(track.language)}>
-							<div class="truncate text-body-md font-medium">{track.name}</div>
-							<div class="truncate text-body-sm text-onSecondaryContainer/70">{formatArtists(track.artists)}</div>
+							<div class="min-w-0 truncate text-body-md font-medium">{track.name}</div>
+							<div class="min-w-0 truncate text-body-sm text-onSecondaryContainer/70">{formatArtists(track.artists)}</div>
 						</div>
 					{:else}
 						<div class="ml-3 truncate text-body-sm text-onSecondaryContainer/60">{m.playerQueueEmpty()}</div>
