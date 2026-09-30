@@ -86,7 +86,9 @@
 			window.dispatchEvent(new CustomEvent('lyrics-reload'))
 
 			const hasLoadedLyrics =
-				res.status === 'found' && typeof res.ttml === 'string' && /<p\\b[^>]*>\\s*[^<\\s]/i.test(res.ttml)
+				res.status === 'found' &&
+				typeof res.ttml === 'string' &&
+				/<p\b[^>]*>\s*[^<\s]/i.test(res.ttml)
 
 			if (hasLoadedLyrics) {
 				snackbar('Lyrics loaded successfully')
@@ -220,7 +222,7 @@
 									<span class="text-body-large font-bold">Adi Lyrics</span>
 									<span class="text-body-small text-onSurfaceVariant">Primary Provider</span>
 								</div>
-								{#if fetching && activeFetchingSource === 'adi'}
+								{#if fetching && activeFetchingSource === 'adi-lrcmux'}
 									<Spinner class="size-5" />
 								{:else}
 									<Icon type="chevronRight" class="text-onSurfaceVariant size-5" />
