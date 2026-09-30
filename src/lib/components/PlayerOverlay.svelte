@@ -36,7 +36,7 @@
 					href="/player"
 					kind="blank"
 					tooltip={m.playerOpenFullPlayer()}
-					class="group flex min-w-0 flex-1 items-center overflow-hidden rounded-lg pr-2 max-sm:p-2 sm:h-11"
+					class="group flex min-w-0 flex-1 shrink items-center overflow-hidden rounded-lg pr-2 max-sm:p-2 sm:h-11"
 				>
 					<div class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]">
 						{#if track}
@@ -55,8 +55,8 @@
 
 					{#if track}
 						<div class="mr-1 ml-4 grid min-w-0 flex-1 overflow-hidden text-left" lang={getItemLanguage(track.language)}>
-							<div class="min-w-0 truncate text-body-md">{track.name}</div>
-							<div class="min-w-0 truncate text-body-sm">{formatArtists(track.artists)}</div>
+							<div class="min-w-0 max-w-full truncate text-body-sm sm:text-body-md">{track.name}</div>
+							<div class="min-w-0 max-w-full truncate text-body-sm">{formatArtists(track.artists)}</div>
 						</div>
 					{:else}
 						<div class="ml-4 min-w-0 truncate text-body-sm text-onSecondaryContainer/60">{m.playerQueueEmpty()}</div>
@@ -90,6 +90,26 @@
 		max-width: 56.25rem !important;
 		margin-inline: auto !important;
 		justify-self: center !important;
+	}
+
+	/* Keep long titles from becoming intrinsic grid widths and causing the overlay to jump. */
+	:global(#mini-player .m3-button-base) {
+		min-width: 0;
+		max-width: 100%;
+		flex-shrink: 1;
+	}
+
+	:global(#mini-player .m3-button-base .button-content) {
+		min-width: 0;
+		max-width: 100%;
+		width: 100%;
+		flex-shrink: 1;
+		overflow: hidden;
+	}
+
+	:global(#mini-player .m3-button-base .button-content > div) {
+		min-width: 0;
+		max-width: 100%;
 	}
 
 	@media (max-width: 639px) {
