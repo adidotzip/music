@@ -60,7 +60,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 {#snippet playerSnippet()}
 	<div
 		class={[
-			layoutMode === 'both' && 'w-[clamp(18rem,24dvw,28rem)]',
+			layoutMode === 'both' && 'w-[clamp(32rem,38dvw,48rem)]',
 			layoutMode === 'list' && 'mx-auto w-full max-w-[min(100%,31.25rem)]',
 			'player-content z-0 grow items-center gap-x-[clamp(1rem,2vw,1.5rem)] overflow-clip px-[clamp(0.75rem,2vw,1rem)] pt-[max(8px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))]',
 			(player.animatedArtworkSrc && player.animatedArtworkLoaded) || player.artworkSrc
@@ -92,7 +92,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 						out:fade={{ duration: 150 }}
 					>
 						<PlayerArtwork
-							class="player-artwork m-auto aspect-square w-[min(100%,38dvh)] max-w-full shrink-0 rounded-[clamp(1rem,2vw,1.5rem)] bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
+							class="player-artwork m-auto size-[min(100%,32rem)] max-h-full max-w-full shrink-0 rounded-[clamp(1rem,2vw,1.5rem)] bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
 						/>
 					</div>
 				{/key}
@@ -381,10 +381,6 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 	@reference '../../../app.css';
 
 
-	.player-artwork {
-		height: min(100%, 38dvh);
-		max-height: 100%;
-	}
 
 	.player-content {
 		display: grid;
