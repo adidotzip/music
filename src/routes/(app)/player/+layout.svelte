@@ -83,7 +83,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 		</div>
 
 		<!-- Wrap Artwork in a relative container to handle absolute transition children -->
-		<div class="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center overflow-hidden [grid-area:artwork]">
+		<div class="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center [grid-area:artwork]">
 			{#if !(isCompact && player.animatedArtworkSrc && player.animatedArtworkLoaded)}
 				{#key activeTrack?.id}
 					<div
@@ -92,7 +92,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 						out:fade={{ duration: 150 }}
 					>
 						<PlayerArtwork
-							class="player-artwork m-auto size-[min(100%,38dvh)] max-w-full shrink-0 rounded-[clamp(1rem,2vw,1.5rem)] bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
+							class="m-auto aspect-square size-[min(100%,clamp(12rem,38vmin,38rem))] max-h-[min(100%,38dvh)] max-w-full rounded-[clamp(1rem,2vw,1.5rem)] bg-onSecondary shadow-xl active-view-player:view-name-[pl-artwork]"
 						/>
 					</div>
 				{/key}
@@ -142,20 +142,20 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 			</div>
 
 			<div class="flex min-h-[clamp(4rem,9vh,4.5rem)] w-full shrink-0 items-center rounded-2xl bg-secondaryContainer px-[clamp(0.75rem,2vw,1rem)]">
-				<!-- Stack outgoing/incoming track info in one grid cell so switching songs cannot reflow the player. -->
-				<div class="grid min-w-0 flex-1 overflow-hidden">
+				<!-- Relative container to prevent layout shifting during track text transition -->
+				<div class="relative flex h-full grow items-center overflow-hidden">
 					{#if activeTrack}
 						{#key activeTrack.id}
 							<div
-								class="col-start-1 row-start-1 flex min-w-0 w-full items-center"
+								class="absolute flex w-full items-center"
 								in:fly={{ y: 20, duration: 300, delay: 150 }}
 								out:fly={{ y: -20, duration: 150 }}
 							>
-								<div class="mr-2 min-w-6 shrink-0 text-center text-body-lg tabular-nums">
+								<div class="mr-2 min-w-6 text-center text-body-lg tabular-nums">
 									{player.activeTrackIndex + 1}
 								</div>
 
-								<div class="grid min-w-0 overflow-hidden" lang={getItemLanguage(activeTrack.language)}>
+								<div class="grid overflow-hidden" lang={getItemLanguage(activeTrack.language)}>
 									<div class="truncate text-body-lg">{activeTrack.name}</div>
 									<div class="truncate text-body-md">{formatArtists(activeTrack.artists)}</div>
 								</div>
@@ -164,7 +164,7 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 					{/if}
 				</div>
 
-				<div class="relative z-10 ml-auto flex shrink-0 gap-1 bg-secondaryContainer pl-2">
+				<div class="relative z-10 ml-auto flex gap-1 bg-secondaryContainer pl-2">
 					<PlayerFavoriteButton />
 
 					<IconButton
@@ -379,8 +379,6 @@ import KawarpBackground from '$lib/components/KawarpBackground.svelte'
 
 <style lang="postcss">
 	@reference '../../../app.css';
-
-
 
 	.player-content {
 		display: grid;
