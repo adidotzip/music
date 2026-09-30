@@ -59,6 +59,25 @@ self.addEventListener('fetch', (event) => {
 	async function respond() {
 		const cache = await caches.open(CACHE)
 
+		// Navigation responses must be network-first so a new deployment is picked up
+		// immediately instead of serving an old cached app shell.
+		if (isNavigationRequest) {
+			try {
+				const networkResponse = await fetch(request, { cache: 'no-store' })
+				if (networkResponse instanceof Response && networkResponse.ok) {
+					return networkResponse
+				}
+			} catch {
+				// Fall through to the cached app shell when offline.
+			}
+
+			const cachedNavigation = await cache.match(url.pathname)
+			if (cachedNavigation) return cachedNavigation
+
+			const fallbackResponse = await cache.match(PUBLIC_FALLBACK_PAGE)
+			if (fallbackResponse) return fallbackResponse
+		}
+
 		let response = await cache.match(url.pathname)
 		if (response) {
 			return response
