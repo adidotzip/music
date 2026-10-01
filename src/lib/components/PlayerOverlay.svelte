@@ -30,7 +30,7 @@
 		<Timeline class="max-sm:hidden" />
 
 		<div class="relative flex h-min w-full min-w-0 items-center gap-2">
-			<div class="flex min-w-0 flex-1 items-center sm:max-w-[40%]">
+			<div class="flex min-w-0 flex-1 items-center sm:max-w-[30%]">
 				<Button
 					as="a"
 					href="/player"
