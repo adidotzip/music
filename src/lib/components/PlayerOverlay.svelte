@@ -29,8 +29,8 @@
 	<div class="flex size-full min-w-0 flex-col items-center justify-between gap-4 px-2 py-2 sm:px-4 sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
 
-		<div class="flex h-min w-full min-w-0 items-center gap-2">
-			<div class="flex min-w-0 flex-1 items-center">
+		<div class="relative flex h-min w-full min-w-0 items-center gap-2">
+			<div class="flex min-w-0 flex-1 items-center sm:max-w-[40%]">
 				<Button
 					as="a"
 					href="/player"
@@ -67,10 +67,15 @@
 			</div>
 
 			<div class="ml-auto flex shrink-0 items-center justify-end gap-2 pr-1 max-sm:hidden">
-				<MainControls />
 				{#if mainStore.volumeSliderEnabled}
 					<VolumeSlider />
 				{/if}
+			</div>
+
+			<div class="pointer-events-none absolute inset-x-0 hidden items-center justify-center sm:flex">
+				<div class="pointer-events-auto flex shrink-0 items-center gap-2">
+					<MainControls />
+				</div>
 			</div>
 
 			<div class="ml-auto flex shrink-0 items-center justify-end gap-1 pr-1 sm:hidden">
