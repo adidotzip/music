@@ -29,8 +29,8 @@
 	<div class="flex size-full min-w-0 flex-col items-center justify-between gap-4 px-2 py-2 sm:px-4 sm:pt-2 sm:pb-4">
 		<Timeline class="max-sm:hidden" />
 
-		<div class="grid h-min w-full min-w-0 grid-cols-[minmax(0,1fr)_max-content_1fr] items-center gap-2">
-			<div class="flex w-full min-w-0 items-center justify-self-start">
+		<div class="flex h-min w-full min-w-0 items-center gap-2">
+			<div class="flex min-w-0 flex-1 items-center">
 				<Button
 					as="a"
 					href="/player"
@@ -41,7 +41,7 @@
 					<div class="relative size-11 shrink-0 overflow-hidden rounded-lg bg-onSecondary active-view-player:view-name-[pl-artwork]">
 						{#if track}
 							<PlayerArtwork class="size-full" />
-					{:else}
+						{:else}
 							<Icon type="musicNote" class="absolute inset-0 m-auto size-5 text-onSecondaryContainer/40" />
 						{/if}
 						<Icon
@@ -66,17 +66,16 @@
 				<PlayerFavoriteButton class="shrink-0" />
 			</div>
 
-			<div class="ml-auto flex shrink-0 gap-2 pr-2 sm:hidden">
-				<PlayToggleButton />
-				<PlayNextButton class="max-xss:hidden" />
-			</div>
-
-			<MainControls class="max-sm:hidden" />
-
-			<div class="ml-auto flex min-w-0 items-center justify-end gap-2 pr-2 max-sm:hidden">
+			<div class="ml-auto flex shrink-0 items-center justify-end gap-2 pr-1 max-sm:hidden">
+				<MainControls />
 				{#if mainStore.volumeSliderEnabled}
 					<VolumeSlider />
 				{/if}
+			</div>
+
+			<div class="ml-auto flex shrink-0 items-center justify-end gap-1 pr-1 sm:hidden">
+				<PlayToggleButton />
+				<PlayNextButton class="max-xss:hidden" />
 			</div>
 		</div>
 	</div>
