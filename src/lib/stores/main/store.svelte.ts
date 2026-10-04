@@ -49,6 +49,9 @@ export class MainStore {
 
 	librarySplitLayoutEnabled: boolean = $state(true)
 
+	/** Reduce optional network usage such as animated artwork requests. */
+	lowDataMode: boolean = $state(false)
+
 	constructor() {
 		persist('main', this, [
 			'theme',
@@ -57,6 +60,7 @@ export class MainStore {
 			'customThemePaletteHex',
 			'volumeSliderEnabled',
 			'librarySplitLayoutEnabled',
+			'lowDataMode',
 		])
 	}
 }
