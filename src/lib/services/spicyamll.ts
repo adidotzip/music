@@ -1,4 +1,5 @@
 const API_BASE = 'https://api.spicyamll.online'
+const PLAYER_API_BASE = 'https://api.trylyricsflow.com'
 
 export type SpicyApiParams = Record<string, string | number | boolean | undefined | null>
 
@@ -147,7 +148,7 @@ export const spicyamll = {
 		song: string | number,
 		options: { codec?: string; fallback?: boolean; language?: string } = {},
 	) => {
-		const url = new URL(`${API_BASE}/stream`)
+		const url = new URL(`${PLAYER_API_BASE}/stream`)
 		url.searchParams.set('song', String(song))
 		url.searchParams.set('codec', options.codec ?? 'aac')
 		url.searchParams.set('fallback', String(options.fallback ?? true))
