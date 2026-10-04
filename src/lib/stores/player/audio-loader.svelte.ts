@@ -142,6 +142,14 @@ export class AudioLoader {
 		return { status: 'loaded' } as const
 	}
 
+	loadObjectUrl = (src: string): void => {
+		this.#current += 1
+		this.loading = false
+		this.#clearSrc()
+		this.#currentSrc = src
+		this.#onSrc(src)
+	}
+
 	reset = (): void => {
 		this.#current += 1
 		this.#clearSrc()
