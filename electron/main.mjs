@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const APP_URL = process.env.ADI_MUSIC_URL || 'https://music.imreallyadi.space'
-const LIBRESPOT_BINARY = process.env.ADI_LIBRESPOT_BINARY || path.join(__dirname, '..', 'native', 'librespot-player', 'target', 'release', process.platform === 'win32' ? 'adi-librespot-player.exe' : 'adi-librespot-player')
+const LIBRESPOT_BINARY = process.env.ADI_LIBRESPOT_BINARY || (app.isPackaged
+	? path.join(process.resourcesPath, 'librespot', process.platform === 'win32' ? 'adi-librespot-player.exe' : 'adi-librespot-player')
+	: path.join(__dirname, '..', 'native', 'librespot-player', 'target', 'release', process.platform === 'win32' ? 'adi-librespot-player.exe' : 'adi-librespot-player'))
 let librespotProcess
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1219911045926223914'
 
