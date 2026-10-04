@@ -242,3 +242,52 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 	<Header title={data.singularTitle()} />
 {/if}
 
+<div class="@container flex grow flex-col px-4 pb-4">
+	<section class="relative flex w-full min-w-0 flex-col items-stretch gap-4 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row @2xl:items-stretch">
+		{#if slug !== 'playlists'}
+			<Artwork src={slug === 'artists' ? artistArtworkSrc : artworkSrc()} animatedSrc={animatedArtworkSrc} fallbackIcon={getFallbackArtwork()} class="aspect-square w-full max-w-56 shrink-0 self-center rounded-2xl @2xl:h-60 @2xl:w-60 @2xl:max-w-none @2xl:self-auto" />
+		{/if}
+		<div class="relative z-0 flex min-w-0 flex-1 flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh">
+			<div class="flex grow flex-col p-4">
+				<div class="flex min-w-0 items-center gap-2">
+					<Icon type={slug === 'albums' ? 'album' : slug === 'artists' ? 'person' : 'playlist'} class="size-10 text-onSurface/54" />
+					<h1 class="min-w-0 truncate text-headline-md">{formatNameOrUnknown(item.name)}</h1>
+				</div>
+				{#if description}<div class="text-body-lg">{description}</div>{/if}
+				{#if artists}<div class="grid w-full overflow-hidden text-body-lg"><div class="truncate">{artists}</div></div>{/if}
+				<div class="mt-1 text-onSurfaceVariant">
+					{#if slug === 'albums' && (item as AlbumData).year !== UNKNOWN_ITEM}{(item as AlbumData).year} •{/if}
+					{#if slug === 'artists' && artistAlbums.length > 0}{artistAlbums.length} albums •{/if}
+					{m.libraryTracksCount({ count: slug === 'artists' ? localArtistTrackIds.length : tracks.tracksIds.length })}
+				</div>
+			</div>
+			<div class="mt-auto flex items-center gap-2 py-4 pr-2 pl-4">
+				<Button kind="filled" class="my-1" disabled={tracks.tracksIds.length === 0} onclick={() => player.playTrack(0, tracks.tracksIds)}>{m.play()}</Button>
+				<Button kind="flat" class="my-1 mr-auto" disabled={tracks.tracksIds.length === 0} onclick={() => player.playTrack(0, tracks.tracksIds, { shuffle: true })}>{m.shuffle()} <Icon type="shuffle" /></Button>
+				{#if menuItems}<MenuButton tooltip={m.more()} menuItems={() => menuItems} />{/if}
+			</div>
+		</div>
+	</section>
+
+	{#if slug === 'artists'}
+		<section class="mt-8">
+			<div class="mb-4"><h2 class="text-headline-sm">Top Songs</h2><div class="text-body-sm text-onSurfaceVariant">{localArtistTrackIds.length > 0 ? localArtistTrackIds.length + ' local songs' : 'No local songs'}</div></div>
+			<TracksListContainer items={localArtistTrackIds} showDownloadButton={false} predefinedMenuItems={{ disableViewAlbum: false, disableViewArtist: true }} />
+		</section>
+		{#if artistAlbums.length > 0}
+			<section class="mt-8">
+				<h2 class="mb-4 text-headline-sm">Albums</h2>
+				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+					{#each artistAlbums as album (album.localUuid)}
+						<a href={resolve('/(app)/library/[[slug=libraryEntities]]/[uuid]', { slug: 'albums', uuid: album.localUuid })} class="min-w-0 overflow-hidden rounded-2xl bg-surfaceContainerHigh transition-transform hover:-translate-y-0.5 hover:bg-surfaceContainerHighest">
+							<div class="aspect-square overflow-hidden rounded-2xl bg-surfaceContainerHighest"><Artwork src={album.image} alt={album.name} fallbackIcon="album" class="size-full rounded-2xl" /></div>
+							<div class="min-w-0 p-3"><div class="truncate text-body-md font-medium">{album.name}</div>{#if album.year}<div class="text-body-sm text-onSurfaceVariant">{album.year}</div>{/if}</div>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+	{:else}
+		<TracksListContainer items={tracks.tracksIds} showDownloadButton={false} predefinedMenuItems={{ disableViewAlbum: slug === 'albums', disableViewArtist: slug === 'artists', disableAddToFavorites: isFavoritesView, enableMultiRemoveFromFavorites: isFavoritesView }} menuItems={slug === 'playlists' ? playlistTrackMenuItems : undefined} />
+	{/if}
+</div>
