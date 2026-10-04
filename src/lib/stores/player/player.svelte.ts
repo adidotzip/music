@@ -6,7 +6,6 @@ import { clamp } from '$lib/helpers/utils/clamp.ts'
 import { debounce } from '$lib/helpers/utils/debounce.ts'
 import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
 import { getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
-import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
 import { createTrackQuery } from '$lib/library/get/value-queries.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
 import { recordRecentTrack } from '$lib/services/library.ts'
@@ -638,45 +637,25 @@ export class PlayerStore {
 		options: PlayTrackOptions = {},
 	): Promise<void> => {
 		const requestGeneration = ++this.#playRequestGeneration
-		const sourceQueue = queue ?? this.#queue.itemsIds
-		const requestedTrackId = sourceQueue[options.shuffle ? 0 : trackIndex]
 
-		// Downloads made from Discovery can be stored under a local IndexedDB
-		// track id while the queue still contains the remote/discovery id.
-		// Resolve that alias before changing the active queue so playback uses
-		// the downloaded file instead of starting the stream.
-		let resolvedTrackId = requestedTrackId
-		if (requestedTrackId !== undefined) {
-			const localTrackId = await getStoredLocalTrackId(requestedTrackId)
-			if (requestGeneration !== this.#playRequestGeneration) return
-			if (localTrackId !== undefined) resolvedTrackId = localTrackId
-		}
-
-		// Set the desired state before changing the queue. The source change
-		// emits a native pause event, so the incoming track must already be
-		// marked for autoplay.
+		// Local-only playback must change the queue immediately. Do not await
+		// IndexedDB lookups here because doing so loses the browser user-activation
+		// window needed when a FileSystemFileHandle requests read permission.
 		this.playing = true
-		this.#autoplayTrackId = resolvedTrackId ?? null
 
 		const currentTrackId = this.#queue.activeTrackId
 		if (queue) {
-			const resolvedQueue = [...queue]
-			if (trackIndex >= 0 && trackIndex < resolvedQueue.length && resolvedTrackId !== undefined) {
-				resolvedQueue[trackIndex] = resolvedTrackId
-			}
-			this.#queue.setTrack(trackIndex, resolvedQueue, options)
-		} else if (resolvedTrackId !== requestedTrackId && requestedTrackId !== undefined) {
-			const currentQueue = [...this.#queue.itemsIds]
-			const index = currentQueue.indexOf(requestedTrackId)
-			if (index !== -1) currentQueue[index] = resolvedTrackId as number
-			this.#queue.setTrack(index === -1 ? trackIndex : index, currentQueue, options)
+			this.#queue.setTrack(trackIndex, queue, options)
 		} else {
 			this.#queue.setTrack(trackIndex, undefined, options)
 		}
 
 		if (requestGeneration !== this.#playRequestGeneration) return
 
-		const isSameTrack = currentTrackId !== null && this.#queue.activeTrackId === currentTrackId
+		const activeTrackId = this.#queue.activeTrackId
+		this.#autoplayTrackId = activeTrackId
+
+		const isSameTrack = currentTrackId !== null && activeTrackId === currentTrackId
 
 		if (isSameTrack) {
 			this.seek(0)
@@ -685,7 +664,6 @@ export class PlayerStore {
 		}
 
 		this.currentTime = 0
-		this.#autoplayTrackId = this.#queue.activeTrackId
 	}
 
 	seek = (time: number): void => {
