@@ -487,13 +487,16 @@ export class PlayerStore {
 		if (!entry) return false
 
 		this.#preloadedAudio.delete(trackId)
-		this.#audioLoader.reset()
-		this.#audio.preload = 'auto'
-		this.#audio.src = entry.audio.src
-		this.#audio.load()
+
+		// Transfer ownership of the object URL to AudioLoader. The old code
+		// revoked it immediately after assigning it to the main audio element,
+		// which could invalidate the source before playback started.
+		if (!entry.objectUrl) return false
+
 		entry.audio.src = ''
 		entry.audio.load()
-		if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl)
+		this.#audioLoader.loadObjectUrl(entry.objectUrl)
+		this.#audio.preload = 'auto'
 		return true
 	}
 
