@@ -8,7 +8,6 @@
 	import MenuButton from '$lib/components/MenuButton.svelte'
 	import TracksListContainer from '$lib/components/tracks/TracksListContainer.svelte'
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.ts'
-	import { getAnimatedArtwork } from '$lib/helpers/animated-artwork'
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
@@ -58,7 +57,6 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 	})
 
 	let artistArtworkSrc = $state<string | undefined>()
-	let animatedArtworkSrc = $state<string | undefined>()
 	let artistAlbums = $state<Array<{
 		id: string
 		name: string
@@ -75,12 +73,6 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			const album = item as AlbumData
 			const artist = (album.artists[0] as string) ?? ''
 			albumFallbackArtworkSrc = undefined
-
-			if (artist !== UNKNOWN_ITEM && album.name !== UNKNOWN_ITEM) {
-				getAnimatedArtwork(artist, album.name).then((result) => {
-					if (!cancelled) animatedArtworkSrc = result?.url
-				})
-			}
 
 			if (!album.image && tracks.tracksIds.length > 0) {
 				const loadAlbumFallback = async () => {
@@ -134,7 +126,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 						id: String(album.id),
 						name: album.name,
 						artist: String(album.artists[0] ?? item.name),
-						image: album.image?.full ?? album.image?.small ?? '',
+						image: '',
 						year: album.year === UNKNOWN_ITEM ? '' : String(album.year),
 						localUuid: album.uuid,
 					}))
@@ -145,15 +137,13 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 						if (track?.file) downloadedIds.push(trackId)
 					}
 					localArtistTrackIds = downloadedIds
-					artistArtworkSrc = (item as any).image?.full ?? (item as any).image?.small ?? undefined
+					artistArtworkSrc = await getArtistArtwork(item.name)
 				} catch {
 					// Artist pages remain usable from the local library even if optional metadata is unavailable.
 				}
 			}
 
 			void loadLocalArtist()
-		} else {
-			animatedArtworkSrc = undefined
 		}
 
 		return () => {
@@ -245,7 +235,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 <div class="@container flex grow flex-col px-4 pb-4">
 	<section class="relative flex w-full min-w-0 flex-col items-stretch gap-4 overflow-clip py-4 @2xl:min-h-60 @2xl:flex-row @2xl:items-stretch">
 		{#if slug !== 'playlists'}
-			<Artwork src={slug === 'artists' ? artistArtworkSrc : artworkSrc()} animatedSrc={animatedArtworkSrc} fallbackIcon={getFallbackArtwork()} class="aspect-square w-full max-w-56 shrink-0 self-center rounded-2xl @2xl:h-60 @2xl:w-60 @2xl:max-w-none @2xl:self-auto" />
+			<Artwork src={slug === 'artists' ? artistArtworkSrc : artworkSrc()} fallbackIcon={getFallbackArtwork()} class="aspect-square w-full max-w-56 shrink-0 self-center rounded-2xl @2xl:h-60 @2xl:w-60 @2xl:max-w-none @2xl:self-auto" />
 		{/if}
 		<div class="relative z-0 flex min-w-0 flex-1 flex-col overflow-clip rounded-2xl bg-surfaceContainerHigh">
 			<div class="flex grow flex-col p-4">
