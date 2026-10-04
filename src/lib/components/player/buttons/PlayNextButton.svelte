@@ -5,6 +5,7 @@
 	const player = usePlayer()
 	let button: HTMLButtonElement
 	let skip: HTMLSpanElement
+	let aeroReady = false
 
 	onMount(async () => {
 		const [{ initPlayerButton }, { initSkipLabel, playSkip }] = await Promise.all([
@@ -14,6 +15,7 @@
 
 		initPlayerButton(button)
 		initSkipLabel(skip)
+		aeroReady = true
 
 		button.addEventListener('pressend', () => {
 			playSkip(skip, { bouncing: true })
