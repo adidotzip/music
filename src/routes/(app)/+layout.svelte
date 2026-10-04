@@ -298,8 +298,4 @@
             animation: view-bottom-bar-out 300ms var(--ease-standard) forwards;
         }
     }
-
-    :global(html[data-offline] a[href="/discovery"]) {
-        display: none !important;
-    }
 </style>
