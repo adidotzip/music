@@ -7,7 +7,7 @@
 		bindHeight?: (height: number) => void
 	}
 
-	const { online = true, bindHeight }: Props = $props()
+	const { bindHeight }: Props = $props()
 	let navEl = $state<HTMLElement>()
 	const isPlayerPage = $derived(page.url.pathname.startsWith('/player'))
 
