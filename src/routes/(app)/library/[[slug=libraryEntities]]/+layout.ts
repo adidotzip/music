@@ -6,15 +6,8 @@ import {
 	createLibraryItemKeysPageQuery,
 	type PageQueryResult,
 } from '$lib/library/get/ids-queries.ts'
-import { setLibraryValueInCache, registerRemoteId } from '$lib/library/get/value.ts'
 import { createTracksCountPageQuery } from '$lib/library/tracks-queries.ts'
 import { FAVORITE_PLAYLIST_ID, type LibraryStoreName } from '$lib/library/types.ts'
-import {
-	searchAlbums,
-	searchArtists,
-	searchPlaylists,
-	searchSongs,
-} from '$lib/services/jiosaavn.ts'
 import { getPersistedLibrarySplitLayoutEnabled } from '$lib/stores/main/store.svelte.ts'
 import { defineViewTransitionMatcher } from '$lib/view-transitions.svelte.ts'
 import type { LayoutLoad } from './$types.js'
@@ -51,30 +44,6 @@ const loadData = async <Slug extends LibraryStoreName>(
 			})
 
 			let result = localResult
-
-			if (searchTerm) {
-				let onlineItems: any[] = []
-				if (slug === 'tracks') {
-					onlineItems = await searchSongs(searchTerm)
-				} else if (slug === 'albums') {
-					onlineItems = await searchAlbums(searchTerm)
-				} else if (slug === 'artists') {
-					onlineItems = await searchArtists(searchTerm)
-				} else if (slug === 'playlists') {
-					onlineItems = await searchPlaylists(searchTerm)
-				}
-
-				for (const item of onlineItems) {
-					registerRemoteId(item.id, item.uuid)
-					setLibraryValueInCache(slug, item.id, {
-						...item,
-						type: slug.slice(0, -1) as any,
-						favorite: false,
-					})
-				}
-
-				result = [...localResult, ...onlineItems.map((i) => i.id)]
-			}
 
 			if (slug === 'playlists') {
 				return [FAVORITE_PLAYLIST_ID, ...result]
