@@ -52,6 +52,9 @@ export class MainStore {
 	/** Hide online discovery features and keep the app focused on local music. */
 	localOnlyMode: boolean = $state(false)
 
+	/** Reduce optional network usage without disabling online playback. */
+	lowDataMode: boolean = $state(false)
+
 	constructor() {
 		persist('main', this, [
 			'theme',
@@ -61,6 +64,7 @@ export class MainStore {
 			'volumeSliderEnabled',
 			'librarySplitLayoutEnabled',
 			'localOnlyMode',
+			'lowDataMode',
 		])
 	}
 }
