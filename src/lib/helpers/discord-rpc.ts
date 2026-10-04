@@ -1,5 +1,3 @@
-import { normalizeTracks, spicyamll } from '$lib/services/spicyamll.ts'
-
 export interface DiscordPresencePayload {
 	title: string
 	artist: string
@@ -41,70 +39,22 @@ declare global {
 
 const SITE_ORIGIN = 'https://music.imreallyadi.space'
 
-const artworkCache = new Map<string, { url: string | undefined; expiresAt: number }>()
-const artworkPending = new Map<string, Promise<string | undefined>>()
-
-const isPublicArtworkUrl = (value: string | undefined): value is string =>
-	!!value && /^https?:\/\//i.test(value)
-
-const resolveRemoteArtwork = async (
-	remoteId: number | string | undefined,
-	title: string,
-	artist: string,
-): Promise<string | undefined> => {
-	const hasRemoteId = remoteId !== undefined && remoteId !== null && String(remoteId).trim() !== ''
-	const key = hasRemoteId ? `id:${String(remoteId)}` : `search:${title.trim().toLowerCase()}|${artist.trim().toLowerCase()}`
-	const cached = artworkCache.get(key)
-	if (cached && cached.expiresAt > Date.now()) return cached.url
-	if (cached) artworkCache.delete(key)
-
-	const pending = artworkPending.get(key)
-	if (pending) return pending
-
-	const request = (async () => {
-		try {
-			const tracks = hasRemoteId
-				? normalizeTracks(await spicyamll.song(String(remoteId)))
-				: normalizeTracks(await spicyamll.search({ term: `${title} ${artist}`, types: 'songs', limit: 10 }))
-			const normalizedTitle = title.trim().toLowerCase()
-			const normalizedArtist = artist.trim().toLowerCase()
-			const match = hasRemoteId
-				? tracks.find((track) => String(track.id) === String(remoteId)) ?? tracks[0]
-				: tracks.find(
-						(track) =>
-							track.name.trim().toLowerCase() === normalizedTitle &&
-							String(track.artist ?? '').trim().toLowerCase() === normalizedArtist,
-						) ??
-					tracks.find((track) => track.name.trim().toLowerCase() === normalizedTitle)
-
-			const url = match?.image
-			return isPublicArtworkUrl(url) ? url : undefined
-		} catch {
-			return undefined
-		}
-	})()
-
-	artworkPending.set(key, request)
-	try {
-		const url = await request
-		artworkCache.set(key, { url, expiresAt: Date.now() + 60 * 60_000 })
-		return url
-	} finally {
-		artworkPending.delete(key)
-	}
-}
+const artworkCache = new Map<string, { url: string | undefined; expiresAtconst resolveRemoteArtwork = async (
+	_remoteId: number | string | undefined,
+	_artworkTitle: string,
+	_artworkArtist: string,
+): Promise<string | undefined> => undefined
 
 export const resolveDiscordArtwork = async (
 	artwork: string | undefined,
-	remoteId: number | string | undefined,
-	title: string,
-	artist: string,
+	_remoteId: number | string | undefined,
+	_title: string,
+	_artist: string,
 ): Promise<string | undefined> => {
-	// Use the exact artwork URL currently used by the player whenever Discord
-	// can access it. Blob URLs are browser-local, so only those need fallback
-	// resolution through the remote track metadata.
-	if (isPublicArtworkUrl(artwork)) return artwork
-	return resolveRemoteArtwork(remoteId, title, artist)
+	// Discord can only use artwork URLs that are publicly reachable.
+	// Local Blob/File artwork stays local and is intentionally never uploaded
+	// or resolved through an online music service.
+	return isPublicArtworkUrl(artwork) ? artwork : undefined
 }
 
 let lastState: string | null = null
