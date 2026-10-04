@@ -49,9 +49,6 @@ export class MainStore {
 
 	librarySplitLayoutEnabled: boolean = $state(true)
 
-	/** Hide online discovery features and keep the app focused on local music. */
-	localOnlyMode: boolean = $state(false)
-
 	constructor() {
 		persist('main', this, [
 			'theme',
@@ -60,7 +57,6 @@ export class MainStore {
 			'customThemePaletteHex',
 			'volumeSliderEnabled',
 			'librarySplitLayoutEnabled',
-			'localOnlyMode',
 		])
 	}
 }
