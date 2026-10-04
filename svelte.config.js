@@ -58,6 +58,7 @@ const config = {
 					'https://r2.theaudiodb.com',
 					'https://artwork.m8tec.top',
 					'https://api.spicyamll.online',
+					'https://api.trylyricsflow.com',
 					'https:',
 				],
 
@@ -74,6 +75,7 @@ const config = {
 					'https://mediaservices.cdn-apple.com',
 					'https://*.dzcdn.net',
 					'https://api.spicyamll.online',
+					'https://api.trylyricsflow.com',
 					'https:',
 				],
 
