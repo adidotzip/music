@@ -11,12 +11,10 @@ import { onMount } from 'svelte'
 	import { initPageQueries } from '$lib/db/query/page-query.svelte.ts'
 	import { getAnimatedArtwork } from '$lib/helpers/animated-artwork'
 	import { getArtistArtwork } from '$lib/helpers/artist-artwork.ts'
-	import { getArtistProfile, getAlbumsForArtist } from '$lib/services/spicyamll.ts'
 	import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 	import { formatArtists, formatNameOrUnknown } from '$lib/helpers/utils/text.ts'
 	import { type AlbumData, getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
 import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/ids.ts'
-	import { getLibraryArtists } from '$lib/services/library.ts'
 	import {
 		FAVORITE_PLAYLIST_ID,
 		removeTrackEntryFromPlaylist,
@@ -62,13 +60,6 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 
 	let artistArtworkSrc = $state<string | undefined>()
 	let animatedArtworkSrc = $state<string | undefined>()
-	let artistProfile = $state<{
-		id: string
-		name: string
-		image: string
-		genre: string
-		bio: string
-	} | null>(null)
 	let artistAlbums = $state<Array<{
 		id: string
 		name: string
@@ -121,52 +112,43 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 			}
 		} else if (slug === 'artists' && item) {
 			artistArtworkSrc = undefined
-			artistProfile = null
 			artistAlbums = []
 			localArtistTrackIds = []
 
-			const loadArtistProfile = async () => {
+			const loadLocalArtist = async () => {
 				try {
-					// Artist services resolve the canonical Apple Music/iTunes artistId from the name.
-					const localArtistId = getLibraryArtists().find(
-						(artist) => artist.name.trim().toLowerCase() === item.name.trim().toLowerCase(),
-					)?.id
-					const [profile, albums, localAlbumIds] = await Promise.all([
-						getArtistProfile(localArtistId, item.name),
-						getAlbumsForArtist(localArtistId, item.name),
-						getLibraryItemIds('albums', { sort: 'name' }),
-					])
-
-					if (cancelled) return
-					artistProfile = profile
-
+					const localAlbumIds = await getLibraryItemIds('albums', { sort: 'name' })
+					const normalized = (value: string) => value.trim().toLowerCase()
 					const localAlbums: AlbumData[] = []
+
 					for (const albumId of localAlbumIds) {
 						const album = await getLibraryValue('albums', albumId, true)
 						if (!album) continue
-						const trackIds = await dbGetAlbumTracksIdsByName(album.name)
-						if (trackIds.length === 0) continue
+						const albumArtists = album.artists.map(String)
+						if (!albumArtists.some((artist) => normalized(artist) === normalized(item.name))) continue
 
-						let fullyDownloaded = true
+						const trackIds = await dbGetAlbumTracksIdsByName(album.name)
+						if (!trackIds.length) continue
+
+						let fullyLocal = true
 						for (const trackId of trackIds) {
 							const track = await getLibraryValue('tracks', trackId, true)
 							if (!track?.file) {
-								fullyDownloaded = false
+								fullyLocal = false
 								break
 							}
 						}
-						if (fullyDownloaded) localAlbums.push(album)
+						if (fullyLocal) localAlbums.push(album)
 					}
 
-					const normalized = (value: string) => value.trim().toLowerCase()
-					artistAlbums = albums
-						.map((album) => {
-							const localAlbum = localAlbums.find((candidate) => normalized(candidate.name) === normalized(album.name))
-							if (!localAlbum) return null
-							return { ...album, localUuid: localAlbum.uuid }
-						})
-						.filter((album): album is NonNullable<typeof album> => album !== null)
-						.slice(0, 12)
+					artistAlbums = localAlbums.slice(0, 12).map((album) => ({
+						id: String(album.id),
+						name: album.name,
+						artist: String(album.artists[0] ?? item.name),
+						image: album.image?.full ?? album.image?.small ?? '',
+						year: album.year === UNKNOWN_ITEM ? '' : String(album.year),
+						localUuid: album.uuid,
+					}))
 
 					const downloadedIds: number[] = []
 					for (const trackId of tracks.tracksIds) {
@@ -174,15 +156,13 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 						if (track?.file) downloadedIds.push(trackId)
 					}
 					localArtistTrackIds = downloadedIds
-					artistArtworkSrc = profile.image || (await getArtistArtwork(profile.name)) || undefined
+					artistArtworkSrc = (item as any).image?.full ?? (item as any).image?.small ?? undefined
 				} catch {
-					if (!cancelled) {
-						artistArtworkSrc = (await getArtistArtwork(item.name)) || undefined
-					}
+					// Artist pages remain usable from the local library even if optional metadata is unavailable.
 				}
 			}
 
-			void loadArtistProfile()
+			void loadLocalArtist()
 		} else {
 			animatedArtworkSrc = undefined
 		}
@@ -400,16 +380,10 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 						class="size-10 text-onSurface/54"
 					/>
 
-					<h1 class="min-w-0 truncate text-headline-md">{formatNameOrUnknown(slug === 'artists' ? (artistProfile?.name || item.name) : item.name)}</h1>
+					<h1 class="min-w-0 truncate text-headline-md">{formatNameOrUnknown(item.name)}</h1>
 				</div>
 
-				{#if slug === 'artists' && artistProfile?.genre}
-					<div class="text-body-lg text-onSurfaceVariant">{artistProfile.genre}</div>
-				{/if}
-
-				{#if slug === 'artists' && artistProfile?.bio}
-					<div class="max-w-3xl text-body-md text-onSurfaceVariant">{artistProfile.bio}</div>
-				{:else if description}
+				{#if description}
 					<div class="text-body-lg">{description}</div>
 				{/if}
 
