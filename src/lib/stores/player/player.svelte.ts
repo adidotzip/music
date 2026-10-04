@@ -214,19 +214,19 @@ export class PlayerStore {
 					this.animatedArtworkSrc = undefined
 					return
 				}
-\t\t\t\tif (!this.#main.lowDataMode) {
-\t\t\t\t\tgetAnimatedArtwork(artist, album, track.name)
-\t\t\t\t\t\t.then((result) => {
-\t\t\t\t\t\t\tif (this.activeTrack?.id === track.id) {
-\t\t\t\t\t\t\t\tthis.animatedArtworkSrc = result?.url
-\t\t\t\t\t\t\t\tthis.animatedArtworkTallSrc = result?.urlTall
-\t\t\t\t\t\t\t}
-\t\t\t\t\t\t})
-\t\t\t\t\t\t.catch((error) => {
-\t\t\t\t\t\t\tconsole.error('Failed to get animated artwork', error)
-\t\t\t\t\t\t\tthis.animatedArtworkSrc = undefined
-\t\t\t\t\t\t})
-\t\t\t\t}
+				if (!this.#main.lowDataMode) {
+					getAnimatedArtwork(artist, album, track.name)
+						.then((result) => {
+							if (this.activeTrack?.id === track.id) {
+								this.animatedArtworkSrc = result?.url
+								this.animatedArtworkTallSrc = result?.urlTall
+							}
+						})
+						.catch((error) => {
+							console.error('Failed to get animated artwork', error)
+							this.animatedArtworkSrc = undefined
+						})
+				}
 			} else {
 				this.animatedArtworkSrc = undefined
 				this.animatedArtworkTallSrc = undefined
