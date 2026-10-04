@@ -1,5 +1,4 @@
 import type { QueryResult } from '$lib/db/query/query.ts'
-import { getAnimatedArtwork } from '$lib/helpers/animated-artwork.ts'
 import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
 import { persist } from '$lib/helpers/persist.svelte.ts'
 import { clamp } from '$lib/helpers/utils/clamp.ts'
@@ -8,10 +7,8 @@ import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
 import { getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
 import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
 import { createTrackQuery } from '$lib/library/get/value-queries.ts'
-import { LyricsService } from '$lib/lyrics/LyricsService.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
 import { recordRecentTrack } from '$lib/services/library.ts'
-import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 import { AudioLoader } from './audio-loader.svelte.js'
 import { EqualizerStore } from './equalizer.svelte.js'
 import { resolveDiscordArtwork, updateDiscordPresence, clearDiscordPresence } from '$lib/helpers/discord-rpc.ts'
@@ -217,15 +214,7 @@ export class PlayerStore {
 				this.animatedArtworkSrc = undefined
 				this.animatedArtworkTallSrc = undefined
 				this.animatedArtworkLoaded = false
-				const artist = (track.artists[0] as string) ?? ''
-				const album = track.album
-				if (artist === UNKNOWN_ITEM || album === UNKNOWN_ITEM) {
-					this.animatedArtworkSrc = undefined
-					return
-				}
-				// Animated artwork is intentionally disabled in local-only mode.
-
-			})
+			}
 
 			// Done for minification purposes.
 			const setAction = ms.setActionHandler.bind(ms)
