@@ -10,4 +10,8 @@ contextBridge.exposeInMainWorld('adiNative', {
 	media: {
 		setNowPlaying: (metadata) => ipcRenderer.send('media:set-now-playing', metadata),
 	},
+	spotify: {
+		play: (accessToken, trackId) => ipcRenderer.invoke('spotify:play', { accessToken, trackId }),
+		stop: () => ipcRenderer.invoke('spotify:stop'),
+	},
 })
