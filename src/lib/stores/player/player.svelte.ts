@@ -80,7 +80,6 @@ export class PlayerStore {
 	// Tracks that must resume automatically once their source finishes loading.
 	#autoplayTrackId: number | null = null
 	#preloadedLyrics = new Map<number, Promise<unknown>>()
-	#failedRemoteTracks = new Set<number>()
 	#playRequestGeneration = 0
 
 	#activeTrackQuery: QueryResult<TrackData | undefined> = createTrackQuery(
@@ -135,8 +134,6 @@ export class PlayerStore {
 				return
 			}
 
-			this.#failedRemoteTracks.delete(track.id)
-
 			scheduleAudioReset.cancel()
 
 			if (prevTrackId !== null) {
@@ -173,7 +170,6 @@ export class PlayerStore {
 					}
 					void this.#audio.play().catch((error) => {
 						console.warn('Audio playback failed after loading:', error)
-						this.#failedRemoteTracks.add(track.id)
 						this.playing = false
 					})
 				}
@@ -193,7 +189,6 @@ export class PlayerStore {
 					})
 					this.playing = false
 					this.#autoplayTrackId = null
-					this.#failedRemoteTracks.add(track.id)
 				}
 			})
 		}
@@ -278,14 +273,11 @@ export class PlayerStore {
 
 			const code = audio.error?.code
 			console.warn('Audio media error:', { code, src: source })
-
-			if (this.#failedRemoteTracks.has(track.id)) return
-			this.#failedRemoteTracks.add(track.id)
 			this.playing = false
 			this.#autoplayTrackId = null
 
 			snackbar({
-				message: `Unable to play "${truncate(track.name, 30)}". The stream is unavailable or could not be decoded.`,
+				message: `Unable to play "${truncate(track.name, 30)}". The local audio file could not be decoded.`,
 				id: 'failed-to-play-audio',
 				duration: 10_000,
 			})
@@ -531,8 +523,7 @@ export class PlayerStore {
 			artist,
 		)
 
-		// Artwork resolution is asynchronous for local Blob artwork. Do not let
-		// a slow lookup publish an old track after the user has changed songs.
+		// Do not let an asynchronous artwork lookup publish an old track after the user has changed songs.
 		if (this.activeTrack?.id !== trackId || !this.playing) return
 
 		updateDiscordPresence({
@@ -607,8 +598,7 @@ export class PlayerStore {
 
 		// Explicit user play is also a retry. A previous transient media error
 		// must not permanently lock this track in a failed state.
-		this.#failedRemoteTracks.delete(activeTrackId)
-		this.playing = true
+				this.playing = true
 		this.#autoplayTrackId = activeTrackId
 		this.#audio.preload = 'auto'
 
