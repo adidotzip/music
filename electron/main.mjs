@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const APP_URL = process.env.ADI_MUSIC_URL || 'https://music.imreallyadi.space'
+const LIBRESPOT_BINARY = process.env.ADI_LIBRESPOT_BINARY || path.join(__dirname, '..', 'native', 'librespot-player', 'target', 'release', process.platform === 'win32' ? 'adi-librespot-player.exe' : 'adi-librespot-player')
+let librespotProcess
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1219911045926223914'
 
 let mainWindow
@@ -233,6 +235,38 @@ ipcMain.on('discord:clear-presence', () => {
 
 ipcMain.on('media:set-now-playing', () => {})
 
+ipcMain.handle('spotify:play', async (_event, { accessToken, trackId }) => {
+    if (typeof accessToken !== 'string' || !accessToken || typeof trackId !== 'string' || !trackId) {
+        throw new Error('Spotify access token and track ID are required')
+    }
+
+    if (librespotProcess) {
+        librespotProcess.kill()
+        librespotProcess = undefined
+    }
+
+    const { spawn } = await import('node:child_process')
+    librespotProcess = spawn(LIBRESPOT_BINARY, [accessToken, trackId], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    librespotProcess.stdout?.on('data', (chunk) => console.log('[librespot]', chunk.toString().trim()))
+    librespotProcess.stderr?.on('data', (chunk) => console.warn('[librespot]', chunk.toString().trim()))
+    librespotProcess.on('exit', () => {
+        librespotProcess = undefined
+    })
+
+    return { started: true }
+})
+
+ipcMain.handle('spotify:stop', () => {
+    if (librespotProcess) {
+        librespotProcess.kill()
+        librespotProcess = undefined
+    }
+    return { stopped: true }
+})
+
 const createWindow = async () => {
 \tmainWindow = new BrowserWindow({
 \t\twidth: 1280,
@@ -272,6 +306,13 @@ app.whenReady().then(async () => {
 \t\t\tcreateWindow()
 \t\t}
 \t})
+})
+
+app.on('before-quit', () => {
+	if (librespotProcess) {
+		librespotProcess.kill()
+		librespotProcess = undefined
+	}
 })
 
 app.on('window-all-closed', () => {
