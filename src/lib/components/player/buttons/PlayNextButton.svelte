@@ -5,28 +5,47 @@
 	const player = usePlayer()
 	let button: HTMLButtonElement
 	let skip: HTMLSpanElement
-	onMount(async () => {
-		const [{ initPlayerButton }, { initSkipLabel, playSkip }] = await Promise.all([
+	let aeroReady = false
+
+	onMount(() => {
+		let handlePress: (() => void) | undefined
+		let cancelled = false
+
+		void Promise.all([
 			import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js'),
 			import('https://nurislamaibekuly.github.io/aeroui/src/components/skip-label/skip-label.js'),
-		])
-		initPlayerButton(button)
-		initSkipLabel(skip)
-		button.addEventListener('pressend', () => {
-			playSkip(skip)
-			player.playNext()
+		]).then(([playerButton, skipLabel]) => {
+			if (cancelled) return
+			playerButton.initPlayerButton(button)
+			skipLabel.initSkipLabel(skip)
+			aeroReady = true
+			handlePress = () => {
+				skipLabel.playSkip(skip)
+				player.playNext()
+			}
+			button.addEventListener('pressend', handlePress)
+		}).catch(() => {
+			// AeroUI is optional. The native click handler below keeps queue navigation working offline.
 		})
+
+		return () => {
+			cancelled = true
+			if (handlePress) button.removeEventListener('pressend', handlePress)
+		}
 	})
 </script>
 
-<button bind:this={button} type="button" class={['aero-player', className]} aria-label={m.playerPlayNextTrack()} disabled={player.isQueueEmpty}>
-	<span
-		bind:this={skip}
-		class="aero-skip"
-		data-direction="forward"
-		data-size="24"
-		aria-hidden="true"
-	></span>
+<button
+	bind:this={button}
+	type="button"
+	class={['aero-player', className]}
+	aria-label={m.playerPlayNextTrack()}
+	disabled={player.isQueueEmpty}
+	onclick={() => {
+		if (!aeroReady) player.playNext()
+	}}
+>
+	<span bind:this={skip} class="aero-skip" data-direction="forward" data-size="24" aria-hidden="true"></span>
 </button>
 
 <style lang="postcss">
