@@ -5,7 +5,6 @@ import type { Album, Artist, Playlist, Track } from '$lib/library/types.ts'
 import { FAVORITE_PLAYLIST_ID, FAVORITE_PLAYLIST_UUID, type LibraryStoreName } from '../types.ts'
 import { getSongDetails } from '$lib/services/jiosaavn.ts'
 import { getRecentlyPlayed } from '$lib/services/library.ts'
-import { parseDiscoveryResults, spicyamll } from '$lib/services/spicyamll.ts'
 
 const idToUuidMap = new Map<number, string>()
 type CacheKey<Store extends LibraryStoreName> = `${Store}:${string}`
