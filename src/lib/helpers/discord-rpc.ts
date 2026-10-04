@@ -39,13 +39,7 @@ declare global {
 
 const SITE_ORIGIN = 'https://music.imreallyadi.space'
 
-const artworkCache = new Map<string, { url: string | undefined; expiresAtconst resolveRemoteArtwork = async (
-	_remoteId: number | string | undefined,
-	_artworkTitle: string,
-	_artworkArtist: string,
-): Promise<string | undefined> => undefined
-
-export const resolveDiscordArtwork = async (
+const artworkCache = new Map<string, { url: string | undefined; expiresAtexport const resolveDiscordArtwork = async (
 	artwork: string | undefined,
 	_remoteId: number | string | undefined,
 	_title: string,
