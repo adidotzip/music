@@ -100,26 +100,6 @@
 			</div>
 		</Button>
 	{/each}
-	{#if !main.localOnlyMode}
-		<Button
-			as="a"
-			href="/discovery"
-			kind="blank"
-			tooltip="Discovery"
-			class={['flex shrink-0 items-center justify-center', className]}
-		>
-			<div
-				class={[
-					'flex items-center justify-center rounded-full p-2.5 transition-colors duration-200',
-					page.url.pathname === '/discovery'
-						? 'bg-secondaryContainer text-onSecondaryContainer font-bold'
-						: 'text-onSurfaceVariant hover:bg-surfaceContainerHigh',
-				]}
-			>
-				<Icon type="compass" />
-			</div>
-		</Button>
-	{/if}
 {/snippet}
 
 <div

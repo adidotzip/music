@@ -1,6 +1,6 @@
 import type { QueryResult } from '$lib/db/query/query.ts'
-import { getAnimatedArtwork } from '$lib/helpers/animated-artwork.ts'
 import { createManagedArtwork } from '$lib/helpers/create-managed-artwork.svelte'
+import { getAnimatedArtwork } from '$lib/helpers/animated-artwork'
 import { persist } from '$lib/helpers/persist.svelte.ts'
 import { clamp } from '$lib/helpers/utils/clamp.ts'
 import { debounce } from '$lib/helpers/utils/debounce.ts'
@@ -8,10 +8,8 @@ import { formatArtists, truncate } from '$lib/helpers/utils/text.ts'
 import { getLibraryValue, type TrackData } from '$lib/library/get/value.ts'
 import { getStoredLocalTrackId } from '$lib/library/local-download.ts'
 import { createTrackQuery } from '$lib/library/get/value-queries.ts'
-import { LyricsService } from '$lib/lyrics/LyricsService.ts'
 import { dbAddToPlayHistory } from '$lib/library/play-history-actions.ts'
 import { recordRecentTrack } from '$lib/services/library.ts'
-import { UNKNOWN_ITEM } from '$lib/library/types.ts'
 import { AudioLoader } from './audio-loader.svelte.js'
 import { EqualizerStore } from './equalizer.svelte.js'
 import { resolveDiscordArtwork, updateDiscordPresence, clearDiscordPresence } from '$lib/helpers/discord-rpc.ts'
@@ -99,10 +97,6 @@ export class PlayerStore {
 	animatedArtworkLoaded: boolean = $state(false)
 
 	constructor() {
-		// Remote streams are cross-origin. Set CORS mode before any source is
-		// assigned so Web Audio can safely route online playback through the EQ.
-		this.#audio.crossOrigin = 'anonymous'
-
 		persist('player', this, ['volume', 'repeat', 'muted', 'playbackRate', 'preservePitch'])
 		persist('player', this.#queue, ['shuffle'])
 
@@ -152,13 +146,21 @@ export class PlayerStore {
 			prevTrackId = track.id
 			prevTrack = track
 			this.currentTime = 0
+
+			// Adi Music is local-only. Tracks without a stored/local file cannot play.
+			if (track.directory === undefined || track.file === undefined) {
+				this.#audioLoader.reset()
+				this.playing = false
+				this.#autoplayTrackId = null
+				return
+			}
 			this.duration = 0
 
-			const usedPreloadedAudio = !!track.url && this.#consumePreloadedAudio(track.id)
+			const usedPreloadedAudio = this.#consumePreloadedAudio(track.id)
 
 			void (usedPreloadedAudio
 				? Promise.resolve({ status: 'loaded' } as const)
-				: this.#audioLoader.load(track.directory, track.file, track.url)
+				: this.#audioLoader.load(track.directory, track.file)
 			).then((result) => {
 				if (
 					result.status === 'loaded' &&
@@ -208,23 +210,13 @@ export class PlayerStore {
 				this.animatedArtworkSrc = undefined
 				this.animatedArtworkTallSrc = undefined
 				this.animatedArtworkLoaded = false
-				const artist = (track.artists[0] as string) ?? ''
-				const album = track.album
-				if (artist === UNKNOWN_ITEM || album === UNKNOWN_ITEM) {
-					this.animatedArtworkSrc = undefined
-					return
+				if (!this.#main.lowDataMode) {
+					void getAnimatedArtwork(formatArtists(track.artists), track.album, track.name).then((result) => {
+						if (this.activeTrack?.id !== track.id) return
+						this.animatedArtworkSrc = result?.url
+						this.animatedArtworkTallSrc = result?.urlTall
+					})
 				}
-				getAnimatedArtwork(artist, album, track.name)
-					.then((result) => {
-						if (this.activeTrack?.id === track.id) {
-							this.animatedArtworkSrc = result?.url
-							this.animatedArtworkTallSrc = result?.urlTall
-						}
-					})
-					.catch((error) => {
-						console.error('Failed to get animated artwork', error)
-						this.animatedArtworkSrc = undefined
-					})
 			} else {
 				this.animatedArtworkSrc = undefined
 				this.animatedArtworkTallSrc = undefined
@@ -480,21 +472,14 @@ export class PlayerStore {
 		for (const { track: candidate } of candidates) {
 			if (!candidate) continue
 
-			if (!this.#preloadedLyrics.has(candidate.id)) {
-				this.#preloadedLyrics.set(candidate.id, LyricsService.fetchLyrics(candidate).catch(() => null))
-			}
-
 			if (this.#preloadedAudio.has(candidate.id)) continue
 
-			// Preload the downloaded copy when available. Never let a remote
-			// URL win over an offline file just because it is easier to preload.
+			// Only preload an actual local File. Never preload remote URLs.
 			let src: string | undefined
 			let objectUrl: string | undefined
 			if (candidate.file instanceof File) {
 				objectUrl = URL.createObjectURL(candidate.file)
 				src = objectUrl
-			} else {
-				src = candidate.url
 			}
 			if (!src) continue
 
@@ -583,9 +568,7 @@ export class PlayerStore {
 
 		const threshold = Math.min(timeThreshold, totalDuration * percentageThreshold)
 		if (totalDuration > 0 && playedTime >= threshold) {
-			if (!track?.streaming) {
-				void dbAddToPlayHistory(trackId)
-			}
+ 			void dbAddToPlayHistory(trackId)
 			if (track) {
 				recordRecentTrack({
 					trackId: track.id,

@@ -90,7 +90,7 @@ export class AudioLoader {
 		this.#onSrc = onSrc
 	}
 
-	load = async (directoryId: number | undefined, file: FileEntity | undefined, url?: string) => {
+	load = async (directoryId: number | undefined, file: FileEntity | undefined) => {
 		this.#current += 1
 		const gen = this.#current
 		this.loading = true
@@ -119,16 +119,6 @@ export class AudioLoader {
 			return { status: 'failed', reason: trackStatus } as const
 		}
 
-		if (url) {
-			if (!url.startsWith('http')) {
-				this.loading = false
-				return { status: 'failed', reason: 'error' } as const
-			}
-
-			this.#onSrc(url)
-			this.loading = false
-			return { status: 'loaded' } as const
-		}
 
 		if (directoryId === undefined || file === undefined) {
 			this.loading = false

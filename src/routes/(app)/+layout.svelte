@@ -29,7 +29,6 @@
 
     const player = setPlayerStoreContext(new PlayerStore())
     const dialogs = setDialogsStoreContext(new DialogsStore())
-    const mainStore = useMainStore()
 
     if (browser) {
         ;(window as any).player = player
@@ -196,8 +195,7 @@
 </div>
 
 <MobileNavigation
-    online={browser ? navigator.onLine && !mainStore.localOnlyMode : !mainStore.localOnlyMode}
-    bindHeight={(h) => {
+	bindHeight={(h) => {
         mobileNavHeight = h
         document.documentElement.style.setProperty('--mobile-nav-height', `${h}px`)
     }}
@@ -297,9 +295,4 @@
         &::view-transition-old(bottom-bar):only-child {
             animation: view-bottom-bar-out 300ms var(--ease-standard) forwards;
         }
-    }
-
-    :global(html[data-offline] a[href="/discovery"]) {
-        display: none !important;
-    }
-</style>
+    }</style>

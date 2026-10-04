@@ -49,8 +49,8 @@ export class MainStore {
 
 	librarySplitLayoutEnabled: boolean = $state(true)
 
-	/** Hide online discovery features and keep the app focused on local music. */
-	localOnlyMode: boolean = $state(false)
+	/** Reduce optional network usage such as animated artwork requests. */
+	lowDataMode: boolean = $state(false)
 
 	constructor() {
 		persist('main', this, [
@@ -60,7 +60,7 @@ export class MainStore {
 			'customThemePaletteHex',
 			'volumeSliderEnabled',
 			'librarySplitLayoutEnabled',
-			'localOnlyMode',
+			'lowDataMode',
 		])
 	}
 }
