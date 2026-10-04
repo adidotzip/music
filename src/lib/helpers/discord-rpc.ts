@@ -39,15 +39,15 @@ declare global {
 
 const SITE_ORIGIN = 'https://music.imreallyadi.space'
 
-const artworkCache = new Map<string, { url: string | undefined; expiresAtexport const resolveDiscordArtwork = async (
+const isPublicArtworkUrl = (value: string | undefined): value is string =>
+	!!value && /^https?:\/\//i.test(value)
+
+export const resolveDiscordArtwork = async (
 	artwork: string | undefined,
 	_remoteId: number | string | undefined,
 	_title: string,
 	_artist: string,
 ): Promise<string | undefined> => {
-	// Discord can only use artwork URLs that are publicly reachable.
-	// Local Blob/File artwork stays local and is intentionally never uploaded
-	// or resolved through an online music service.
 	return isPublicArtworkUrl(artwork) ? artwork : undefined
 }
 
