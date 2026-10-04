@@ -29,7 +29,6 @@
 
     const player = setPlayerStoreContext(new PlayerStore())
     const dialogs = setDialogsStoreContext(new DialogsStore())
-    const mainStore = useMainStore()
 
     if (browser) {
         ;(window as any).player = player
