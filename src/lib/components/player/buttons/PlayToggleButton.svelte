@@ -5,6 +5,7 @@
 
 	let button: HTMLButtonElement
 	let setPlayerIcon: ((el: HTMLButtonElement, name: 'play' | 'pause') => void) | undefined
+	let aeroReady = false
 
 	function syncIcon() {
 		if (!button || !setPlayerIcon) return
@@ -15,6 +16,7 @@
 		const aero = await import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js')
 		setPlayerIcon = aero.setPlayerIcon
 		aero.initPlayerButton(button)
+		aeroReady = true
 		syncIcon()
 		const handlePress = () => { void player.togglePlay() }
 		button.addEventListener('pressend', handlePress)
@@ -33,6 +35,9 @@
 	class="aero-player"
 	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
 	disabled={!player.activeTrack}
+	onclick={() => {
+		if (!aeroReady) void player.togglePlay()
+	}}
 ></button>
 
 <style lang="postcss">
