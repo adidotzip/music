@@ -61,7 +61,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 		id: string
 		name: string
 		artist: string
-		image: string
+		image: Blob | string
 		year: string
 		localUuid: string
 	}>>([])
@@ -126,7 +126,7 @@ import { dbGetAlbumTracksIdsByName, getLibraryItemIds } from '$lib/library/get/i
 						id: String(album.id),
 						name: album.name,
 						artist: String(album.artists[0] ?? item.name),
-						image: '',
+						image: album.image ?? '',
 						year: album.year === UNKNOWN_ITEM ? '' : String(album.year),
 						localUuid: album.uuid,
 					}))
