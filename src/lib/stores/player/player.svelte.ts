@@ -152,6 +152,15 @@ export class PlayerStore {
 			prevTrackId = track.id
 			prevTrack = track
 			this.currentTime = 0
+
+			// Adi Music is local-first: remote-only tracks are never streamed or fetched here.
+			if (track.streaming && !(track.file instanceof File)) {
+				this.#audioLoader.reset()
+				this.playing = false
+				this.#autoplayTrackId = null
+				return
+			}
+
 			this.duration = 0
 
 			const usedPreloadedAudio = !!track.url && this.#consumePreloadedAudio(track.id)
@@ -214,207 +223,8 @@ export class PlayerStore {
 					this.animatedArtworkSrc = undefined
 					return
 				}
-				getAnimatedArtwork(artist, album, track.name)
-					.then((result) => {
-						if (this.activeTrack?.id === track.id) {
-							this.animatedArtworkSrc = result?.url
-							this.animatedArtworkTallSrc = result?.urlTall
-						}
-					})
-					.catch((error) => {
-						console.error('Failed to get animated artwork', error)
-						this.animatedArtworkSrc = undefined
-					})
-			} else {
-				this.animatedArtworkSrc = undefined
-				this.animatedArtworkTallSrc = undefined
-				this.animatedArtworkLoaded = false
-			}
-		})
+				// Animated artwork is intentionally disabled in local-only mode.
 
-		// Playback is controlled explicitly by togglePlay/playTrack and synchronized
-		// from native audio events below. A reactive audio.play()/pause() effect
-		// can race source changes and user clicks, immediately undoing the command.
-		const syncPlayingFromAudio = () => {
-			const audioPlaying = !audio.paused
-			if (audioPlaying) {
-				this.playing = true
-				return
-			}
-
-			// Changing the audio source can emit a pause event before the new
-			// source has finished loading. If this track is still marked for
-			// autoplay, keep the requested state instead of flipping the UI
-			// back to Play.
-			if (this.#autoplayTrackId === this.activeTrack?.id) {
-				return
-			}
-
-			this.playing = false
-		}
-
-		audio.onplay = () => {
-			setPlaybackRate()
-			this.#autoplayTrackId = null
-			syncPlayingFromAudio()
-			this.#updatePositionState()
-			this.#updateDiscordPresence()
-		}
-
-		audio.onratechange = () => {
-			const expectedRate = clamp(
-				this.playbackRate,
-				PLAYER_PLAYBACK_RATE_MIN,
-				PLAYER_PLAYBACK_RATE_MAX,
-			)
-			if (audio.playbackRate !== expectedRate || audio.defaultPlaybackRate !== expectedRate) {
-				setPlaybackRate()
-			}
-		}
-		audio.onpause = () => {
-			syncPlayingFromAudio()
-			this.#updatePositionState()
-			this.#updateDiscordPresence()
-		}
-
-		audio.onerror = () => {
-			const track = this.activeTrack
-			if (!track || this.#audioLoader.loading) return
-
-			const source = audio.currentSrc || audio.src
-			if (!source || source !== this.#audioSource) return
-
-			const code = audio.error?.code
-			console.warn('Audio media error:', { code, src: source })
-
-			if (this.#failedRemoteTracks.has(track.id)) return
-			this.#failedRemoteTracks.add(track.id)
-			this.playing = false
-			this.#autoplayTrackId = null
-
-			snackbar({
-				message: `Unable to play "${truncate(track.name, 30)}". The stream is unavailable or could not be decoded.`,
-				id: 'failed-to-play-audio',
-				duration: 10_000,
-			})
-		}
-
-		audio.onstalled = () => {
-			// Native media loading may stall briefly; do not turn a transient stall into a hard failure.
-		}
-
-		audio.onabort = () => {
-			// Source changes intentionally abort the previous media resource.
-		}
-
-		audio.onseeked = () => {
-			this.#updatePositionState()
-			this.#updateDiscordPresence()
-		}
-
-		audio.onended = () => {
-			if (this.repeat === 'one') {
-				this.seek(0)
-				this.togglePlay(true)
-				return
-			}
-
-			if (
-				this.repeat === 'none' &&
-				this.#queue.activeTrackIndex === this.#queue.itemsIds.length - 1
-			) {
-				const trackId = this.#queue.activeTrackId
-				if (trackId !== null) {
-					this.#savePlayHistory(trackId, this.activeTrack)
-				}
-
-				this.togglePlay(false)
-				return
-			}
-
-			this.playNext()
-		}
-
-		audio.ondurationchange = () => {
-			this.duration = audio.duration
-			this.#updatePositionState()
-			this.#updateDiscordPresence()
-		}
-
-		audio.ontimeupdate = () => {
-			this.currentTime = audio.currentTime
-		}
-
-		const setPlaybackRate = () => {
-			const rate = clamp(
-				this.playbackRate,
-				PLAYER_PLAYBACK_RATE_MIN,
-				PLAYER_PLAYBACK_RATE_MAX,
-			)
-			audio.defaultPlaybackRate = rate
-			audio.playbackRate = rate
-		}
-
-		audio.onloadedmetadata = () => {
-			// Audio change resets playbackRate
-			setPlaybackRate()
-		}
-
-		$effect(() => {
-			setPlaybackRate()
-		})
-
-		$effect(() => {
-			audio.preservesPitch = this.preservePitch
-			if ('webkitPreservesPitch' in audio) {
-				;(audio as any).webkitPreservesPitch = this.preservePitch
-			}
-			if ('mozPreservesPitch' in audio) {
-				;(audio as any).mozPreservesPitch = this.preservePitch
-			}
-		})
-
-		$effect(() => {
-			// Humans perceive volume logarithmically
-			// so we adjust the volume to match that perception
-			const k = 0.5
-			audio.volume = (this.volume / 100) ** k
-		})
-
-		$effect(() => {
-			audio.muted = this.muted
-		})
-
-		const ms = typeof window === 'undefined' ? undefined : window.navigator.mediaSession
-
-		if (ms) {
-			$effect(() => {
-				ms.playbackState = this.playing ? 'playing' : 'paused'
-			})
-
-			$effect(() => {
-				const track = this.activeTrack
-				if (!track) {
-					ms.metadata = null
-					return
-				}
-
-				const fallbackArtworkSrc = new URL('/artwork.svg', location.origin).toString()
-				const artworkSrc = this.artworkSrc ?? fallbackArtworkSrc
-
-				ms.metadata = new MediaMetadata({
-					title: track.name,
-					artist: formatArtists(track.artists),
-					album: track.album,
-					artwork: [
-						{ src: artworkSrc, sizes: '96x96' },
-						{ src: artworkSrc, sizes: '128x128' },
-						{ src: artworkSrc, sizes: '192x192' },
-						{ src: artworkSrc, sizes: '256x256' },
-						{ src: artworkSrc, sizes: '384x384' },
-						{ src: artworkSrc, sizes: '512x512' },
-					],
-				})
 			})
 
 			// Done for minification purposes.
@@ -480,10 +290,6 @@ export class PlayerStore {
 		for (const { track: candidate } of candidates) {
 			if (!candidate) continue
 
-			if (!this.#preloadedLyrics.has(candidate.id)) {
-				this.#preloadedLyrics.set(candidate.id, LyricsService.fetchLyrics(candidate).catch(() => null))
-			}
-
 			if (this.#preloadedAudio.has(candidate.id)) continue
 
 			// Preload the downloaded copy when available. Never let a remote
@@ -496,7 +302,7 @@ export class PlayerStore {
 			} else {
 				src = candidate.url
 			}
-			if (!src) continue
+			if (!src || (candidate.streaming && !(candidate.file instanceof File))) continue
 
 			const audio = new Audio()
 			audio.preload = 'metadata'
