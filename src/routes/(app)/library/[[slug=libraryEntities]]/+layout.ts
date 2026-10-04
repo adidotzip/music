@@ -9,12 +9,6 @@ import {
 import { setLibraryValueInCache } from '$lib/library/get/value.ts'
 import { createTracksCountPageQuery } from '$lib/library/tracks-queries.ts'
 import { FAVORITE_PLAYLIST_ID, type LibraryStoreName } from '$lib/library/types.ts'
-import {
-	searchAlbums,
-	searchArtists,
-	searchPlaylists,
-	searchSongs,
-} from '$lib/services/jiosaavn.ts'
 import { getPersistedLibrarySplitLayoutEnabled } from '$lib/stores/main/store.svelte.ts'
 import { defineViewTransitionMatcher } from '$lib/view-transitions.svelte.ts'
 import type { LayoutLoad } from './$types.js'
