@@ -1,24 +1,39 @@
 <script lang="ts">
-	import Icon from '$lib/components/icon/Icon.svelte'
+	import { onMount } from 'svelte'
 
 	const player = usePlayer()
+
+	let button: HTMLButtonElement
+	let setPlayerIcon: ((el: HTMLButtonElement, name: 'play' | 'pause') => void) | undefined
+
+	function syncIcon() {
+		if (!button || !setPlayerIcon) return
+		setPlayerIcon(button, player.playing ? 'pause' : 'play')
+	}
+
+	onMount(async () => {
+		const aero = await import('https://nurislamaibekuly.github.io/aeroui/src/components/player-button/player-button.js')
+		setPlayerIcon = aero.setPlayerIcon
+		aero.initPlayerButton(button)
+		syncIcon()
+		const handlePress = () => { void player.togglePlay() }
+		button.addEventListener('pressend', handlePress)
+		return () => button.removeEventListener('pressend', handlePress)
+	})
+
+	$effect(() => {
+		player.playing
+		syncIcon()
+	})
 </script>
 
 <button
+	bind:this={button}
 	type="button"
 	class="aero-player"
 	aria-label={player.playing ? m.playerPause() : m.playerPlay()}
 	disabled={!player.activeTrack}
-	onclick={() => player.togglePlay()}
->
-	{#if player.playing}
-		<svg class="size-6 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-			<path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-		</svg>
-	{:else}
-		<Icon type="play" class="size-6" />
-	{/if}
-</button>
+></button>
 
 <style lang="postcss">
 	@reference '../../../../app.css';
@@ -31,9 +46,10 @@
 		--player-tint: color-mix(in srgb, var(--color-onSecondaryContainer) 10%, transparent);
 		--player-disabled: color-mix(in srgb, var(--color-onSecondaryContainer) 38%, transparent);
 		color: var(--color-onSecondaryContainer);
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 9999px;
+	}
+
+	:global(#mini-player .aero-player) {
+		--player-size: --spacing(11);
+		--player-icon: --spacing(6);
 	}
 </style>
